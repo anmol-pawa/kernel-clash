@@ -3,20 +3,23 @@ import type { SpriteSheet } from "@/lib/pixel";
 import { BYTLING_ART } from "./bytling";
 import { CHRONOGOLEM_ART } from "./chronogolem";
 import { DEADLOCRAB_ART } from "./deadlocrab";
+import { DISKRAKEN_ART } from "./diskraken";
 import { BIT_ORB, IMPACT } from "./effects";
 import { GLITCHIT_ART } from "./glitchit";
 import { HEAPOTAMUS_ART } from "./heapotamus";
 import { HYDRAFORK_ART } from "./hydrafork";
+import { KERNELORD_ART } from "./kernelord";
 import { MUTEXA_ART } from "./mutexa";
 import { BADGES, GYM_SHEETS, MAP_MARKER, OVERWORLD } from "./overworld";
 import { PLATFORM, SKYLINE } from "./scenery";
+import { THRASHMOTH_ART } from "./thrashmoth";
 import { TRAPJAW_ART } from "./trapjaw";
 
 /** Every battle creature, in Kerneldex order. */
-export const CREATURES: CreatureArt[] = [BYTLING_ART, GLITCHIT_ART, TRAPJAW_ART, HYDRAFORK_ART, CHRONOGOLEM_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART];
+export const CREATURES: CreatureArt[] = [BYTLING_ART, GLITCHIT_ART, TRAPJAW_ART, HYDRAFORK_ART, CHRONOGOLEM_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART, THRASHMOTH_ART, DISKRAKEN_ART, KERNELORD_ART];
 
 /** Gym bosses (96×96), keyed by gym id. */
-export const BOSSES: Record<string, CreatureArt> = { basics: TRAPJAW_ART, processes: HYDRAFORK_ART, scheduling: CHRONOGOLEM_ART, sync: MUTEXA_ART, deadlocks: DEADLOCRAB_ART, memory: HEAPOTAMUS_ART };
+export const BOSSES: Record<string, CreatureArt> = { basics: TRAPJAW_ART, processes: HYDRAFORK_ART, scheduling: CHRONOGOLEM_ART, sync: MUTEXA_ART, deadlocks: DEADLOCRAB_ART, memory: HEAPOTAMUS_ART, virtual: THRASHMOTH_ART, storage: DISKRAKEN_ART, interview: KERNELORD_ART };
 
 /** Move effects and scenery sheets. */
 export const EFFECTS: SpriteSheet[] = [BIT_ORB, IMPACT];

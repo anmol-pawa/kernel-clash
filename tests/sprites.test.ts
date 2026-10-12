@@ -74,8 +74,8 @@ describe("gym bosses", () => {
     }
   });
 
-  it("gyms 1–6 have their bosses drawn", () => {
-    expect(Object.keys(BOSSES)).toEqual(expect.arrayContaining(["basics", "processes", "scheduling", "sync", "deadlocks", "memory"]));
+  it("all nine gyms have their bosses drawn", () => {
+    expect(Object.keys(BOSSES).sort()).toEqual(GYMS.map((g) => g.id).sort());
   });
 
   it("every boss is listed in the Kerneldex with a unique id", () => {
