@@ -11,13 +11,13 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 ## 1. Game structure
 
-- [ ] 1.1 Region map with 9 "gyms" (one per chapter below) and an original boss creature per gym (e.g. a fork-spawning hydra for processes, a clock-golem for scheduling, a lock-serpent for sync, a deadlock crab, a page-moth for memory…). Badges are earned per gym.
+- [x] 1.1 Region map with 9 "gyms" (one per chapter below) and an original boss creature per gym (e.g. a fork-spawning hydra for processes, a clock-golem for scheduling, a lock-serpent for sync, a deadlock crab, a page-moth for memory…). Badges are earned per gym.
   - [x] 1.1a Pixel overworld region map with the 9 gym buildings, gym data (chapter, topics, boss, badge), badge case, unlock order, and a save (`lib/save.ts`). PRESS START opens the map.
   - [x] 1.1b Boss creatures for gyms 1–2 (96×96, front + back, idle/attack/hurt): Trapjaw (OS basics) and Hydrafork (processes).
   - [x] 1.1c Bosses for gyms 3–4: Chronogolem (scheduling) and Mutexa (sync).
   - [x] 1.1d Bosses for gyms 5–6: Deadlocrab (deadlocks) and Heapotamus (memory).
   - [x] 1.1e Bosses for gyms 7–9: Thrashmoth (virtual memory), Diskraken (storage) and Kernelord (interview gauntlet).
-  - [ ] 1.1f Gym boss battles: enter a gym from the map, fight its boss, earn its badge (saved), unlock the next gym.
+  - [x] 1.1f Gym boss battles: enter a gym from the map, fight its boss, earn its badge (saved), unlock the next gym.
 - [ ] 1.2 Move types (Process, Scheduler, Sync, Memory, Storage, IO…) with a type chart and super-effective messages. Tests for the chart.
 - [ ] 1.3 Starter creature choice, XP and levels, evolution at gym milestones, and a capture box ("Kerneldex").
 - [ ] 1.4 A question engine with MCQ / multi-select / numeric / order-the-steps / generated problems, explanations after every answer, and a Leitner spaced-repetition box.

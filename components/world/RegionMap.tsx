@@ -166,14 +166,24 @@ export function RegionMap() {
             <LockIcon /> EARN THE {GYMS[gymIndex - 1].badge.toUpperCase()} FIRST
           </p>
         ) : (
-          <Link
-            href="/battle"
-            onClick={() => sfx.click()}
-            className="flex min-h-12 items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-[#ffe27a] px-3 font-pixel text-[10px] text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#fff0a0]"
-            data-testid="gym-action"
-          >
-            {state === "cleared" ? "▶ REMATCH (PRACTICE BATTLE)" : "▶ TRAIN (PRACTICE BATTLE)"}
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={`/gym/${gym.id}`}
+              onClick={() => sfx.click()}
+              className="flex min-h-12 flex-[2] items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-[#ffe27a] px-2 text-center font-pixel text-[10px] leading-4 text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#fff0a0]"
+              data-testid="gym-action"
+            >
+              {state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} {gym.boss.name.toUpperCase()}
+            </Link>
+            <Link
+              href="/battle"
+              onClick={() => sfx.click()}
+              className="flex min-h-12 flex-1 items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-white px-2 font-pixel text-[9px] text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#f0ecff]"
+              data-testid="gym-train"
+            >
+              TRAIN
+            </Link>
+          </div>
         )}
       </section>
     </main>

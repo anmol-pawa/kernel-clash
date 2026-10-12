@@ -107,7 +107,8 @@ export class CreatureStage {
     this.mon = {
       // the player's creature is seen from behind, the foe from the front
       player: new PixiPixelSprite(this.opts.player.back, PX + 1),
-      foe: new PixiPixelSprite(this.opts.foe.front, PX),
+      // bosses are drawn on a 96×96 grid, so they render at 2× to share the 192px band
+      foe: new PixiPixelSprite(this.opts.foe.front, this.opts.foe.boss ? 2 : PX),
     };
     for (const who of ["player", "foe"] as Who[]) {
       this.mon[who].position.set(HOME[who].x, HOME[who].y);
