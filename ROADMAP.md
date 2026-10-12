@@ -6,7 +6,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 - [x] 0.1 Scaffold Next.js 16 + TypeScript + Tailwind 4 + Vitest + ESLint, copying configs from Query Clash. Static export with `BASE_PATH=/kernel-clash`, the PWA manifest and icons (an original "KC" pixel icon), the offline service worker (with the worker-fragment fix), and `ci.yml` + `pages.yml`. Ship a placeholder title screen that deploys and installs.
 - [x] 0.2 Port the Pixi battle engine (stage, tweens, particles, camera, audio synth, battle reducer, UI kit, save) and get a demo battle running.
-- [ ] 0.3 Pixel-sprite system: palette + character-grid sprites rendered to nearest-neighbour textures, with idle frames. Add a sprite-validity test.
+- [x] 0.3 Pixel-sprite system: palette + character-grid sprites rendered to nearest-neighbour textures, with idle frames. Add a sprite-validity test.
 - [ ] 0.4 GBA-style battle screen: foe front sprite on a platform top-right, player creature back sprite bottom-left, HP/XP boxes, typed-out message box, and a move menu of 4 answer options (tap-friendly).
 
 ## 1. Game structure

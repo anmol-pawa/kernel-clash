@@ -23,3 +23,13 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Verified: lint, typecheck, `npm test` (21 tests: reducer, damage, tween, demo answers, sprite validity), `build:pages` (66 files precached). Playwright on the static build at 1280×800 and iPhone 14: played a full battle (right, wrong, then rights → victory), no console errors, no horizontal overflow; screenshots reviewed.
 - Not ported yet: `lib/save.ts` (nothing to save until XP/levels in 1.3) and Query Clash's glowy button kit (replaced by handheld `HpBox`/`MenuChoice` in `components/ui/kit.tsx`).
 - Next: 0.3 pixel-sprite system (back sprites, hurt/faint/evolve frames per creature, a `/dev/sprites` viewer), then 0.4 the full GBA-style battle layout (the 4-option menu should go 2×2 on phones to give the stage more room).
+
+## 2026-10-12: 0.3 pixel-sprite system (run 3)
+- `lib/creature.ts`: `CreatureArt` (front + back sheets, `boss` flag) and `creatureProblems()`, an art-bar checker: ≥64×64 (96 for bosses), 2–4 distinct idle frames, `attack` + `hurt` animations, ≤24 colours, all frames the same size and in-palette, a filled silhouette, outlined edges, matching front/back palettes.
+- Bytling redrawn as a 64×64 battle creature: front (gem, antenna pins, stubby arms, circuit traces, blush) and a new back sprite (heat-sink vent, status LED, flank traces). Idle 4f with bob + blink, attack 3f (wind-up squash → charged gem/antennae with open mouth), hurt 2f (squeezed eyes, wince).
+- Glitchit gained a back sprite (shell-from-behind with tail tip, wing cases that flare open to attack) and a 2-frame hurt (X eyes + RGB glitch tears).
+- `game/sprites/index.ts` registry (`CREATURES`, `EFFECTS`, `SCENERY`). The battle stage now takes `CreatureArt`: the player shows its back sprite, the foe its front, and hits play the `hurt` pose on top of the white flash + recoil.
+- `/dev/sprites` viewer: every creature front + back, every animation playing, palette swatches, a live art-bar verdict, 1×/2×/3× zoom, white-silhouette toggle (evolve preview), 4 backdrop colours, effects + scenery.
+- `PixelSprite` can play any named animation and draw the silhouette.
+- Verified: lint, typecheck, `npm test` (28 tests, incl. the art-bar check per creature and negative cases for the checker), `build:pages` (73 files precached). Playwright on the static build at 1280×800 and iPhone 14 for title, `/dev/sprites` and the battle (took a hit): no console errors, no horizontal overflow; screenshots reviewed.
+- Next: 0.4 GBA-style battle screen (the 4 answers go 2×2 on phones to give the stage room; typed-out message box; XP bar). The evolve white-silhouette morph is a stage effect to add with evolution in 1.3.

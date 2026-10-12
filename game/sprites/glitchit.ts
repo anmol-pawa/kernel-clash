@@ -1,3 +1,4 @@
+import type { CreatureArt } from "@/lib/creature";
 import { PixelCanvas, type Grid, type SpriteSheet } from "@/lib/pixel";
 
 /**
@@ -51,7 +52,7 @@ function body(step: number, lunge: number): PixelCanvas {
   return k;
 }
 
-function details(k: PixelCanvas, oy: number, open: boolean, blink: boolean) {
+function details(k: PixelCanvas, oy: number, open: boolean, blink: boolean, hurt = false) {
   // seam between the wing cases
   k.line(31, 11 + oy, 31, 40 + oy, "s");
   k.line(32, 11 + oy, 32, 40 + oy, "1");
@@ -66,7 +67,7 @@ function details(k: PixelCanvas, oy: number, open: boolean, blink: boolean) {
   k.rect(18, 15 + oy, 3, 1, "4");
   k.rect(17, 16 + oy, 2, 1, "4");
   // eyes
-  const eye: Grid = blink ? ["....", "eeee", "...."] : [".Ee.", "eEee", "eeee", ".ee."];
+  const eye: Grid = hurt ? ["e..e", ".ee.", ".ee.", "e..e"] : blink ? ["....", "eeee", "...."] : [".Ee.", "eEee", "eeee", ".ee."];
   k.stamp(eye, 24, 44 + oy);
   k.stamp(eye, 36, 44 + oy, true);
   // mandibles
@@ -89,21 +90,74 @@ function glitch(k: PixelCanvas, y0: number, rows: number, dx: number) {
   }
 }
 
-function frame(o: { step?: number; lunge?: number; open?: boolean; blink?: boolean; tear?: [number, number, number] }): Grid {
+interface Pose {
+  step?: number;
+  lunge?: number;
+  open?: boolean;
+  blink?: boolean;
+  hurt?: boolean;
+  tear?: [number, number, number];
+}
+
+function frame(o: Pose): Grid {
   const lunge = o.lunge ?? 0;
   const k = body(o.step ?? 0, lunge);
-  details(k, lunge, !!o.open, !!o.blink);
+  details(k, lunge, !!o.open, !!o.blink, o.hurt);
   k.outline("o");
   if (o.tear) glitch(k, ...o.tear);
   return k.toGrid();
 }
 
-export const GLITCHIT: SpriteSheet = {
-  name: "Glitchit",
-  palette,
-  idle: [frame({ step: 0 }), frame({ step: 1 }), frame({ step: 0, tear: [24, 3, 3] }), frame({ step: 1, blink: true })],
-  anims: {
-    attack: [frame({ step: 0, open: true }), frame({ step: 1, lunge: 3, open: true }), frame({ step: 0, lunge: 3, open: false, tear: [30, 4, -3] })],
-  },
-  fps: { idle: 3, attack: 6 },
-};
+/** From behind: the shell fills the view, wing cases slightly parted, a stinger-like tail tip. */
+function backFrame(o: Pose): Grid {
+  const k = new PixelCanvas(64, 64);
+  const oy = -(o.lunge ?? 0);
+  const step = o.step ?? 0;
+  LEG_SETS.forEach(([hx, hy, kx, ky, fx, fy], i) => {
+    const lift = (i + step) % 2 === 0 ? -1 : 0;
+    k.line(hx, hy + 4 + oy, kx - 1, ky + 4 + oy + lift, "l");
+    k.line(kx - 1, ky + 4 + oy + lift, fx - 1, Math.min(62, fy + 4) + oy + lift, "L");
+  });
+  // antenna tips peeking over the shell
+  k.line(26, 12 + oy, 20, 3 + oy - step, "l");
+  k.px(19, 2 + oy - step, "e");
+  k.ellipse(32, 56 + oy, 6, 5, ["h", "H", "j"]); // tail tip
+  k.ellipse(32, 33 + oy, 25, 23, ["1", "2", "3", "4"]);
+  k.mirror();
+  // parted wing cases: a dark wedge down the middle, flared open to attack
+  for (let y = 12; y <= 54; y++) {
+    const half = o.open ? Math.floor((y - 12) / 7) : y < 40 ? 0 : Math.floor((y - 40) / 4);
+    k.rect(31 - half, y + oy, 2 + half * 2, 1, "s");
+  }
+  const spots: Grid = [".ss.", "s..s", "s..s", ".ss."];
+  const xs: Grid = ["s..s", ".ss.", ".ss.", "s..s"];
+  k.stamp(xs, 17, 22 + oy);
+  k.stamp(spots, 22, 33 + oy);
+  k.stamp(spots, 38, 33 + oy);
+  k.stamp(xs, 43, 22 + oy);
+  k.stamp(spots, 25, 44 + oy);
+  k.stamp(xs, 35, 44 + oy);
+  k.rect(16, 18 + oy, 4, 1, "4");
+  k.rect(15, 19 + oy, 2, 1, "4");
+  if (o.hurt) for (const [x, y] of [[8, 8], [52, 6]]) k.stamp(["e.e", ".E.", "e.e"], x, y);
+  k.outline("o");
+  if (o.tear) glitch(k, ...o.tear);
+  return k.toGrid();
+}
+
+function sheet(side: "front" | "back"): SpriteSheet {
+  const f = side === "front" ? frame : backFrame;
+  return {
+    name: `Glitchit (${side})`,
+    palette,
+    idle: [f({ step: 0 }), f({ step: 1 }), f({ step: 0, tear: [24, 3, 3] }), f({ step: 1, blink: true })],
+    anims: {
+      attack: [f({ step: 0, open: true }), f({ step: 1, lunge: 3, open: true }), f({ step: 0, lunge: 3, open: false, tear: [30, 4, -3] })],
+      hurt: [f({ hurt: true, tear: [18, 5, 4] }), f({ step: 1, hurt: true, tear: [36, 4, -3] })],
+    },
+    fps: { idle: 3, attack: 6, hurt: 6 },
+  };
+}
+
+export const GLITCHIT_ART: CreatureArt = { id: "glitchit", name: "Glitchit", front: sheet("front"), back: sheet("back") };
+export const GLITCHIT = GLITCHIT_ART.front;

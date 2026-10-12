@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BYTLING } from "@/game/sprites/bytling";
-import { BIT_ORB, IMPACT } from "@/game/sprites/effects";
-import { GLITCHIT } from "@/game/sprites/glitchit";
-import { PLATFORM, SKYLINE } from "@/game/sprites/scenery";
-import { PixelCanvas, runs } from "@/lib/pixel";
+import { CREATURES, EFFECTS, SCENERY } from "@/game/sprites";
+import { BYTLING_ART } from "@/game/sprites/bytling";
+import { creatureProblems, type CreatureArt } from "@/lib/creature";
+import { PixelCanvas, runs, type Grid } from "@/lib/pixel";
 
-const SHEETS = [BYTLING, GLITCHIT, BIT_ORB, IMPACT, PLATFORM, SKYLINE];
+const SHEETS = [...CREATURES.flatMap((c) => [c.front, c.back]), ...EFFECTS, ...SCENERY];
 
 describe("sprite sheets", () => {
   for (const s of SHEETS)
@@ -22,25 +21,66 @@ describe("sprite sheets", () => {
       }
       for (const c of Object.values(s.palette)) expect(c).toMatch(/^#[0-9a-f]{6}$/i);
     });
+});
 
-  it("the mascot has a multi-frame idle and is outlined", () => {
-    expect(BYTLING.idle.length).toBeGreaterThanOrEqual(2);
-    expect(new Set(BYTLING.idle.map((f) => f.join("\n"))).size).toBeGreaterThan(1);
-    // every filled pixel touching transparency is outline
-    const f = BYTLING.idle[0];
-    const at = (x: number, y: number) => f[y]?.[x] ?? ".";
-    for (let y = 0; y < f.length; y++)
-      for (let x = 0; x < f[0].length; x++)
-        if (at(x, y) !== "." && [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes(".")) expect(at(x, y)).toBe("o");
+describe("battle creatures meet the art bar", () => {
+  for (const c of CREATURES)
+    it(`${c.name}: front + back, ≥64×64, 2–4 idle frames, attack + hurt, outlined`, () => {
+      expect(creatureProblems(c)).toEqual([]);
+    });
+
+  it("ids are unique", () => {
+    expect(new Set(CREATURES.map((c) => c.id)).size).toBe(CREATURES.length);
+  });
+
+  it("front and back sprites differ, and so do attack and hurt poses", () => {
+    for (const c of CREATURES) {
+      expect(c.front.idle[0].join("")).not.toBe(c.back.idle[0].join(""));
+      for (const s of [c.front, c.back]) {
+        expect(s.anims!.attack[0].join("")).not.toBe(s.idle[0].join(""));
+        expect(s.anims!.hurt[0].join("")).not.toBe(s.idle[0].join(""));
+      }
+    }
+  });
+
+  it("Bytling's edge pixels are all outline", () => {
+    for (const f of [BYTLING_ART.front.idle[0], BYTLING_ART.back.idle[0]]) {
+      const at = (x: number, y: number) => f[y]?.[x] ?? ".";
+      for (let y = 0; y < f.length; y++)
+        for (let x = 0; x < f[0].length; x++)
+          if (at(x, y) !== "." && [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes(".")) expect(at(x, y)).toBe("o");
+    }
   });
 });
 
-describe("battle creatures", () => {
-  it("Glitchit is a 64×64 battle sprite with a multi-frame idle and an attack animation", () => {
-    expect(GLITCHIT.idle[0].length).toBe(64);
-    expect(GLITCHIT.idle[0][0].length).toBe(64);
-    expect(new Set(GLITCHIT.idle.map((f) => f.join(""))).size).toBeGreaterThanOrEqual(3);
-    expect(GLITCHIT.anims?.attack.length).toBeGreaterThanOrEqual(2);
+describe("creatureProblems", () => {
+  const block = (w: number, h: number, ch = "a"): Grid => {
+    const k = new PixelCanvas(w, h);
+    k.rect(1, 1, w - 2, h - 2, ch);
+    k.outline("o");
+    return k.toGrid();
+  };
+  const good = (): CreatureArt => {
+    const sheet = { name: "t", palette: { o: "#000000", a: "#ff0000", b: "#00ff00" }, idle: [block(64, 64), block(64, 64, "b")], anims: { attack: [block(64, 64)], hurt: [block(64, 64)] } };
+    return { id: "t", name: "T", front: sheet, back: { ...sheet } };
+  };
+
+  it("accepts a sprite that meets the bar", () => expect(creatureProblems(good())).toEqual([]));
+
+  it("flags small sprites, missing poses, frozen idles, bad colours and missing outlines", () => {
+    const c = good();
+    c.front = { ...c.front, idle: [block(40, 40), block(40, 40, "b")], anims: { attack: [block(40, 40)], hurt: [block(40, 40)] } };
+    expect(creatureProblems(c).join()).toMatch(/under 64×64/);
+    c.front = { ...good().front, anims: { attack: [block(64, 64)] } };
+    expect(creatureProblems(c).join()).toMatch(/missing "hurt"/);
+    c.front = { ...good().front, idle: [block(64, 64), block(64, 64)] };
+    expect(creatureProblems(c).join()).toMatch(/identical/);
+    c.front = { ...good().front, idle: [block(64, 64, "z"), block(64, 64)] };
+    expect(creatureProblems(c).join()).toMatch(/"z" not in palette/);
+    const bare = Array.from({ length: 64 }, () => "a".repeat(64));
+    c.front = { ...good().front, idle: [bare, block(64, 64)] };
+    expect(creatureProblems(c).join()).toMatch(/aren't outline/);
+    expect(creatureProblems({ ...good(), boss: true }).join()).toMatch(/under 96×96/);
   });
 });
 

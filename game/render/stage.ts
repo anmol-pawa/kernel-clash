@@ -9,7 +9,7 @@
  *   await stage.faint("foe")
  */
 import { Application, Container, Graphics } from "pixi.js";
-import type { SpriteSheet } from "@/lib/pixel";
+import type { CreatureArt } from "@/lib/creature";
 import { TYPE_COLOR, type MoveType } from "@/game/engine/types";
 import { BIT_ORB, IMPACT } from "@/game/sprites/effects";
 import { PLATFORM, SKYLINE } from "@/game/sprites/scenery";
@@ -33,8 +33,8 @@ const HOME: Record<Who, { x: number; y: number }> = {
 const SKY = [0x1b1446, 0x251a5c, 0x33226e, 0x4a2c7e, 0x6b3a86, 0x94508a, 0xc46f86];
 
 export interface StageOptions {
-  player: SpriteSheet;
-  foe: SpriteSheet;
+  player: CreatureArt;
+  foe: CreatureArt;
   reducedMotion: boolean;
   font: string;
 }
@@ -105,8 +105,9 @@ export class CreatureStage {
     }
 
     this.mon = {
-      player: new PixiPixelSprite(this.opts.player, PX + 1, true),
-      foe: new PixiPixelSprite(this.opts.foe, PX),
+      // the player's creature is seen from behind, the foe from the front
+      player: new PixiPixelSprite(this.opts.player.back, PX + 1),
+      foe: new PixiPixelSprite(this.opts.foe.front, PX),
     };
     for (const who of ["player", "foe"] as Who[]) {
       this.mon[who].position.set(HOME[who].x, HOME[who].y);
@@ -219,7 +220,8 @@ export class CreatureStage {
     if (crit) this.cam.flash(0.4);
     popText(this.fxc, { x: p.x, y: p.y - 70 }, `-${damage}`, { color: crit ? 0xffe27a : 0xffffff, size: crit ? 56 : 44, crit });
     if (crit) popText(this.fxc, { x: p.x, y: p.y - 130 }, "CRITICAL!", { color: 0xffe27a, size: 26, rise: 40 });
-    // hurt: white flash blinks + recoil
+    // hurt: wince pose, white flash blinks + recoil
+    void m.play("hurt");
     const back = who === "player" ? -1 : 1;
     void this.tw.to(m, { x: m.x + back * 18 }, 0.08).then(() => this.tw.to(m, { x: HOME[who].x }, 0.25, ease.outBack));
     for (let i = 0; i < 3; i++) {

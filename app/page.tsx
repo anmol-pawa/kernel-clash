@@ -30,7 +30,7 @@ export default function Title() {
         </h1>
 
         <div className="relative mt-auto flex flex-col items-center pt-6">
-          <PixelSprite sprite={BYTLING} scale={5} fps={2.5} className="relative z-10 -mb-12" />
+          <PixelSprite sprite={BYTLING} scale={3} fps={2.5} className="relative z-10 -mb-12" />
           <PixelSprite sprite={PLATFORM} scale={4} />
         </div>
 

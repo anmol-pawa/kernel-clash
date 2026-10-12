@@ -7,8 +7,8 @@ import { DEMO_QUESTIONS } from "@/content/demo";
 import { sfx } from "@/game/audio/synth";
 import { initialState, reducer } from "@/game/engine/battle";
 import type { CreatureStage } from "@/game/render/stage";
-import { BYTLING } from "@/game/sprites/bytling";
-import { GLITCHIT } from "@/game/sprites/glitchit";
+import { BYTLING_ART } from "@/game/sprites/bytling";
+import { GLITCHIT_ART } from "@/game/sprites/glitchit";
 
 /** Seconds clock for answer timing (event handlers only). */
 const clock = () => performance.now();
@@ -37,8 +37,8 @@ export function DemoBattle() {
       const { CreatureStage } = await import("@/game/render/stage");
       if (dead || !host.current) return;
       st = await CreatureStage.create(host.current, {
-        player: BYTLING,
-        foe: GLITCHIT,
+        player: BYTLING_ART,
+        foe: GLITCHIT_ART,
         reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
         font: pixel.style.fontFamily,
       });
