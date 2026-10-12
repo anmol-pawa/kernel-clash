@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { BYTLING } from "@/game/sprites/bytling";
+import { BIT_ORB, IMPACT } from "@/game/sprites/effects";
+import { GLITCHIT } from "@/game/sprites/glitchit";
 import { PLATFORM, SKYLINE } from "@/game/sprites/scenery";
 import { PixelCanvas, runs } from "@/lib/pixel";
 
-const SHEETS = [BYTLING, PLATFORM, SKYLINE];
+const SHEETS = [BYTLING, GLITCHIT, BIT_ORB, IMPACT, PLATFORM, SKYLINE];
 
 describe("sprite sheets", () => {
   for (const s of SHEETS)
@@ -11,7 +13,7 @@ describe("sprite sheets", () => {
       expect(s.idle.length).toBeGreaterThan(0);
       const h = s.idle[0].length;
       const w = s.idle[0][0].length;
-      for (const f of s.idle) {
+      for (const f of [...s.idle, ...Object.values(s.anims ?? {}).flat()]) {
         expect(f.length).toBe(h);
         for (const row of f) {
           expect(row.length).toBe(w);
@@ -30,6 +32,15 @@ describe("sprite sheets", () => {
     for (let y = 0; y < f.length; y++)
       for (let x = 0; x < f[0].length; x++)
         if (at(x, y) !== "." && [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes(".")) expect(at(x, y)).toBe("o");
+  });
+});
+
+describe("battle creatures", () => {
+  it("Glitchit is a 64×64 battle sprite with a multi-frame idle and an attack animation", () => {
+    expect(GLITCHIT.idle[0].length).toBe(64);
+    expect(GLITCHIT.idle[0][0].length).toBe(64);
+    expect(new Set(GLITCHIT.idle.map((f) => f.join(""))).size).toBeGreaterThanOrEqual(3);
+    expect(GLITCHIT.anims?.attack.length).toBeGreaterThanOrEqual(2);
   });
 });
 

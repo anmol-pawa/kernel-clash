@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { BYTLING } from "@/game/sprites/bytling";
@@ -33,12 +34,15 @@ export default function Title() {
           <PixelSprite sprite={PLATFORM} scale={4} />
         </div>
 
+        <Link href="/battle" className="mt-8 flex min-h-12 items-center px-6 font-pixel text-sm text-white pixel-shadow">
+          <span className="blink">▶</span>&nbsp;PRESS START
+        </Link>
         <button
           type="button"
           onClick={() => setMsg("The region map opens soon. Nine gyms await: processes, scheduling, sync, deadlocks, memory, virtual memory, storage, and the interview gauntlet.")}
-          className="mt-8 min-h-12 px-6 font-pixel text-sm text-white pixel-shadow"
+          className="min-h-11 px-4 font-pixel text-[10px] text-[#ffd0dd] pixel-shadow"
         >
-          <span className="blink">▶</span> PRESS START
+          WHAT&apos;S AHEAD?
         </button>
 
         <div className="gb-box mt-6 w-full p-4 text-left font-pixel text-[11px] leading-6 min-h-[5.5rem]" aria-live="polite">

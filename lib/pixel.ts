@@ -12,6 +12,35 @@ export interface SpriteSheet {
   palette: Palette;
   /** idle animation frames, all the same size */
   idle: Grid[];
+  /** other named animations (attack, hurt…), same size as idle */
+  anims?: Record<string, Grid[]>;
+  /** frames per second per animation (default 4) */
+  fps?: Record<string, number>;
+}
+
+/** Frames for an animation, falling back to idle. */
+export function framesOf(s: SpriteSheet, anim: string): Grid[] {
+  return anim === "idle" ? s.idle : (s.anims?.[anim] ?? s.idle);
+}
+
+/** "#rrggbb" → [r, g, b] */
+export function hexRGB(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** RGBA bytes for one frame. `white` paints every filled pixel white (hurt / evolve silhouettes). */
+export function gridToRGBA(s: SpriteSheet, grid: Grid, white = false): Uint8ClampedArray {
+  const w = grid[0].length;
+  const out = new Uint8ClampedArray(w * grid.length * 4);
+  grid.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (ch === ".") return;
+      const [r, g, b] = white ? [255, 255, 255] : hexRGB(s.palette[ch]);
+      out.set([r, g, b, 255], (y * w + x) * 4);
+    }),
+  );
+  return out;
 }
 
 const BAYER4 = [
