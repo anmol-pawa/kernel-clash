@@ -74,8 +74,14 @@ describe("gym bosses", () => {
     }
   });
 
-  it("gyms 1 and 2 have their bosses drawn", () => {
-    expect(Object.keys(BOSSES)).toEqual(expect.arrayContaining(["basics", "processes"]));
+  it("gyms 1–4 have their bosses drawn", () => {
+    expect(Object.keys(BOSSES)).toEqual(expect.arrayContaining(["basics", "processes", "scheduling", "sync"]));
+  });
+
+  it("every boss is listed in the Kerneldex with a unique id", () => {
+    const ids = CREATURES.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const art of Object.values(BOSSES)) expect(CREATURES).toContain(art);
   });
 });
 
