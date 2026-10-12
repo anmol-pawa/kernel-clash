@@ -81,6 +81,13 @@ export const sfx = {
   click() {
     tone(880, 0.06, { type: "square", gain: 0.05 });
   },
+  /** Message-box text tick. */
+  blip() {
+    tone(1200, 0.02, { type: "square", gain: 0.018 });
+  },
+  levelUp() {
+    [659, 784, 988, 1319].forEach((f, i) => tone(f, 0.18, { type: "square", gain: 0.06, delay: i * 0.08 }));
+  },
   hover() {
     tone(1400, 0.03, { type: "sine", gain: 0.025 });
   },

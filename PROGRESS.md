@@ -33,3 +33,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `PixelSprite` can play any named animation and draw the silhouette.
 - Verified: lint, typecheck, `npm test` (28 tests, incl. the art-bar check per creature and negative cases for the checker), `build:pages` (73 files precached). Playwright on the static build at 1280×800 and iPhone 14 for title, `/dev/sprites` and the battle (took a hit): no console errors, no horizontal overflow; screenshots reviewed.
 - Next: 0.4 GBA-style battle screen (the 4 answers go 2×2 on phones to give the stage room; typed-out message box; XP bar). The evolve white-silhouette morph is a stage effect to add with evolution in 1.3.
+
+## 2026-10-12: 0.4 GBA-style battle screen (run 4)
+- Handheld status boxes (`components/ui/kit.tsx`): foe box top-left (name, Lv, HP gauge), player box bottom-right (HP gauge, HP numbers, blue XP gauge), pixel gauges with highlight rows and green/yellow/red HP, and a pixel "tail" pointing at each box's creature.
+- Typed-out message box (`lib/typewriter.ts` `useTypewriter`, text-tick blip sfx, instant under reduced motion) with a red-trimmed handheld frame. Tapping skips the typing; after each explanation a blinking ▼ waits for a tap, so explanations can be read at the player's pace.
+- Move menu: a move-info strip (move name, type badge, PWR) over a 2×2 grid of A–D answer buttons (≥56px tall) on every screen size; on desktop the message box and menu sit side by side. Right/wrong answers show ✓/✗ tags.
+- XP and levels (`game/engine/xp.ts`): cubic curve (Lv L = L³ XP), `xpYield` per foe level (bosses 1.5×). Winning the demo awards 36 XP and levels Bytling 5 → 6 with a level-up jingle.
+- Verified: lint, typecheck, `npm test` (34 tests, new xp + typewriter tests), `build:pages` (74 files precached). Playwright on the static build at 1280×800 and iPhone 14: full battle (right, wrong, rights → victory → XP → level up), no console errors, no horizontal overflow; screenshots reviewed (fixed a bug where both status boxes stacked top-left).
+- Next: 1.1 region map with 9 gyms and boss creatures (likely split: map screen first, then bosses one at a time).
