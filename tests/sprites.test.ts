@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CREATURES, EFFECTS, SCENERY } from "@/game/sprites";
+import { CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
 import { BYTLING_ART } from "@/game/sprites/bytling";
 import { creatureProblems, type CreatureArt } from "@/lib/creature";
 import { PixelCanvas, runs, type Grid } from "@/lib/pixel";
 
-const SHEETS = [...CREATURES.flatMap((c) => [c.front, c.back]), ...EFFECTS, ...SCENERY];
+const SHEETS = [...CREATURES.flatMap((c) => [c.front, c.back]), ...EFFECTS, ...SCENERY, ...WORLD];
 
 describe("sprite sheets", () => {
   for (const s of SHEETS)

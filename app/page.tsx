@@ -34,17 +34,21 @@ export default function Title() {
           <PixelSprite sprite={PLATFORM} scale={4} />
         </div>
 
-        <Link href="/battle" className="mt-8 flex min-h-12 items-center px-6 font-pixel text-sm text-white pixel-shadow">
+        <Link href="/map" className="mt-8 flex min-h-12 items-center px-6 font-pixel text-sm text-white pixel-shadow">
           <span className="blink">▶</span>&nbsp;PRESS START
         </Link>
-        <button
-          type="button"
-          onClick={() => setMsg("The region map opens soon. Nine gyms await: processes, scheduling, sync, deadlocks, memory, virtual memory, storage, and the interview gauntlet.")}
-          className="min-h-11 px-4 font-pixel text-[10px] text-[#ffd0dd] pixel-shadow"
-        >
-          WHAT&apos;S AHEAD?
-        </button>
-
+        <div className="flex gap-2">
+          <Link href="/battle" className="flex min-h-11 items-center px-3 font-pixel text-[10px] text-[#ffd0dd] pixel-shadow">
+            QUICK BATTLE
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMsg("Nine gyms await on the region map: OS basics, processes, scheduling, sync, deadlocks, memory, virtual memory, storage, and the interview gauntlet at the Kernel Summit.")}
+            className="min-h-11 px-3 font-pixel text-[10px] text-[#ffd0dd] pixel-shadow"
+          >
+            WHAT&apos;S AHEAD?
+          </button>
+        </div>
         <div className="gb-box mt-6 w-full p-4 text-left font-pixel text-[11px] leading-6 min-h-[5.5rem]" aria-live="polite">
           {msg ?? "Fork, schedule, lock and page your way to the top. Answer right to land your moves!"}
         </div>

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
-import { CREATURES, EFFECTS, SCENERY } from "@/game/sprites";
+import { CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
 import { creatureProblems } from "@/lib/creature";
 import type { SpriteSheet } from "@/lib/pixel";
 
@@ -88,6 +88,13 @@ export function SpriteViewer() {
       <section className="flex flex-col gap-4 rounded-lg border-2 border-white/10 bg-white/[0.03] p-3">
         <h2 className="font-pixel text-sm text-[#5eead4]">EFFECTS + SCENERY</h2>
         {[...EFFECTS, ...SCENERY].map((s) => (
+          <SheetRow key={s.name} sheet={s} bg={bg} scale={scale} white={white} />
+        ))}
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border-2 border-white/10 bg-white/[0.03] p-3">
+        <h2 className="font-pixel text-sm text-[#5eead4]">OVERWORLD</h2>
+        {WORLD.map((s) => (
           <SheetRow key={s.name} sheet={s} bg={bg} scale={scale} white={white} />
         ))}
       </section>
