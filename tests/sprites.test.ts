@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
+import { GYMS } from "@/content/gyms";
+import { BOSSES, CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
 import { BYTLING_ART } from "@/game/sprites/bytling";
 import { creatureProblems, type CreatureArt } from "@/lib/creature";
 import { PixelCanvas, runs, type Grid } from "@/lib/pixel";
@@ -50,6 +51,31 @@ describe("battle creatures meet the art bar", () => {
         for (let x = 0; x < f[0].length; x++)
           if (at(x, y) !== "." && [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes(".")) expect(at(x, y)).toBe("o");
     }
+  });
+});
+
+describe("gym bosses", () => {
+  it("each boss sprite belongs to a real gym and matches that gym's boss name", () => {
+    for (const [id, art] of Object.entries(BOSSES)) {
+      const gym = GYMS.find((g) => g.id === id);
+      expect(gym, id).toBeDefined();
+      expect(art.name).toBe(gym!.boss.name);
+      expect(CREATURES).toContain(art);
+    }
+  });
+
+  it("bosses are flagged and drawn at 96×96", () => {
+    for (const art of Object.values(BOSSES)) {
+      expect(art.boss).toBe(true);
+      for (const s of [art.front, art.back]) {
+        expect(s.idle[0].length).toBe(96);
+        expect(s.idle[0][0].length).toBe(96);
+      }
+    }
+  });
+
+  it("gyms 1 and 2 have their bosses drawn", () => {
+    expect(Object.keys(BOSSES)).toEqual(expect.arrayContaining(["basics", "processes"]));
   });
 });
 

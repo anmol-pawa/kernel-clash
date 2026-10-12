@@ -90,6 +90,24 @@ export class PixelCanvas {
       }
   }
 
+  /**
+   * A shaded tube (neck, tail, limb) along the quadratic curve p0 → p1 → p2,
+   * its radius easing from r0 to r1. Stamped as overlapping lit discs drawn
+   * from p0 to p2, so the p2 end sits on top.
+   */
+  tube(p0: [number, number], p1: [number, number], p2: [number, number], r0: number, r1: number, ramp: string[]) {
+    const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) + Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    const n = Math.max(2, Math.ceil(len));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const u = 1 - t;
+      const x = u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0];
+      const y = u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1];
+      const r = r0 + (r1 - r0) * t;
+      this.ellipse(x, y, r, r, ramp);
+    }
+  }
+
   rect(x0: number, y0: number, w: number, h: number, c: string) {
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) this.px(x, y, c);
   }
