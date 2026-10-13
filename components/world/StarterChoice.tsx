@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { TypeBadge } from "@/components/ui/kit";
 import { PixelSprite } from "@/components/ui/PixelSprite";
-import { STARTERS, starterById, type Starter } from "@/content/starters";
+import { EVOLVE_GYM, STARTERS, isEvolved, partnerForm, starterById, starterLevel, starterMaxHp, type Starter } from "@/content/starters";
+import { GYMS } from "@/content/gyms";
 import { sfx } from "@/game/audio/synth";
 import { SUPER_EFFECTIVE } from "@/game/engine/types";
-import { STARTER_ART } from "@/game/sprites/index";
+import { partnerArt } from "@/game/sprites/index";
 import { PLATFORM } from "@/game/sprites/scenery";
-import { updateSave, useSave } from "@/lib/save";
+import { updateSave, useSave, xpOf } from "@/lib/save";
 
 const SKY = ["#1b1446", "#251a5c", "#33226e", "#4a2c7e", "#6b3a86", "#94508a", "#c46f86"];
 const noSub = () => () => {};
@@ -22,10 +23,10 @@ function matchups(s: Starter) {
 }
 
 /** One creature standing on its grass platform. */
-function OnPlatform({ s, scale }: { s: Starter; scale: number }) {
+function OnPlatform({ s, scale, evolved = false }: { s: Starter; scale: number; evolved?: boolean }) {
   return (
     <span className="relative flex flex-col items-center">
-      <PixelSprite sprite={STARTER_ART[s.id].front} scale={scale} className="relative z-10 h-auto" style={{ marginBottom: -10 * scale }} />
+      <PixelSprite sprite={partnerArt(s, evolved).front} scale={scale} className="relative z-10 h-auto" style={{ marginBottom: -10 * scale }} />
       <PixelSprite sprite={PLATFORM} scale={scale * 1.1} className="h-auto" />
     </span>
   );
@@ -43,7 +44,12 @@ export function StarterChoice() {
   const chosen = save.starter ? starterById(save.starter) : null;
   const s = chosen ?? starterById(pick);
   const { strong, weak } = matchups(s);
-  const S = s.name.toUpperCase();
+  const evolved = !!chosen && isEvolved(chosen, save.evolved);
+  const form = partnerForm(s, evolved);
+  const S = form.name.toUpperCase();
+  // the chosen partner shows its HP at its level; a starter on offer shows its Lv5 HP
+  const hp = chosen ? starterMaxHp(s, starterLevel(xpOf(save, s.id)), evolved) : s.hp;
+  const evolveBadge = GYMS.find((g) => g.id === EVOLVE_GYM)!.badge.toUpperCase();
 
   const choose = () => {
     sfx.levelUp();
@@ -68,7 +74,7 @@ export function StarterChoice() {
         {chosen ? (
           <div className="flex flex-col items-center gap-4 pt-4" data-testid="starter-chosen">
             <div className={justChose ? "badge-pop" : ""}>
-              <OnPlatform s={chosen} scale={3} />
+              <OnPlatform s={chosen} scale={3} evolved={evolved} />
             </div>
             <p className="msg-box w-full p-4 font-pixel text-[11px] leading-6" aria-live="polite">
               {justChose ? `${S} is now your partner! Together you'll take on all nine gyms.` : `${S} is your partner. Keep going, the gyms are waiting!`}
@@ -112,9 +118,14 @@ export function StarterChoice() {
           <div className="flex items-center gap-2">
             <h2 className="flex-1 font-pixel text-[12px] leading-5">{S}</h2>
             <TypeBadge type={s.type} />
-            <span className="font-pixel text-[9px]">HP {s.hp}</span>
+            <span className="font-pixel text-[9px]">HP {hp}</span>
           </div>
-          <p className="text-[15px] leading-snug">{s.blurb}</p>
+          <p className="text-[15px] leading-snug">{form.blurb}</p>
+          {chosen ? (
+            <p className="font-pixel text-[8px] leading-4 text-[#5a5078]" data-testid="evolve-note">
+              {evolved ? `EVOLVED FROM ${s.name.toUpperCase()}` : `EVOLVES WITH THE ${evolveBadge}`}
+            </p>
+          ) : null}
           <ul className="flex flex-col gap-1 text-[14px] leading-snug">
             {strong.map((m) => (
               <li key={`s-${m.defend}`}>

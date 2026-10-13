@@ -17,11 +17,13 @@ export interface SaveData {
   starter: string | null;
   /** total XP per creature id (a creature that has never battled isn't listed) */
   xp: Record<string, number>;
+  /** starter ids that have evolved */
+  evolved: string[];
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {} };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [] };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -47,6 +49,7 @@ export function parseSave(raw: string | null): SaveData {
       lastGym: typeof d.lastGym === "string" ? d.lastGym : null,
       starter: typeof d.starter === "string" && STARTERS.some((s) => s.id === d.starter) ? d.starter : null,
       xp: parseXp(d.xp),
+      evolved: Array.isArray(d.evolved) ? [...new Set(d.evolved.filter((e): e is string => typeof e === "string" && STARTERS.some((s) => s.id === e)))] : [],
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -83,6 +86,11 @@ export const xpOf = (s: SaveData, id: string) => s.xp[id] ?? START_XP;
 /** Record a creature's new XP total (never lowers it). */
 export function saveXp(id: string, total: number) {
   updateSave((s) => ({ ...s, xp: { ...s.xp, [id]: Math.max(xpOf(s, id), Math.floor(total)) } }));
+}
+
+/** Mark a starter as evolved. */
+export function saveEvolved(id: string) {
+  updateSave((s) => (s.evolved.includes(id) ? s : { ...s, evolved: [...s.evolved, id] }));
 }
 
 export function resetSave() {

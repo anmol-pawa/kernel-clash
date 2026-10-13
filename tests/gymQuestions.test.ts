@@ -230,7 +230,7 @@ describe("gym boss questions", () => {
 });
 
 describe("gym boss battles", () => {
-  const players = STARTERS.map(starterFighter);
+  const players = STARTERS.map((s) => starterFighter(s));
   /** Play a boss battle with a fixed pattern of right/wrong, slow answers (no crits). */
   function play(gymId: string, pattern: boolean[], player: Fighter): BattleState {
     const gym = GYMS.find((g) => g.id === gymId)!;

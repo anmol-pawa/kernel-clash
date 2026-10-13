@@ -23,6 +23,8 @@ export interface Script {
   say: (text: string) => Promise<void>;
   pause: () => Promise<void>;
   wait: (ms: number) => Promise<unknown>;
+  /** play the evolve morph into `art`; the player's box then shows the new name and max HP */
+  evolve: (to: { art: CreatureArt; name: string; maxHp: number }) => Promise<void>;
 }
 
 export interface BattleProps {
@@ -54,6 +56,8 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
   const [xp, setXp] = useState(player.xp);
   // max HP shown in the player's box: grows on a level-up after a win
   const [maxHp, setMaxHp] = useState(player.fighter.maxHp);
+  // the player's name in its box: changes if it evolves after a win
+  const [playerName, setPlayerName] = useState(player.fighter.name);
   const askedAt = useRef(0);
   const typed = useRef<(() => void) | null>(null);
   const tapped = useRef<(() => void) | null>(null);
@@ -193,7 +197,17 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       setXp(total);
       if (onVictory) {
         await wait(400);
-        await onVictory({ say, pause, wait });
+        const evolve = async (to: { art: CreatureArt; name: string; maxHp: number }) => {
+          sfx.charge();
+          await st?.evolve(to.art, { onSwap: sfx.blip });
+          sfx.levelUp();
+          const gainHp = to.maxHp - max;
+          max = to.maxHp;
+          setPlayerName(to.name);
+          setMaxHp(to.maxHp);
+          setShown((v) => ({ ...v, player: v.player + gainHp }));
+        };
+        await onVictory({ say, pause, wait, evolve });
       }
     } else if (after.phase === "defeat") {
       if (after.player.hp <= 0) await st?.faint("player");
@@ -216,7 +230,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       <div className="relative min-h-0 flex-1">
         <div ref={host} className="absolute inset-0" data-testid="stage" />
         <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
-        <HpBox name={s.player.name} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
+        <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
         {overlay}
       </div>
 

@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { DEMO_QUESTIONS } from "@/content/demo";
-import { starterById, starterFighter, starterMaxHp } from "@/content/starters";
+import { isEvolved, starterById, starterFighter, starterMaxHp } from "@/content/starters";
 import { GLITCHIT_ART } from "@/game/sprites/glitchit";
-import { STARTER_ART } from "@/game/sprites/index";
+import { partnerArt } from "@/game/sprites/index";
 import { saveXp, useSave, xpOf } from "@/lib/save";
 import { Battle, END_BUTTON } from "./Battle";
 
@@ -20,13 +20,14 @@ export function DemoBattle() {
   const starter = starterById(save.starter);
   // Battle reads these once at mount, so saving XP after a win leaves the running battle alone
   const partnerXp = xpOf(save, starter.id);
+  const evolved = isEvolved(starter, save.evolved);
   return (
     <Battle
       player={{
-        art: STARTER_ART[starter.id],
-        fighter: starterFighter(starter, partnerXp),
+        art: partnerArt(starter, evolved),
+        fighter: starterFighter(starter, partnerXp, evolved),
         xp: partnerXp,
-        maxHpAt: (l) => starterMaxHp(starter, l),
+        maxHpAt: (l) => starterMaxHp(starter, l, evolved),
         onXp: (total) => saveXp(starter.id, total),
       }}
       foe={{ art: GLITCHIT_ART, fighter: FOE, attack: "sync" }}

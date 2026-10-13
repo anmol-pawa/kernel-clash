@@ -23,9 +23,9 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 1.3a Two more starters (64×64, front + back, idle/attack/hurt) so the three form a type triangle: Bytling (process), Ramster (memory), Spinnail (storage). `content/starters.ts` + tests.
   - [x] 1.3b Starter choice screen on a new save (the three starters, types and blurbs), saved; the chosen starter is the player's typed creature in every battle (re-check boss counter balance with typed starters).
   - [x] 1.3c XP and levels saved per creature: XP from wins, level-ups with stat growth and a level-up line in battle.
-  - [ ] 1.3d Evolved forms for the three starters (art) and the evolve animation (white silhouette morph) at gym milestones.
+  - [x] 1.3d Evolved forms for the three starters (art) and the evolve animation (white silhouette morph) at gym milestones.
     - [x] 1.3d1 Evolved-form art (64×64, front + back, idle/attack/hurt): Threadrake (Bytling), Gigahoard (Ramster), Raidsnail (Spinnail), plus evolution data (`evolution`, `EVOLVE_GYM`) and tests.
-    - [ ] 1.3d2 The evolve sequence (white silhouette morph between the two forms, flash, "BYTLING evolved into THREADRAKE!") after winning the `EVOLVE_GYM` badge; save the evolved flag; battles, map card and partner screen use the evolved form (name, art, a small HP bump), with balance tests.
+    - [x] 1.3d2 The evolve sequence (white silhouette morph between the two forms, flash, "BYTLING evolved into THREADRAKE!") after winning the `EVOLVE_GYM` badge; save the evolved flag; battles, map card and partner screen use the evolved form (name, art, a small HP bump), with balance tests.
   - [ ] 1.3e The Kerneldex: a capture box listing seen/caught creatures with their art, type and blurb.
 - [ ] 1.4 A question engine with MCQ / multi-select / numeric / order-the-steps / generated problems, explanations after every answer, and a Leitner spaced-repetition box.
 

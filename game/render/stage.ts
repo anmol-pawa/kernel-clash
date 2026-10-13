@@ -7,6 +7,7 @@
  *   await stage.intro()
  *   await stage.attack("player", "process", 34, false)
  *   await stage.faint("foe")
+ *   await stage.evolve(nextFormArt)
  */
 import { Application, Container, Graphics } from "pixi.js";
 import type { CreatureArt } from "@/lib/creature";
@@ -239,6 +240,73 @@ export class CreatureStage {
     m.flashAmount = 0.8;
     void this.tw.to(m, { flashAmount: 0 }, 0.3);
     await this.tw.to(m, { y: HOME[who].y + 90, alpha: 0 }, 0.7, ease.inCubic);
+  }
+
+  /**
+   * Evolution: the scene dims and the partner turns to face the player at
+   * centre stage, goes white, then its silhouette swaps back and forth with
+   * the new form's, faster and faster, until a flash reveals the new form.
+   * The player's back sprite becomes the new form's too.
+   */
+  async evolve(to: CreatureArt, o: { onSwap?: () => void } = {}) {
+    const reduced = this.opts.reducedMotion;
+    const at = { x: W / 2, y: 430 };
+    const glowAt = { x: at.x, y: at.y - 128 };
+    const dim = new Graphics();
+    dim.rect(-600, -400, W + 1200, H + 800).fill({ color: 0x07051a });
+    dim.alpha = 0;
+    const old = new PixiPixelSprite(this.opts.player.front, PX + 1);
+    const neu = new PixiPixelSprite(to.front, PX + 1);
+    for (const m of [old, neu]) m.position.set(at.x, at.y);
+    old.alpha = 0;
+    neu.visible = false;
+    neu.flashAmount = 1;
+    this.top.addChild(dim, old, neu);
+    this.anims.push(old, neu);
+
+    // turn to face the player at centre stage
+    await Promise.all([this.tw.to(dim, { alpha: 0.75 }, 0.5), this.tw.to(this.mon.player, { alpha: 0 }, 0.4), this.tw.to(old, { alpha: 1 }, 0.5)]);
+    await this.tw.wait(reduced ? 0.2 : 0.5);
+    // glow white, light gathering in
+    await this.tw.run(0.8, (k) => {
+      old.flashAmount = k;
+      for (let n = 0; n < 2; n++) if (Math.random() < 0.6 * this.fx.scale) {
+        const a = Math.random() * Math.PI * 2;
+        this.fx.emit({ x: glowAt.x + Math.cos(a) * 220, y: glowAt.y + Math.sin(a) * 160, toX: glowAt.x, toY: glowAt.y, pull: 6, life: 0.6, size: 14, sizeEnd: 4, color: 0xfff6c8 });
+      }
+    });
+    // the silhouettes swap faster and faster
+    const swaps = reduced ? 6 : 16;
+    for (let i = 0; i < swaps; i++) {
+      const showNew = i % 2 === 0;
+      old.visible = !showNew;
+      neu.visible = showNew;
+      const m = showNew ? neu : old;
+      m.scale.set(1.08);
+      void this.tw.to(m.scale, { x: 1, y: 1 }, 0.12);
+      o.onSwap?.();
+      if (!reduced) this.fx.burst(glowAt.x, glowAt.y, { count: 6, speed: 260, color: 0xfff6c8, size: 7, life: 0.4, spark: true });
+      await this.tw.wait(Math.max(0.05, 0.36 * Math.pow(0.82, i)));
+    }
+    // the reveal
+    old.visible = false;
+    neu.visible = true;
+    this.cam.flash(1);
+    this.cam.shake(reduced ? 0 : 8);
+    this.fx.burst(glowAt.x, glowAt.y, { count: 50, speed: 420, color: 0xffe27a, size: 10, spark: true });
+    void ring(this.fxc, glowAt, { color: 0xfff6c8, radius: 220, squash: 0.7 });
+    this.drop(old);
+    await this.tw.to(neu, { flashAmount: 0 }, 0.7, ease.inQuad);
+    void neu.play("attack");
+    // the creature on the player's platform is the new form from now on
+    const back = new PixiPixelSprite(to.back, PX + 1);
+    back.position.set(this.mon.player.x, this.mon.player.y);
+    back.alpha = 0;
+    this.creatures.addChild(back);
+    this.drop(this.mon.player);
+    this.mon.player = back;
+    this.anims.push(back);
+    this.opts.player = to;
   }
 
   setReducedMotion(on: boolean) {

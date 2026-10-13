@@ -4,13 +4,13 @@ import { useState, useSyncExternalStore } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
-import { starterById, starterFighter, starterMaxHp } from "@/content/starters";
+import { isEvolved, shouldEvolve, starterById, starterFighter, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { bossFighter } from "@/game/world/gymBattle";
 import { earnBadge, gymState, nextGym } from "@/game/world/progress";
-import { BOSSES, STARTER_ART } from "@/game/sprites/index";
+import { BOSSES, EVOLVED_ART, partnerArt } from "@/game/sprites/index";
 import { BADGES } from "@/game/sprites/overworld";
-import { saveXp, updateSave, useSave, xpOf } from "@/lib/save";
+import { getSave, saveEvolved, saveXp, updateSave, useSave, xpOf } from "@/lib/save";
 import { Battle, END_BUTTON, type Script } from "./Battle";
 
 const noSub = () => () => {};
@@ -45,6 +45,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
   const starter = starterById(save.starter);
   // Battle reads these once at mount, so saving XP after a win leaves the running battle alone
   const partnerXp = xpOf(save, starter.id);
+  const evolved = isEvolved(starter, save.evolved);
 
   if (entry === "locked") {
     const prev = GYMS[gym.n - 2];
@@ -63,7 +64,8 @@ export function GymBattle({ gymId }: { gymId: string }) {
     );
   }
 
-  async function onVictory({ say, pause, wait }: Script) {
+  async function onVictory(script: Script) {
+    const { say } = script;
     const had = save.badges.includes(gym.id);
     const badges = earnBadge(save.badges, gym.id);
     const next = nextGym(badges);
@@ -71,8 +73,30 @@ export function GymBattle({ gymId }: { gymId: string }) {
     updateSave((s) => ({ ...s, badges: earnBadge(s.badges, gym.id), lastGym: next?.id ?? gym.id }));
     if (had) {
       await say(`You beat ${B} again! The ${gym.badge.toUpperCase()} shines brighter.`);
-      return;
+    } else {
+      await newBadge(script, next);
     }
+    if (shouldEvolve(starter, badges, save.evolved)) await evolve(script);
+  }
+
+  /** The partner evolves (saved first, so leaving mid-sequence keeps it). */
+  async function evolve({ say, pause, evolve: morph }: Script) {
+    const from = starter.name.toUpperCase();
+    const to = starter.evolution.name.toUpperCase();
+    saveEvolved(starter.id);
+    await pause();
+    setBadgeShown(false);
+    await say(`What? ${from} is evolving!`);
+    await pause();
+    const level = starterLevel(xpOf(getSave(), starter.id));
+    await morph({ art: EVOLVED_ART[starter.evolution.id], name: starter.evolution.name, maxHp: starterMaxHp(starter, level, true) });
+    await say(`Congratulations! ${from} evolved into ${to}!`);
+    await pause();
+    await say(`${to}'s MAX HP rose by ${starterMaxHp(starter, level, true) - starterMaxHp(starter, level)}.`);
+    await pause();
+  }
+
+  async function newBadge({ say, pause, wait }: Script, next: ReturnType<typeof nextGym>) {
     setBadgeShown(true);
     sfx.levelUp();
     await say(`You earned the ${gym.badge.toUpperCase()}!`);
@@ -89,10 +113,10 @@ export function GymBattle({ gymId }: { gymId: string }) {
   return (
     <Battle
       player={{
-        art: STARTER_ART[starter.id],
-        fighter: starterFighter(starter, partnerXp),
+        art: partnerArt(starter, evolved),
+        fighter: starterFighter(starter, partnerXp, evolved),
         xp: partnerXp,
-        maxHpAt: (l) => starterMaxHp(starter, l),
+        maxHpAt: (l) => starterMaxHp(starter, l, evolved),
         onXp: (total) => saveXp(starter.id, total),
       }}
       foe={{ art: BOSSES[gym.id], fighter: bossFighter(gym), attack: gym.type }}

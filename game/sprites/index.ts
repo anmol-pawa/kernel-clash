@@ -1,3 +1,4 @@
+import type { Starter } from "@/content/starters";
 import type { CreatureArt } from "@/lib/creature";
 import type { SpriteSheet } from "@/lib/pixel";
 import { BYTLING_ART } from "./bytling";
@@ -38,3 +39,6 @@ export const STARTER_ART: Record<string, CreatureArt> = { bytling: BYTLING_ART, 
 
 /** The starters' evolved forms' art, keyed by creature id. */
 export const EVOLVED_ART: Record<string, CreatureArt> = { threadrake: THREADRAKE_ART, gigahoard: GIGAHOARD_ART, raidsnail: RAIDSNAIL_ART };
+
+/** The partner's art in its current form. */
+export const partnerArt = (s: Starter, evolved: boolean): CreatureArt => (evolved ? EVOLVED_ART[s.evolution.id] : STARTER_ART[s.id]);

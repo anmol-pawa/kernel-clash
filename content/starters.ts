@@ -52,14 +52,26 @@ export const starterById = (id: string | null | undefined): Starter => STARTERS.
 /** Level for a starter's total XP (never below the starting level). */
 export const starterLevel = (xp: number) => Math.max(STARTER_LEVEL, levelFor(xp));
 
-/** Max HP at `level`: base HP plus the starter's growth for every level past Lv5. */
-export const starterMaxHp = (s: Starter, level: number) => s.hp + s.hpGrowth * Math.max(0, level - STARTER_LEVEL);
+/** Max HP an evolved form gains on top of its starter's. */
+export const EVOLVE_HP = 6;
 
-/** The starter as a battle fighter at full HP, at the level its XP has reached. */
-export function starterFighter(s: Starter, xp = START_XP): Fighter {
+/** Max HP at `level`: base HP plus the starter's growth for every level past Lv5, plus the evolution bonus. */
+export const starterMaxHp = (s: Starter, level: number, evolved = false) => s.hp + s.hpGrowth * Math.max(0, level - STARTER_LEVEL) + (evolved ? EVOLVE_HP : 0);
+
+/** The partner's current form: the starter itself, or its evolution once evolved. */
+export const partnerForm = (s: Starter, evolved: boolean): { id: string; name: string; blurb: string } => (evolved ? s.evolution : s);
+
+/** Has the starter evolved in this save? */
+export const isEvolved = (s: Starter, evolved: readonly string[]) => evolved.includes(s.id);
+
+/** A partner evolves once its save holds the `EVOLVE_GYM` badge (checked after every gym win, so older saves catch up). */
+export const shouldEvolve = (s: Starter, badges: readonly string[], evolved: readonly string[]) => badges.includes(EVOLVE_GYM) && !isEvolved(s, evolved);
+
+/** The starter as a battle fighter at full HP, at the level its XP has reached (in its evolved form if `evolved`). */
+export function starterFighter(s: Starter, xp = START_XP, evolved = false): Fighter {
   const level = starterLevel(xp);
-  const hp = starterMaxHp(s, level);
-  return { name: s.name, level, hp, maxHp: hp, type: s.type };
+  const hp = starterMaxHp(s, level, evolved);
+  return { name: partnerForm(s, evolved).name, level, hp, maxHp: hp, type: s.type };
 }
 
 export interface LevelUp {
@@ -70,8 +82,8 @@ export interface LevelUp {
 }
 
 /** Every level gained going from `before` to `after` total XP, with the max HP growth at each. */
-export function levelUps(s: Starter, before: number, after: number): LevelUp[] {
+export function levelUps(s: Starter, before: number, after: number, evolved = false): LevelUp[] {
   const out: LevelUp[] = [];
-  for (let l = starterLevel(before) + 1; l <= starterLevel(after); l++) out.push({ level: l, from: starterMaxHp(s, l - 1), to: starterMaxHp(s, l) });
+  for (let l = starterLevel(before) + 1; l <= starterLevel(after); l++) out.push({ level: l, from: starterMaxHp(s, l - 1, evolved), to: starterMaxHp(s, l, evolved) });
   return out;
 }
