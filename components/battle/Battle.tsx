@@ -9,7 +9,8 @@ import { effectiveness, effectMessage, superReason, type MoveType } from "@/game
 import { levelFor, xpForLevel, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
 import type { CreatureArt } from "@/lib/creature";
-import { markCaught, markSeen } from "@/lib/save";
+import { cardKey, dueFirst } from "@/game/engine/leitner";
+import { getSave, markCaught, markSeen, recordAnswer } from "@/lib/save";
 import { useTypewriter } from "@/lib/typewriter";
 import { AnswerPanel, type Reveal } from "./AnswerPanel";
 
@@ -34,6 +35,8 @@ export interface BattleProps {
   player: { art: CreatureArt; fighter: Fighter; xp: number; maxHpAt?: (level: number) => number; onXp?: (total: number) => void };
   foe: { art: CreatureArt; fighter: Fighter; attack: MoveType };
   questions: Question[];
+  /** ask questions whose Leitner cards are due first (gym battles) */
+  dueFirst?: boolean;
   lines: { appear: string; counter: string; fainted: string; fled: string };
   /** runs after the XP lines of a win, e.g. to award a badge */
   onVictory?: (s: Script) => Promise<void>;
@@ -44,10 +47,10 @@ export interface BattleProps {
 }
 
 /** A question battle: the player's creature vs one foe, one OS question per turn. */
-export function Battle({ player, foe, questions: given, lines, onVictory, endActions, overlay }: BattleProps) {
+export function Battle({ player, foe, questions: given, dueFirst: due, lines, onVictory, endActions, overlay }: BattleProps) {
   const host = useRef<HTMLDivElement>(null);
   // fixed at mount: generated questions must not change when a win saves XP
-  const [questions] = useState(given);
+  const [questions] = useState(() => (due ? dueFirst(given, getSave().leitner, Date.now()) : given));
   const stage = useRef<CreatureStage | null>(null);
   const [s, dispatch] = useReducer(reducer, undefined, () => initialState(player.fighter, foe.fighter, questions.length));
   const reduced = useSyncExternalStore(noSub, prefersReducedMotion, () => false);
@@ -145,6 +148,7 @@ export function Battle({ player, foe, questions: given, lines, onVictory, endAct
     if (busy || s.phase !== "ask") return;
     setBusy(true);
     const correct = grade(q, r);
+    recordAnswer(cardKey(q), correct);
     setReveal({ response: r, correct });
     const seconds = Math.max(0, (clock() - askedAt.current) / 1000);
     const act = { type: "answer", correct, power: q.move.power, seconds, moveType: q.move.type, counterType: foe.attack } as const;

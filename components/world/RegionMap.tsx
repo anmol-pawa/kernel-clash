@@ -6,11 +6,13 @@ import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
 import { GYMS } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
+import { liveDeck } from "@/content/questionBank";
 import { isEvolved, partnerForm, starterById, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { xpForLevel, xpProgress } from "@/game/engine/xp";
 import { partnerArt } from "@/game/sprites/index";
 import { BADGES, GYM_H, GYM_SPOTS, GYM_W, MAP_H, MAP_MARKER, MAP_W, OVERWORLD } from "@/game/sprites/overworld";
+import { dueKeys } from "@/game/engine/leitner";
 import { gymState, nextGym } from "@/game/world/progress";
 import { gridToRGBA, type SpriteSheet } from "@/lib/pixel";
 import { getSave, updateSave, useSave, xpOf, type SaveData } from "@/lib/save";
@@ -52,6 +54,18 @@ function DexLink({ save }: { save: SaveData }) {
       <span className="text-[#5a5078]">
         SEEN {seen} · CAUGHT {caught}/{total}
       </span>
+    </Link>
+  );
+}
+
+/** Opens the Leitner box, with how many cards are due. */
+function ReviewLink({ save }: { save: SaveData }) {
+  const [now] = useState(() => Date.now());
+  const due = dueKeys(liveDeck(save.leitner), now).length;
+  return (
+    <Link href="/review" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="review-link">
+      <span>▶ REVIEW</span>
+      {due > 0 ? <span className="rounded-[2px] bg-[#e8566b] px-1.5 py-0.5 text-white">{due} DUE</span> : <span className="text-[#5a5078]">BOX</span>}
     </Link>
   );
 }
@@ -144,7 +158,10 @@ export function RegionMap() {
 
         {save.starter && <PartnerCard save={save} />}
 
-        <DexLink save={save} />
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+          <DexLink save={save} />
+          <ReviewLink save={save} />
+        </div>
 
         {/* the map */}
         <div className="relative w-full overflow-hidden rounded-[6px] border-4 border-[#1a1430] shadow-[0_4px_0_#0006]" style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}>

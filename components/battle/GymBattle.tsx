@@ -121,6 +121,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
       }}
       foe={{ art: BOSSES[gym.id], fighter: bossFighter(gym), attack: gym.type }}
       questions={GYM_QUESTIONS[gym.id]}
+      dueFirst
       lines={{
         appear: `GYM BOSS ${B} blocks the way!`,
         counter: `Wrong! ${B} strikes back!`,

@@ -7,6 +7,7 @@
 import { useSyncExternalStore } from "react";
 import { DEX_IDS, dexEntry, dexStatus } from "@/content/kerneldex";
 import { START_XP, STARTERS } from "@/content/starters";
+import { parseDeck, review, type Deck } from "@/game/engine/leitner";
 
 export interface SaveData {
   version: 1;
@@ -24,11 +25,13 @@ export interface SaveData {
   seen: string[];
   /** Kerneldex: creature ids whose data is recorded (beaten in battle) */
   caught: string[];
+  /** Leitner box: a card per question key (generated problems share their generator's card) */
+  leitner: Deck;
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [] };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {} };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -60,6 +63,7 @@ export function parseSave(raw: string | null): SaveData {
       evolved: Array.isArray(d.evolved) ? [...new Set(d.evolved.filter((e): e is string => typeof e === "string" && STARTERS.some((s) => s.id === e)))] : [],
       seen: parseDex(d.seen),
       caught: parseDex(d.caught),
+      leitner: parseDeck(d.leitner),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -116,6 +120,11 @@ export function markCaught(id: string): boolean {
   const fresh = dexStatus(entry, before) !== "caught";
   updateSave((s) => ({ ...s, seen: s.seen.includes(id) ? s.seen : [...s.seen, id], caught: [...s.caught, id] }));
   return fresh;
+}
+
+/** Move a question's Leitner card after an answer. */
+export function recordAnswer(key: string, correct: boolean, now = Date.now()) {
+  updateSave((s) => ({ ...s, leitner: { ...s.leitner, [key]: review(s.leitner[key], correct, now) } }));
 }
 
 export function resetSave() {
