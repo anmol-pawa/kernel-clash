@@ -129,23 +129,29 @@ export function MoveInfo({ name, type, power, effect = 1 }: { name: string; type
   );
 }
 
-/** A big, tap-friendly menu choice in the handheld style, tagged A–D. */
-export function MenuChoice({ children, onClick, disabled, state, tag }: { children: ReactNode; onClick: () => void; disabled?: boolean; state?: "right" | "wrong"; tag?: string }) {
-  const tone = state === "right" ? "bg-[#bbf7d0]" : state === "wrong" ? "bg-[#fecaca]" : "bg-[var(--box)] hover:bg-[#fff6dc] active:bg-[#efe6c8]";
+/** A big, tap-friendly menu choice in the handheld style, tagged A–D. `pressed` marks a selected toggle. */
+export function MenuChoice({ children, onClick, disabled, state, tag, pressed }: { children: ReactNode; onClick: () => void; disabled?: boolean; state?: "right" | "wrong"; tag?: string; pressed?: boolean }) {
+  const tone = state === "right" ? "bg-[#bbf7d0]" : state === "wrong" ? "bg-[#fecaca]" : pressed ? "bg-[#fff1c2]" : "bg-[var(--box)] hover:bg-[#fff6dc] active:bg-[#efe6c8]";
   return (
     <button
       type="button"
       disabled={disabled}
+      aria-pressed={pressed}
       onClick={() => {
         sfx.click();
         onClick();
       }}
       className={`group flex min-h-14 w-full items-center gap-2 rounded-[4px] border-4 border-[var(--box-edge)] px-2 py-1.5 text-left font-sans text-[15px] leading-[1.2] text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0001] sm:text-[16px] ${tone} disabled:cursor-default`}
     >
-      {tag && (
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[2px] bg-[var(--box-edge)] font-pixel text-[8px] text-[var(--box)] group-hover:bg-[#e04848]">
-          {state === "right" ? "✓" : state === "wrong" ? "✗" : tag}
-        </span>
+      {pressed !== undefined && !state ? (
+        // a checkbox for select-all toggles
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[2px] border-[3px] border-[var(--box-edge)] font-pixel text-[9px] ${pressed ? "bg-[var(--box-edge)] text-[#f8c830]" : "bg-white"}`}>{pressed ? "✓" : ""}</span>
+      ) : (
+        tag !== undefined && (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[2px] bg-[var(--box-edge)] font-pixel text-[8px] text-[var(--box)] group-hover:bg-[#e04848]">
+            {state === "right" ? "✓" : state === "wrong" ? "✗" : tag}
+          </span>
+        )
       )}
       <span className="min-w-0 break-words">{children}</span>
     </button>

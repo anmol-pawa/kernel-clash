@@ -1,16 +1,17 @@
 "use client";
 import { useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pixel } from "@/app/fonts";
-import { HpBox, MenuChoice, MessageBox, MoveInfo } from "@/components/ui/kit";
-import type { Mcq } from "@/content/demo";
+import { HpBox, MessageBox, MoveInfo } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
 import { initialState, reducer, type Fighter } from "@/game/engine/battle";
+import { answerText, grade, kindOf, type Question, type Response } from "@/game/engine/question";
 import { effectiveness, effectMessage, superReason, type MoveType } from "@/game/engine/types";
 import { levelFor, xpForLevel, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
 import type { CreatureArt } from "@/lib/creature";
 import { markCaught, markSeen } from "@/lib/save";
 import { useTypewriter } from "@/lib/typewriter";
+import { AnswerPanel, type Reveal } from "./AnswerPanel";
 
 const noSub = () => () => {};
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -32,7 +33,7 @@ export interface BattleProps {
   /** `maxHpAt` gives max HP at a level (for level-ups); `onXp` saves the new XP total after a win */
   player: { art: CreatureArt; fighter: Fighter; xp: number; maxHpAt?: (level: number) => number; onXp?: (total: number) => void };
   foe: { art: CreatureArt; fighter: Fighter; attack: MoveType };
-  questions: Mcq[];
+  questions: Question[];
   lines: { appear: string; counter: string; fainted: string; fled: string };
   /** runs after the XP lines of a win, e.g. to award a badge */
   onVictory?: (s: Script) => Promise<void>;
@@ -43,14 +44,16 @@ export interface BattleProps {
 }
 
 /** A question battle: the player's creature vs one foe, one OS question per turn. */
-export function Battle({ player, foe, questions, lines, onVictory, endActions, overlay }: BattleProps) {
+export function Battle({ player, foe, questions: given, lines, onVictory, endActions, overlay }: BattleProps) {
   const host = useRef<HTMLDivElement>(null);
+  // fixed at mount: generated questions must not change when a win saves XP
+  const [questions] = useState(given);
   const stage = useRef<CreatureStage | null>(null);
   const [s, dispatch] = useReducer(reducer, undefined, () => initialState(player.fighter, foe.fighter, questions.length));
   const reduced = useSyncExternalStore(noSub, prefersReducedMotion, () => false);
   const [msg, setMsg] = useState({ text: lines.appear, id: 0 });
   const [waiting, setWaiting] = useState(false);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [reveal, setReveal] = useState<Reveal | null>(null);
   const [busy, setBusy] = useState(true);
   // HP shown in the boxes: lags the reducer so bars drop on impact, not on tap
   const [shown, setShown] = useState({ player: player.fighter.hp, foe: foe.fighter.hp });
@@ -138,11 +141,11 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
-  async function answer(i: number) {
+  async function answer(r: Response) {
     if (busy || s.phase !== "ask") return;
     setBusy(true);
-    setPicked(i);
-    const correct = i === q.answer;
+    const correct = grade(q, r);
+    setReveal({ response: r, correct });
     const seconds = Math.max(0, (clock() - askedAt.current) / 1000);
     const act = { type: "answer", correct, power: q.move.power, seconds, moveType: q.move.type, counterType: foe.attack } as const;
     const next = reducer(s, act);
@@ -168,6 +171,11 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       setShown((v) => ({ ...v, player: next.player.hp }));
       const eff = effectMessage(foe.attack, s.player.type);
       if (eff) await say(eff).then(() => wait(600));
+    }
+    // the menu shows an MCQ's right answer; other kinds state it
+    if (!correct && kindOf(q) !== "mcq") {
+      await say(kindOf(q) === "order" ? "Here is the right order." : `The answer: ${answerText(q)}.`);
+      await pause();
     }
     await say(q.explain);
     await pause();
@@ -227,7 +235,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       askedAt.current = clock();
     }
     dispatch({ type: "next" });
-    setPicked(null);
+    setReveal(null);
     setBusy(false);
   }
 
@@ -255,19 +263,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
           ) : (
             <div className="flex flex-col gap-1.5">
               <MoveInfo {...q.move} effect={effectiveness(q.move.type, s.foe.type)} />
-              <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="menu">
-                {q.options.map((o, i) => (
-                  <MenuChoice
-                    key={i}
-                    tag={"ABCD"[i]}
-                    onClick={() => answer(i)}
-                    disabled={busy || s.phase !== "ask"}
-                    state={picked === null ? undefined : i === q.answer ? "right" : i === picked ? "wrong" : undefined}
-                  >
-                    {o}
-                  </MenuChoice>
-                ))}
-              </div>
+              <AnswerPanel key={s.turn} q={q} disabled={busy || s.phase !== "ask"} reveal={reveal} onSubmit={answer} />
             </div>
           )}
         </div>

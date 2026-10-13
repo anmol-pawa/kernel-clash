@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { DEMO_QUESTIONS } from "@/content/demo";
+import { practiceQuestions } from "@/content/practice";
 import { isEvolved, starterById, starterFighter, starterMaxHp } from "@/content/starters";
 import { GLITCHIT_ART } from "@/game/sprites/glitchit";
 import { partnerArt } from "@/game/sprites/index";
@@ -31,7 +31,7 @@ export function DemoBattle() {
         onXp: (total) => saveXp(starter.id, total),
       }}
       foe={{ art: GLITCHIT_ART, fighter: FOE, attack: "sync" }}
-      questions={DEMO_QUESTIONS}
+      questions={practiceQuestions(partnerXp + 1)}
       lines={{ appear: "A wild GLITCHIT appeared!", counter: "Not quite! GLITCHIT bit back!", fainted: "The wild GLITCHIT fainted!", fled: "GLITCHIT scuttled away…" }}
       endActions={() => (
         <>

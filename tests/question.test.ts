@@ -196,3 +196,15 @@ describe("generators", () => {
     for (const g of GENERATORS) expect(new Set([...Array(30).keys()].map((s) => JSON.stringify(g.make(s + 1)))).size).toBeGreaterThan(10);
   });
 });
+
+describe("practice battle questions", () => {
+  it("has one of every kind, all well-formed, and new generated problems per seed", async () => {
+    const { practiceQuestions } = await import("@/content/practice");
+    const qs = practiceQuestions(21);
+    expect(new Set(qs.map(kindOf))).toEqual(new Set(["mcq", "multi", "numeric", "order"]));
+    for (const q of qs) expect(questionProblems(q), q.id).toEqual([]);
+    expect(new Set(qs.map((q) => q.id)).size).toBe(qs.length);
+    expect(practiceQuestions(21)).toEqual(qs);
+    expect(practiceQuestions(300).map((q) => q.id)).not.toEqual(qs.map((q) => q.id));
+  });
+});
