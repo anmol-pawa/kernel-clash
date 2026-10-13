@@ -29,3 +29,6 @@ export const SCENERY: SpriteSheet[] = [PLATFORM, SKYLINE];
 
 /** Overworld sheets: the map marker, the nine badges and gym buildings, and the region map itself. */
 export const WORLD: SpriteSheet[] = [MAP_MARKER, ...BADGES, ...GYM_SHEETS, OVERWORLD];
+
+/** The three starters' art, keyed by creature id. */
+export const STARTER_ART: Record<string, CreatureArt> = { bytling: BYTLING_ART, ramster: RAMSTER_ART, spinnail: SPINNAIL_ART };

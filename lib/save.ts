@@ -5,6 +5,7 @@
  * Adapted from Query Clash's save.
  */
 import { useSyncExternalStore } from "react";
+import { STARTERS } from "@/content/starters";
 
 export interface SaveData {
   version: 1;
@@ -12,11 +13,13 @@ export interface SaveData {
   badges: string[];
   /** gym id the player last selected on the map */
   lastGym: string | null;
+  /** the starter creature id chosen on a new save (null until chosen) */
+  starter: string | null;
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -30,6 +33,7 @@ export function parseSave(raw: string | null): SaveData {
       ...DEFAULT_SAVE,
       badges: Array.isArray(d.badges) ? d.badges.filter((b): b is string => typeof b === "string") : [],
       lastGym: typeof d.lastGym === "string" ? d.lastGym : null,
+      starter: typeof d.starter === "string" && STARTERS.some((s) => s.id === d.starter) ? d.starter : null,
     };
   } catch {
     return { ...DEFAULT_SAVE };

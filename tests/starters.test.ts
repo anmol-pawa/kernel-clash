@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STARTERS } from "@/content/starters";
+import { STARTERS, starterById, starterFighter } from "@/content/starters";
 import { effectiveness } from "@/game/engine/types";
 import { CREATURES } from "@/game/sprites";
 import { creatureProblems } from "@/lib/creature";
@@ -23,5 +23,12 @@ describe("starters", () => {
       expect(effectiveness(a, b)).toBe(2);
       expect(effectiveness(b, a)).toBe(0.5);
     }
+  });
+
+  it("become typed fighters at full HP, with Bytling as the fallback", () => {
+    for (const s of STARTERS) expect(starterFighter(s)).toMatchObject({ name: s.name, type: s.type, hp: s.hp, maxHp: s.hp, level: 5 });
+    expect(starterById("spinnail").name).toBe("Spinnail");
+    expect(starterById(null).id).toBe("bytling");
+    expect(starterById("nope").id).toBe("bytling");
   });
 });

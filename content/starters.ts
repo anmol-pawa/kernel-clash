@@ -1,3 +1,4 @@
+import type { Fighter } from "@/game/engine/battle";
 import type { MoveType } from "@/game/engine/types";
 
 /**
@@ -12,10 +13,22 @@ export interface Starter {
   name: string;
   type: MoveType;
   blurb: string;
+  /** max HP at Lv5. Every gym boss's counter, even a super-effective one, must leave a full-HP starter standing. */
+  hp: number;
 }
 
 export const STARTERS: Starter[] = [
-  { id: "bytling", name: "Bytling", type: "process", blurb: "A quick little process-sprite. Its gem is a program counter that never stops ticking." },
-  { id: "ramster", name: "Ramster", type: "memory", blurb: "Stuffs its cheek pouches like a cache, so the things it needs most are always close at hand." },
-  { id: "spinnail", name: "Spinnail", type: "storage", blurb: "Slow to seek but never forgets: everything it learns is written to the platter on its back." },
+  { id: "bytling", name: "Bytling", type: "process", blurb: "A quick little process-sprite. Its gem is a program counter that never stops ticking.", hp: 60 },
+  { id: "ramster", name: "Ramster", type: "memory", blurb: "Stuffs its cheek pouches like a cache, so the things it needs most are always close at hand.", hp: 68 },
+  { id: "spinnail", name: "Spinnail", type: "storage", blurb: "Slow to seek but never forgets: everything it learns is written to the platter on its back.", hp: 64 },
 ];
+
+export const STARTER_LEVEL = 5;
+
+/** The chosen starter, or Bytling for a save that hasn't chosen yet. */
+export const starterById = (id: string | null | undefined): Starter => STARTERS.find((s) => s.id === id) ?? STARTERS[0];
+
+/** The starter as a battle fighter at full HP. */
+export function starterFighter(s: Starter): Fighter {
+  return { name: s.name, level: STARTER_LEVEL, hp: s.hp, maxHp: s.hp, type: s.type };
+}

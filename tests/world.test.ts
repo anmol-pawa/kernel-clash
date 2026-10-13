@@ -52,6 +52,13 @@ describe("save", () => {
     expect(parseSave("{not json")).toEqual(DEFAULT_SAVE);
     expect(parseSave(JSON.stringify({ badges: ["basics", 3], lastGym: 5 }))).toEqual({ ...DEFAULT_SAVE, badges: ["basics"] });
   });
+
+  it("keeps a chosen starter and drops an unknown one", () => {
+    expect(parseSave(JSON.stringify({ starter: "ramster" })).starter).toBe("ramster");
+    expect(parseSave(JSON.stringify({ starter: "pikachu" })).starter).toBeNull();
+    expect(parseSave(JSON.stringify({ starter: 3 })).starter).toBeNull();
+    expect(DEFAULT_SAVE.starter).toBeNull();
+  });
 });
 
 describe("region map art", () => {

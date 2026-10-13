@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { TypeBadge } from "@/components/ui/kit";
@@ -8,7 +9,7 @@ import { sfx } from "@/game/audio/synth";
 import { BADGES, GYM_H, GYM_SPOTS, GYM_W, MAP_H, MAP_MARKER, MAP_W, OVERWORLD } from "@/game/sprites/overworld";
 import { gymState, nextGym } from "@/game/world/progress";
 import { gridToRGBA, type SpriteSheet } from "@/lib/pixel";
-import { updateSave, useSave } from "@/lib/save";
+import { getSave, updateSave, useSave } from "@/lib/save";
 
 /** Draws a one-frame sheet into a canvas at 1:1; CSS scales it with nearest-neighbour. */
 function PixelImage({ sheet, className }: { sheet: SpriteSheet; className?: string }) {
@@ -47,6 +48,12 @@ export function RegionMap() {
   const gym = GYMS.find((g) => g.id === selectedId) ?? GYMS[0];
   const state = gymState(gym, save.badges);
   const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const router = useRouter();
+
+  // a new save starts by choosing a starter (the server snapshot never has one, so read the live save)
+  useEffect(() => {
+    if (!getSave().starter) router.replace("/starter");
+  }, [router]);
 
   // open the map scrolled to the selected gym (gym 1 sits at the bottom of a tall map on phones)
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
-import { initialState, reducer, type BattleState } from "@/game/engine/battle";
+import { STARTERS, starterFighter } from "@/content/starters";
+import { initialState, reducer, type BattleState, type Fighter } from "@/game/engine/battle";
 import { counterDamage } from "@/game/engine/damage";
 import { effectiveness } from "@/game/engine/types";
 import { MOVE_TYPES } from "@/game/engine/types";
@@ -229,9 +230,9 @@ describe("gym boss questions", () => {
 });
 
 describe("gym boss battles", () => {
-  const player = { name: "Bytling", level: 5, hp: 60, maxHp: 60 };
+  const players = STARTERS.map(starterFighter);
   /** Play a boss battle with a fixed pattern of right/wrong, slow answers (no crits). */
-  function play(gymId: string, pattern: boolean[]): BattleState {
+  function play(gymId: string, pattern: boolean[], player: Fighter): BattleState {
     const gym = GYMS.find((g) => g.id === gymId)!;
     const qs = GYM_QUESTIONS[gymId];
     let s = reducer(initialState(player, bossFighter(gym), qs.length), { type: "ready" });
@@ -251,11 +252,12 @@ describe("gym boss battles", () => {
     for (const [i, g] of GYMS.entries()) expect(f[i].name).toBe(g.boss.name);
   });
 
-  it("a perfect run beats every boss, and so does one early slip", () => {
-    for (const g of GYMS) {
-      expect(play(g.id, [true, true, true, true, true, true]).phase, g.id).toBe("victory");
-      expect(play(g.id, [false, true, true, true, true, true]).phase, g.id).toBe("victory");
-    }
+  it("a perfect run beats every boss with every starter, and so does one early slip", () => {
+    for (const p of players)
+      for (const g of GYMS) {
+        expect(play(g.id, [true, true, true, true, true, true], p).phase, `${p.name} ${g.id}`).toBe("victory");
+        expect(play(g.id, [false, true, true, true, true, true], p).phase, `${p.name} ${g.id}`).toBe("victory");
+      }
   });
 
   it("some boss battles have type matchups to exploit", () => {
@@ -264,10 +266,18 @@ describe("gym boss battles", () => {
   });
 
   it("three right answers are never enough", () => {
-    for (const g of GYMS) expect(play(g.id, [true, true, true, false, false, false]).phase, g.id).toBe("defeat");
+    for (const p of players) for (const g of GYMS) expect(play(g.id, [true, true, true, false, false, false], p).phase, `${p.name} ${g.id}`).toBe("defeat");
   });
 
-  it("a boss's counter never knocks out a full-HP starter in one hit", () => {
-    for (const g of GYMS) expect(counterDamage(bossFighter(g).level)).toBeLessThan(player.maxHp);
+  it("a boss's counter never knocks out a full-HP starter in one hit, even when super effective", () => {
+    for (const p of players)
+      for (const g of GYMS) {
+        const effect = effectiveness(g.type, p.type);
+        expect(counterDamage(bossFighter(g).level, effect), `${g.id} vs ${p.name}`).toBeLessThan(p.maxHp);
+      }
+  });
+
+  it("every starter meets at least one boss that hits it super effectively", () => {
+    for (const p of players) expect(GYMS.some((g) => effectiveness(g.type, p.type) === 2), p.name).toBe(true);
   });
 });
