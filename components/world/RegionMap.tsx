@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
 import { GYMS } from "@/content/gyms";
+import { dexCounts } from "@/content/kerneldex";
 import { isEvolved, partnerForm, starterById, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { xpForLevel, xpProgress } from "@/game/engine/xp";
@@ -39,6 +40,19 @@ function LockIcon() {
       <rect x={1} y={4} width={5} height={1} fill="#ffe27a" />
       <rect x={3} y={5} width={1} height={1} fill="#1a1430" />
     </svg>
+  );
+}
+
+/** Opens the Kerneldex, with the seen / caught totals. */
+function DexLink({ save }: { save: SaveData }) {
+  const { seen, caught, total } = dexCounts(save);
+  return (
+    <Link href="/dex" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="dex-link">
+      <span>▶ KERNELDEX</span>
+      <span className="text-[#5a5078]">
+        SEEN {seen} · CAUGHT {caught}/{total}
+      </span>
+    </Link>
   );
 }
 
@@ -129,6 +143,8 @@ export function RegionMap() {
         </div>
 
         {save.starter && <PartnerCard save={save} />}
+
+        <DexLink save={save} />
 
         {/* the map */}
         <div className="relative w-full overflow-hidden rounded-[6px] border-4 border-[#1a1430] shadow-[0_4px_0_#0006]" style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}>

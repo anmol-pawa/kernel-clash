@@ -5,6 +5,7 @@
  * Adapted from Query Clash's save.
  */
 import { useSyncExternalStore } from "react";
+import { DEX_IDS, dexEntry, dexStatus } from "@/content/kerneldex";
 import { START_XP, STARTERS } from "@/content/starters";
 
 export interface SaveData {
@@ -19,11 +20,15 @@ export interface SaveData {
   xp: Record<string, number>;
   /** starter ids that have evolved */
   evolved: string[];
+  /** Kerneldex: creature ids met in battle */
+  seen: string[];
+  /** Kerneldex: creature ids whose data is recorded (beaten in battle) */
+  caught: string[];
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [] };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [] };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -38,6 +43,9 @@ function parseXp(v: unknown): Record<string, number> {
   return out;
 }
 
+/** A list of known Kerneldex ids, de-duplicated. */
+const parseDex = (v: unknown): string[] => (Array.isArray(v) ? [...new Set(v.filter((e): e is string => typeof e === "string" && DEX_IDS.has(e)))] : []);
+
 /** Merge stored JSON onto the defaults, dropping anything malformed. */
 export function parseSave(raw: string | null): SaveData {
   if (!raw) return { ...DEFAULT_SAVE };
@@ -50,6 +58,8 @@ export function parseSave(raw: string | null): SaveData {
       starter: typeof d.starter === "string" && STARTERS.some((s) => s.id === d.starter) ? d.starter : null,
       xp: parseXp(d.xp),
       evolved: Array.isArray(d.evolved) ? [...new Set(d.evolved.filter((e): e is string => typeof e === "string" && STARTERS.some((s) => s.id === e)))] : [],
+      seen: parseDex(d.seen),
+      caught: parseDex(d.caught),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -91,6 +101,21 @@ export function saveXp(id: string, total: number) {
 /** Mark a starter as evolved. */
 export function saveEvolved(id: string) {
   updateSave((s) => (s.evolved.includes(id) ? s : { ...s, evolved: [...s.evolved, id] }));
+}
+
+/** Record a creature as seen in the Kerneldex. */
+export function markSeen(id: string) {
+  if (!getSave().seen.includes(id)) updateSave((s) => ({ ...s, seen: [...s.seen, id] }));
+}
+
+/** Record a creature as caught (and seen). Returns true when the Kerneldex didn't already count it as caught. */
+export function markCaught(id: string): boolean {
+  const before = getSave();
+  const entry = dexEntry(id);
+  if (!entry || before.caught.includes(id)) return false;
+  const fresh = dexStatus(entry, before) !== "caught";
+  updateSave((s) => ({ ...s, seen: s.seen.includes(id) ? s.seen : [...s.seen, id], caught: [...s.caught, id] }));
+  return fresh;
 }
 
 export function resetSave() {

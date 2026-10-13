@@ -9,6 +9,7 @@ import { effectiveness, effectMessage, superReason, type MoveType } from "@/game
 import { levelFor, xpForLevel, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
 import type { CreatureArt } from "@/lib/creature";
+import { markCaught, markSeen } from "@/lib/save";
 import { useTypewriter } from "@/lib/typewriter";
 
 const noSub = () => () => {};
@@ -64,6 +65,9 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
   const q = questions[s.turn % questions.length];
   const tw = useTypewriter(msg.text, { instant: reduced, onTick: sfx.blip });
   const P = player.fighter.name.toUpperCase();
+
+  // the Kerneldex records every creature met in battle
+  useEffect(() => markSeen(foe.art.id), [foe.art.id]);
 
   // resolve say() once its text has finished typing
   useEffect(() => {
@@ -195,6 +199,11 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
         await pause();
       }
       setXp(total);
+      if (markCaught(foe.art.id)) {
+        sfx.levelUp();
+        await say(`${foe.fighter.name.toUpperCase()}'s data was added to the KERNELDEX!`);
+        await pause();
+      }
       if (onVictory) {
         await wait(400);
         const evolve = async (to: { art: CreatureArt; name: string; maxHp: number }) => {
