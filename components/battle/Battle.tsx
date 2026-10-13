@@ -6,7 +6,7 @@ import type { Mcq } from "@/content/demo";
 import { sfx } from "@/game/audio/synth";
 import { initialState, reducer, type Fighter } from "@/game/engine/battle";
 import { effectiveness, effectMessage, superReason, type MoveType } from "@/game/engine/types";
-import { levelFor, xpProgress, xpYield } from "@/game/engine/xp";
+import { levelFor, xpForLevel, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
 import type { CreatureArt } from "@/lib/creature";
 import { useTypewriter } from "@/lib/typewriter";
@@ -26,7 +26,8 @@ export interface Script {
 }
 
 export interface BattleProps {
-  player: { art: CreatureArt; fighter: Fighter; xp: number };
+  /** `maxHpAt` gives max HP at a level (for level-ups); `onXp` saves the new XP total after a win */
+  player: { art: CreatureArt; fighter: Fighter; xp: number; maxHpAt?: (level: number) => number; onXp?: (total: number) => void };
   foe: { art: CreatureArt; fighter: Fighter; attack: MoveType };
   questions: Mcq[];
   lines: { appear: string; counter: string; fainted: string; fled: string };
@@ -51,6 +52,8 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
   // HP shown in the boxes: lags the reducer so bars drop on impact, not on tap
   const [shown, setShown] = useState({ player: player.fighter.hp, foe: foe.fighter.hp });
   const [xp, setXp] = useState(player.xp);
+  // max HP shown in the player's box: grows on a level-up after a win
+  const [maxHp, setMaxHp] = useState(player.fighter.maxHp);
   const askedAt = useRef(0);
   const typed = useRef<(() => void) | null>(null);
   const tapped = useRef<(() => void) | null>(null);
@@ -167,14 +170,27 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       await say(lines.fainted);
       await pause();
       const gain = xpYield(foe.fighter.level, foe.art.boss);
-      const from = levelFor(xp);
-      setXp(xp + gain);
+      const total = xp + gain;
+      // save first, so leaving during the lines below keeps the XP
+      player.onXp?.(total);
       await say(`${P} gained ${gain} XP!`);
       await wait(900);
-      if (levelFor(xp + gain) > from) {
+      let max = maxHp;
+      for (let l = levelFor(xp) + 1; l <= levelFor(total); l++) {
+        // fill the bar to the threshold, then tick the level over
+        setXp(xpForLevel(l));
+        await wait(450);
         sfx.levelUp();
-        await say(`${P} grew to Lv${levelFor(xp + gain)}!`);
+        const grown = player.maxHpAt?.(l) ?? max;
+        const gainHp = grown - max;
+        max = grown;
+        setMaxHp(grown);
+        // a level-up heals by the HP it adds
+        setShown((v) => ({ ...v, player: v.player + gainHp }));
+        await say(gainHp > 0 ? `${P} grew to Lv${l}! MAX HP +${gainHp}.` : `${P} grew to Lv${l}!`);
+        await pause();
       }
+      setXp(total);
       if (onVictory) {
         await wait(400);
         await onVictory({ say, pause, wait });
@@ -200,7 +216,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       <div className="relative min-h-0 flex-1">
         <div ref={host} className="absolute inset-0" data-testid="stage" />
         <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
-        <HpBox name={s.player.name} level={level} hp={shown.player} maxHp={s.player.maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
+        <HpBox name={s.player.name} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
         {overlay}
       </div>
 

@@ -5,7 +5,7 @@
  * Adapted from Query Clash's save.
  */
 import { useSyncExternalStore } from "react";
-import { STARTERS } from "@/content/starters";
+import { START_XP, STARTERS } from "@/content/starters";
 
 export interface SaveData {
   version: 1;
@@ -15,14 +15,26 @@ export interface SaveData {
   lastGym: string | null;
   /** the starter creature id chosen on a new save (null until chosen) */
   starter: string | null;
+  /** total XP per creature id (a creature that has never battled isn't listed) */
+  xp: Record<string, number>;
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {} };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
+
+/** Highest XP total a save may hold (Lv100). */
+const MAX_XP = 100 ** 3;
+
+function parseXp(v: unknown): Record<string, number> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(v)) if (typeof n === "number" && Number.isFinite(n) && n >= 0) out[k] = Math.min(MAX_XP, Math.floor(n));
+  return out;
+}
 
 /** Merge stored JSON onto the defaults, dropping anything malformed. */
 export function parseSave(raw: string | null): SaveData {
@@ -34,6 +46,7 @@ export function parseSave(raw: string | null): SaveData {
       badges: Array.isArray(d.badges) ? d.badges.filter((b): b is string => typeof b === "string") : [],
       lastGym: typeof d.lastGym === "string" ? d.lastGym : null,
       starter: typeof d.starter === "string" && STARTERS.some((s) => s.id === d.starter) ? d.starter : null,
+      xp: parseXp(d.xp),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -62,6 +75,14 @@ export function updateSave(fn: (s: SaveData) => SaveData) {
     /* storage unavailable */
   }
   listeners.forEach((l) => l());
+}
+
+/** A creature's total XP (a partner that hasn't battled yet starts at `START_XP`). */
+export const xpOf = (s: SaveData, id: string) => s.xp[id] ?? START_XP;
+
+/** Record a creature's new XP total (never lowers it). */
+export function saveXp(id: string, total: number) {
+  updateSave((s) => ({ ...s, xp: { ...s.xp, [id]: Math.max(xpOf(s, id), Math.floor(total)) } }));
 }
 
 export function resetSave() {

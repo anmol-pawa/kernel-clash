@@ -6,7 +6,7 @@ import { TYPE_COLOR, type MoveType } from "@/game/engine/types";
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
 /** A pixel gauge: dark trough, chunky fill and a lighter top highlight row. */
-function Gauge({ label, pct, color, thin = false, labelColor, aria }: { label: string; pct: number; color: string; thin?: boolean; labelColor: string; aria: { name: string; now: number; max: number } }) {
+export function Gauge({ label, pct, color, thin = false, labelColor, aria }: { label: string; pct: number; color: string; thin?: boolean; labelColor: string; aria: { name: string; now: number; max: number } }) {
   return (
     <div className="flex items-center gap-1">
       <span className="rounded-[2px] bg-[#3c3466] px-1 font-pixel text-[7px] leading-[10px]" style={{ color: labelColor }}>

@@ -3,13 +3,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
-import { TypeBadge } from "@/components/ui/kit";
+import { Gauge, TypeBadge } from "@/components/ui/kit";
 import { GYMS } from "@/content/gyms";
+import { starterById, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
+import { xpForLevel, xpProgress } from "@/game/engine/xp";
+import { STARTER_ART } from "@/game/sprites/index";
 import { BADGES, GYM_H, GYM_SPOTS, GYM_W, MAP_H, MAP_MARKER, MAP_W, OVERWORLD } from "@/game/sprites/overworld";
 import { gymState, nextGym } from "@/game/world/progress";
 import { gridToRGBA, type SpriteSheet } from "@/lib/pixel";
-import { getSave, updateSave, useSave } from "@/lib/save";
+import { getSave, updateSave, useSave, xpOf, type SaveData } from "@/lib/save";
 
 /** Draws a one-frame sheet into a canvas at 1:1; CSS scales it with nearest-neighbour. */
 function PixelImage({ sheet, className }: { sheet: SpriteSheet; className?: string }) {
@@ -36,6 +39,33 @@ function LockIcon() {
       <rect x={1} y={4} width={5} height={1} fill="#ffe27a" />
       <rect x={3} y={5} width={1} height={1} fill="#1a1430" />
     </svg>
+  );
+}
+
+/** The partner's level, HP and XP to the next level; taps through to the partner screen. */
+function PartnerCard({ save }: { save: SaveData }) {
+  const st = starterById(save.starter);
+  const xp = xpOf(save, st.id);
+  const level = starterLevel(xp);
+  return (
+    <Link href="/starter" className="gb-box flex items-center gap-3 px-2 py-1.5" data-testid="partner-card" aria-label={`Partner ${st.name}, level ${level}`}>
+      <PixelSprite sprite={STARTER_ART[st.id].front} scale={1} className="-my-1 h-auto w-12 shrink-0" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1 font-pixel text-[10px] leading-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="truncate">{st.name.toUpperCase()}</span>
+          <span className="shrink-0" data-testid="partner-level">
+            <span className="text-[8px]">Lv</span>
+            {level}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2 text-[8px]">
+          <TypeBadge type={st.type} small />
+          <span className="tabular-nums">HP {starterMaxHp(st, level)}</span>
+        </div>
+        <Gauge label="XP" pct={xpProgress(xp)} color="#40a8f8" thin labelColor="#9ad8ff" aria={{ name: `${st.name} XP`, now: xp, max: xpForLevel(level + 1) }} />
+        <span className="text-right text-[8px] tabular-nums text-[#5a5078]">{xpForLevel(level + 1) - xp} XP TO Lv{level + 1}</span>
+      </div>
+    </Link>
   );
 }
 
@@ -95,6 +125,8 @@ export function RegionMap() {
             );
           })}
         </div>
+
+        {save.starter && <PartnerCard save={save} />}
 
         {/* the map */}
         <div className="relative w-full overflow-hidden rounded-[6px] border-4 border-[#1a1430] shadow-[0_4px_0_#0006]" style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}>

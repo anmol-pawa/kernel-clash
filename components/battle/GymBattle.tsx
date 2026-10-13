@@ -4,17 +4,15 @@ import { useState, useSyncExternalStore } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
-import { STARTER_LEVEL, starterById, starterFighter } from "@/content/starters";
+import { starterById, starterFighter, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
-import { xpForLevel } from "@/game/engine/xp";
 import { bossFighter } from "@/game/world/gymBattle";
 import { earnBadge, gymState, nextGym } from "@/game/world/progress";
 import { BOSSES, STARTER_ART } from "@/game/sprites/index";
 import { BADGES } from "@/game/sprites/overworld";
-import { updateSave, useSave } from "@/lib/save";
+import { saveXp, updateSave, useSave, xpOf } from "@/lib/save";
 import { Battle, END_BUTTON, type Script } from "./Battle";
 
-const START_XP = xpForLevel(STARTER_LEVEL) + 70;
 const noSub = () => () => {};
 
 /** A gym's boss battle. Winning earns the gym's badge and opens the next gym. */
@@ -45,6 +43,8 @@ export function GymBattle({ gymId }: { gymId: string }) {
     );
   }
   const starter = starterById(save.starter);
+  // Battle reads these once at mount, so saving XP after a win leaves the running battle alone
+  const partnerXp = xpOf(save, starter.id);
 
   if (entry === "locked") {
     const prev = GYMS[gym.n - 2];
@@ -88,7 +88,13 @@ export function GymBattle({ gymId }: { gymId: string }) {
 
   return (
     <Battle
-      player={{ art: STARTER_ART[starter.id], fighter: starterFighter(starter), xp: START_XP }}
+      player={{
+        art: STARTER_ART[starter.id],
+        fighter: starterFighter(starter, partnerXp),
+        xp: partnerXp,
+        maxHpAt: (l) => starterMaxHp(starter, l),
+        onXp: (total) => saveXp(starter.id, total),
+      }}
       foe={{ art: BOSSES[gym.id], fighter: bossFighter(gym), attack: gym.type }}
       questions={GYM_QUESTIONS[gym.id]}
       lines={{
