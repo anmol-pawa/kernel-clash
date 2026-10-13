@@ -6,6 +6,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { DEX_IDS, dexEntry, dexStatus } from "@/content/kerneldex";
+import { LESSON_IDS } from "@/content/lessons";
 import { START_XP, STARTERS } from "@/content/starters";
 import { parseDeck, review, type Deck } from "@/game/engine/leitner";
 
@@ -27,11 +28,13 @@ export interface SaveData {
   caught: string[];
   /** Leitner box: a card per question key (generated problems share their generator's card) */
   leitner: Deck;
+  /** lesson ids whose quick check has been passed */
+  lessons: string[];
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {} };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [] };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -64,6 +67,7 @@ export function parseSave(raw: string | null): SaveData {
       seen: parseDex(d.seen),
       caught: parseDex(d.caught),
       leitner: parseDeck(d.leitner),
+      lessons: Array.isArray(d.lessons) ? [...new Set(d.lessons.filter((e): e is string => typeof e === "string" && LESSON_IDS.has(e)))] : [],
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -125,6 +129,11 @@ export function markCaught(id: string): boolean {
 /** Move a question's Leitner card after an answer. */
 export function recordAnswer(key: string, correct: boolean, now = Date.now()) {
   updateSave((s) => ({ ...s, leitner: { ...s.leitner, [key]: review(s.leitner[key], correct, now) } }));
+}
+
+/** Mark a lesson as finished. */
+export function saveLessonDone(id: string) {
+  updateSave((s) => (s.lessons.includes(id) ? s : { ...s, lessons: [...s.lessons, id] }));
 }
 
 export function resetSave() {

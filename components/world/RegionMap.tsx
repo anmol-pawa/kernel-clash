@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
+import { lessonsOf } from "@/content/lessons";
 import { GYMS } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
 import { liveDeck } from "@/content/questionBank";
@@ -249,6 +250,19 @@ export function RegionMap() {
             >
               {state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} {gym.boss.name.toUpperCase()}
             </Link>
+            {lessonsOf(gym.id).length > 0 && (
+              <Link
+                href={`/learn/${gym.id}`}
+                onClick={() => sfx.click()}
+                className="flex min-h-12 flex-1 flex-col items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-white px-1 font-pixel text-[9px] leading-3 text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#f0ecff]"
+                data-testid="gym-learn"
+              >
+                LEARN
+                <span className="text-[7px] text-[#5a5078]">
+                  {lessonsOf(gym.id).filter((l) => save.lessons.includes(l.id)).length}/{lessonsOf(gym.id).length}
+                </span>
+              </Link>
+            )}
             <Link
               href="/battle"
               onClick={() => sfx.click()}
