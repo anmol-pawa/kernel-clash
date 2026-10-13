@@ -28,6 +28,9 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
     - [x] 1.3d2 The evolve sequence (white silhouette morph between the two forms, flash, "BYTLING evolved into THREADRAKE!") after winning the `EVOLVE_GYM` badge; save the evolved flag; battles, map card and partner screen use the evolved form (name, art, a small HP bump), with balance tests.
   - [x] 1.3e The Kerneldex: a capture box listing seen/caught creatures with their art, type and blurb.
 - [ ] 1.4 A question engine with MCQ / multi-select / numeric / order-the-steps / generated problems, explanations after every answer, and a Leitner spaced-repetition box.
+  - [x] 1.4a Question model and pure grader for MCQ / select-all / numeric / order-the-steps, seeded RNG, a `Generator` interface with the first two generators (FCFS averages via an FCFS simulator, fork() print counts via a fork simulator), sample select-all and order questions, and tests against textbook examples.
+  - [ ] 1.4b Battle UI for every kind (select-all with a confirm, a numeric keypad, tap-to-order steps, code/table blocks in the prompt), the right answer stated after a wrong one and the explanation after every answer; mix generated and new-kind questions into the practice battle.
+  - [ ] 1.4c Leitner spaced-repetition box: save per-question boxes, pick due questions for battles, and a review screen.
 
 ## 2. Curriculum (each gym: concept lessons → generated battles → boss)
 
