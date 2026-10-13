@@ -3,6 +3,7 @@ import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
 import { initialState, reducer, type BattleState } from "@/game/engine/battle";
 import { counterDamage } from "@/game/engine/damage";
+import { effectiveness } from "@/game/engine/types";
 import { MOVE_TYPES } from "@/game/engine/types";
 import { bossFighter } from "@/game/world/gymBattle";
 
@@ -235,7 +236,7 @@ describe("gym boss battles", () => {
     const qs = GYM_QUESTIONS[gymId];
     let s = reducer(initialState(player, bossFighter(gym), qs.length), { type: "ready" });
     for (let i = 0; s.phase === "ask"; i++) {
-      s = reducer(s, { type: "answer", correct: pattern[i] ?? false, power: qs[i].move.power, seconds: 30 });
+      s = reducer(s, { type: "answer", correct: pattern[i] ?? false, power: qs[i].move.power, seconds: 30, moveType: qs[i].move.type, counterType: gym.type });
       s = reducer(s, { type: "next" });
     }
     return s;
@@ -255,6 +256,11 @@ describe("gym boss battles", () => {
       expect(play(g.id, [true, true, true, true, true, true]).phase, g.id).toBe("victory");
       expect(play(g.id, [false, true, true, true, true, true]).phase, g.id).toBe("victory");
     }
+  });
+
+  it("some boss battles have type matchups to exploit", () => {
+    const supers = GYMS.filter((g) => GYM_QUESTIONS[g.id].some((q) => effectiveness(q.move.type, g.type) === 2)).map((g) => g.id);
+    expect(supers).toEqual(expect.arrayContaining(["scheduling", "virtual", "interview"]));
   });
 
   it("three right answers are never enough", () => {

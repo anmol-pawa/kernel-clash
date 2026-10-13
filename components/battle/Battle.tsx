@@ -5,7 +5,7 @@ import { HpBox, MenuChoice, MessageBox, MoveInfo } from "@/components/ui/kit";
 import type { Mcq } from "@/content/demo";
 import { sfx } from "@/game/audio/synth";
 import { initialState, reducer, type Fighter } from "@/game/engine/battle";
-import type { MoveType } from "@/game/engine/types";
+import { effectiveness, effectMessage, superReason, type MoveType } from "@/game/engine/types";
 import { levelFor, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
 import type { CreatureArt } from "@/lib/creature";
@@ -133,8 +133,9 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
     setPicked(i);
     const correct = i === q.answer;
     const seconds = Math.max(0, (clock() - askedAt.current) / 1000);
-    const next = reducer(s, { type: "answer", correct, power: q.move.power, seconds });
-    dispatch({ type: "answer", correct, power: q.move.power, seconds });
+    const act = { type: "answer", correct, power: q.move.power, seconds, moveType: q.move.type, counterType: foe.attack } as const;
+    const next = reducer(s, act);
+    dispatch(act);
     const st = stage.current;
     const last = next.last!;
     if (last.kind === "hit") {
@@ -142,12 +143,20 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
       await Promise.all([say(`${P} used ${q.move.name.toUpperCase()}!`), st?.attack("player", q.move.type, last.damage, last.crit).then(() => sfx.hit(last.crit))]);
       setShown((v) => ({ ...v, foe: next.foe.hp }));
       if (last.crit) await say("A critical hit!").then(() => wait(600));
+      const eff = effectMessage(q.move.type, s.foe.type);
+      if (eff) {
+        const why = superReason(q.move.type, s.foe.type);
+        await say(why ? `${eff} ${why}` : eff);
+        await wait(why ? 1200 : 600);
+      }
     } else {
       sfx.miss();
       await say(lines.counter);
       await st?.attack("foe", foe.attack, last.damage, false);
       sfx.hurt();
       setShown((v) => ({ ...v, player: next.player.hp }));
+      const eff = effectMessage(foe.attack, s.player.type);
+      if (eff) await say(eff).then(() => wait(600));
     }
     await say(q.explain);
     await pause();
@@ -190,7 +199,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
     <main className="flex h-dvh flex-col overflow-hidden bg-[#100e24]">
       <div className="relative min-h-0 flex-1">
         <div ref={host} className="absolute inset-0" data-testid="stage" />
-        <HpBox name={s.foe.name} level={s.foe.level} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
+        <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
         <HpBox name={s.player.name} level={level} hp={shown.player} maxHp={s.player.maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
         {overlay}
       </div>
@@ -206,7 +215,7 @@ export function Battle({ player, foe, questions, lines, onVictory, endActions, o
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <MoveInfo {...q.move} />
+              <MoveInfo {...q.move} effect={effectiveness(q.move.type, s.foe.type)} />
               <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="menu">
                 {q.options.map((o, i) => (
                   <MenuChoice

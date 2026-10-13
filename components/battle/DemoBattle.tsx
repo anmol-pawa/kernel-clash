@@ -9,7 +9,7 @@ import { Battle, END_BUTTON } from "./Battle";
 const PLAYER = { name: "Bytling", level: 5, hp: 60, maxHp: 60 };
 /** Bytling starts part-way through Lv5 so a win can level it up. */
 const START_XP = xpForLevel(5) + 70;
-const FOE = { name: "Glitchit", level: 4, hp: 100, maxHp: 100 };
+const FOE = { name: "Glitchit", level: 4, hp: 100, maxHp: 100, type: "process" } as const;
 
 /** The practice battle: Bytling vs a wild Glitchit. */
 export function DemoBattle() {

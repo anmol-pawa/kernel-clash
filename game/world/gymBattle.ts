@@ -9,5 +9,5 @@ import type { Fighter } from "@/game/engine/battle";
  */
 export function bossFighter(gym: Gym): Fighter {
   const hp = 120 + 5 * gym.n;
-  return { name: gym.boss.name, level: 5 + gym.n, hp, maxHp: hp };
+  return { name: gym.boss.name, level: 5 + gym.n, hp, maxHp: hp, type: gym.type };
 }

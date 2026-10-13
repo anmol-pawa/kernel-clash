@@ -146,7 +146,7 @@ export const GYM_QUESTIONS: Record<string, Mcq[]> = {
       options: ["FCFS", "SJF", "SRTF", "Priority"],
       answer: 0,
       explain: "No job is ever preempted, so they simply run in arrival order: FCFS. A tiny quantum instead means lots of context-switch overhead.",
-      move: { name: "Quantum Leap", type: "scheduler", power: 34 },
+      move: { name: "Timer Tick", type: "io", power: 34 },
     },
     {
       id: "sched-preempt",
@@ -338,7 +338,7 @@ export const GYM_QUESTIONS: Record<string, Mcq[]> = {
       options: ["Too few processes are loaded", "The TLB is too large", "The disk is full", "Processes spend more time paging than executing"],
       answer: 3,
       explain: "When the frames given are smaller than the working sets, processes fault constantly, CPU use collapses and the disk queue fills.",
-      move: { name: "Thrash Storm", type: "memory", power: 34 },
+      move: { name: "Thrash Storm", type: "process", power: 34 },
     },
     {
       id: "vm-fault",

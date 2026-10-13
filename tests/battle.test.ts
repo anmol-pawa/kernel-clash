@@ -30,7 +30,7 @@ describe("battle reducer", () => {
     expect(s.phase).toBe("resolve");
     expect(s.foe.hp).toBe(100 - 36);
     expect(s.streak).toBe(1);
-    expect(s.last).toEqual({ kind: "hit", damage: 36, crit: false });
+    expect(s.last).toEqual({ kind: "hit", damage: 36, crit: false, effect: 1 });
     s = reducer(s, { type: "next" });
     expect(s.phase).toBe("ask");
     s = reducer(s, { type: "answer", correct: false, power: 30, seconds: 1 });
