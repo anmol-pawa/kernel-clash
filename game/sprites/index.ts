@@ -11,12 +11,14 @@ import { HYDRAFORK_ART } from "./hydrafork";
 import { KERNELORD_ART } from "./kernelord";
 import { MUTEXA_ART } from "./mutexa";
 import { BADGES, GYM_SHEETS, MAP_MARKER, OVERWORLD } from "./overworld";
+import { RAMSTER_ART } from "./ramster";
+import { SPINNAIL_ART } from "./spinnail";
 import { PLATFORM, SKYLINE } from "./scenery";
 import { THRASHMOTH_ART } from "./thrashmoth";
 import { TRAPJAW_ART } from "./trapjaw";
 
 /** Every battle creature, in Kerneldex order. */
-export const CREATURES: CreatureArt[] = [BYTLING_ART, GLITCHIT_ART, TRAPJAW_ART, HYDRAFORK_ART, CHRONOGOLEM_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART, THRASHMOTH_ART, DISKRAKEN_ART, KERNELORD_ART];
+export const CREATURES: CreatureArt[] = [BYTLING_ART, RAMSTER_ART, SPINNAIL_ART, GLITCHIT_ART, TRAPJAW_ART, HYDRAFORK_ART, CHRONOGOLEM_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART, THRASHMOTH_ART, DISKRAKEN_ART, KERNELORD_ART];
 
 /** Gym bosses (96×96), keyed by gym id. */
 export const BOSSES: Record<string, CreatureArt> = { basics: TRAPJAW_ART, processes: HYDRAFORK_ART, scheduling: CHRONOGOLEM_ART, sync: MUTEXA_ART, deadlocks: DEADLOCRAB_ART, memory: HEAPOTAMUS_ART, virtual: THRASHMOTH_ART, storage: DISKRAKEN_ART, interview: KERNELORD_ART };
