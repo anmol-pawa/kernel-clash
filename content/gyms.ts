@@ -15,6 +15,8 @@ export interface Gym {
   type: MoveType;
   topics: string[];
   boss: { name: string; blurb: string };
+  /** the gym's trainer creature, fought before the boss (gyms with trainer battles only) */
+  trainer?: { name: string; blurb: string };
   badge: string;
   /** roof / badge colour ramp, dark → light */
   ramp: [string, string, string, string];
@@ -29,6 +31,7 @@ export const GYMS: Gym[] = [
     type: "io",
     topics: ["Kernel vs user mode", "System calls", "Interrupts and traps", "Kernel designs", "Booting"],
     boss: { name: "Trapjaw", blurb: "A gatekeeper that snaps shut on every illegal instruction and drags it into kernel mode." },
+    trainer: { name: "Syscallow", blurb: "A courier swallow that flies requests from user mode to the kernel. The wax seal on its letter is the system-call number." },
     badge: "Boot Badge",
     ramp: ["#3b2a6e", "#5b49a8", "#8a7ad8", "#c4b8ff"],
   },

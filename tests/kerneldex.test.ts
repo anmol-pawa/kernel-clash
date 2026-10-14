@@ -30,7 +30,7 @@ describe("Kerneldex entries", () => {
       expect(dexEntry(s.evolution.id)!.no).toBe(dexEntry(s.id)!.no + 1);
     }
     for (const g of GYMS) {
-      const e = KERNELDEX.find((x) => x.gym === g.id)!;
+      const e = KERNELDEX.find((x) => x.gym === g.id && x.kind === "boss")!;
       expect(e).toMatchObject({ kind: "boss", type: g.type, name: g.boss.name });
       expect(BOSSES[g.id].id).toBe(e.id);
     }
@@ -65,6 +65,16 @@ describe("Kerneldex status", () => {
     expect(status("hydrafork", { badges: ["basics", "processes"] })).toBe("caught");
     expect(status("trapjaw", { badges: ["basics"] })).toBe("caught");
     expect(status("chronogolem", { badges: ["basics"] })).toBe("unknown");
+  });
+
+  it("a gym trainer sits just before its boss and is caught with the gym's badge", () => {
+    const e = dexEntry("syscallow")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "basics", type: "io", name: "Syscallow" });
+    expect(dexEntry("trapjaw")!.no).toBe(e.no + 1);
+    expect(status("syscallow", {})).toBe("unknown");
+    expect(status("syscallow", { seen: ["syscallow"] })).toBe("seen");
+    expect(status("syscallow", { caught: ["syscallow"] })).toBe("caught");
+    expect(status("syscallow", { badges: ["basics"] })).toBe("caught");
   });
 
   it("the recorded caught list wins over seen", () => {

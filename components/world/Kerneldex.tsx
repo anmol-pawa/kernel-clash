@@ -84,7 +84,7 @@ function Detail({ e, status }: { e: DexEntry; status: DexStatus }) {
           {status === "caught" ? e.blurb : status === "seen" ? "Win a battle against it to record its data." : "Not seen yet."}
         </p>
         <p className="font-pixel text-[8px] leading-4 text-[#5a5078]">
-          {e.kind === "boss" ? "GYM BOSS · " : ""}
+          {e.kind === "boss" ? "GYM BOSS · " : e.kind === "trainer" ? "GYM TRAINER · " : ""}
           {(status === "unknown" && e.kind === "evolved" ? "Evolves from a partner" : e.where).toUpperCase()}
         </p>
       </div>

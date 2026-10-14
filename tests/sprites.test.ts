@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
-import { BOSSES, CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
+import { BOSSES, CREATURES, EFFECTS, SCENERY, TRAINERS, WORLD } from "@/game/sprites";
 import { BYTLING_ART } from "@/game/sprites/bytling";
 import { creatureProblems, type CreatureArt } from "@/lib/creature";
 import { PixelCanvas, runs, type Grid } from "@/lib/pixel";
@@ -82,6 +82,24 @@ describe("gym bosses", () => {
     const ids = CREATURES.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const art of Object.values(BOSSES)) expect(CREATURES).toContain(art);
+  });
+});
+
+describe("gym trainers", () => {
+  it("each trainer sprite belongs to a gym with a trainer of that name, drawn at 64×64 and not a boss", () => {
+    for (const [id, art] of Object.entries(TRAINERS)) {
+      const gym = GYMS.find((g) => g.id === id);
+      expect(gym?.trainer?.name, id).toBe(art.name);
+      expect(art.boss).toBeFalsy();
+      expect(art.front.idle[0].length).toBe(64);
+      expect(CREATURES).toContain(art);
+      expect(CREATURES.indexOf(art)).toBe(CREATURES.indexOf(BOSSES[id]) - 1);
+    }
+  });
+
+  it("every gym with a trainer has its art, starting with the Bootstrap Gym", () => {
+    expect(Object.keys(TRAINERS).sort()).toEqual(GYMS.filter((g) => g.trainer).map((g) => g.id).sort());
+    expect(TRAINERS.basics.id).toBe("syscallow");
   });
 });
 
