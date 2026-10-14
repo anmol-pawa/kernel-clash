@@ -36,7 +36,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 - [ ] 2.1 OS basics: kernel vs user mode, system calls, interrupts and traps, monolithic/micro/hybrid kernels, booting.
   - [x] 2.1a Lesson system: a lesson reader (`/learn/[gym]`) with pages narrated by the partner, illustrated pixel diagrams, a quick check per lesson (any question kind), saved lesson progress and a LESSONS button on the map card. The five OS-basics lessons with their diagrams (mode bit / privilege, syscall path, interrupt vector, kernel designs, boot chain).
-  - [ ] 2.1b OS-basics question pool (every kind, ~20 questions) plus generators (e.g. which instructions are privileged, boot-order, trap vs interrupt classification), all tested; gym battles draw from the pool.
+  - [x] 2.1b OS-basics question pool (every kind, ~20 questions) plus generators (e.g. which instructions are privileged, boot-order, trap vs interrupt classification), all tested; gym battles draw from the pool.
   - [ ] 2.1c Gym flow: lessons → trainer battles (a gym trainer creature with its own art) → boss, with the boss gated on finishing the trainer battles.
 - [ ] 2.2 Processes and threads: PCB, states and transitions (an animated state diagram), context switch, fork/exec/wait (predict-the-output puzzles for `fork()` trees), user vs kernel threads, IPC (pipes, shared memory, message passing).
 - [ ] 2.3 CPU scheduling: FCFS, SJF, SRTF, Priority (with aging), Round Robin, MLFQ. A **simulator draws Gantt charts**. Generated problems ask for average waiting/turnaround/response time, and the player builds the Gantt chart by tapping. Validated against textbook examples.

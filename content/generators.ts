@@ -2,6 +2,7 @@ import { fmt, type Generator, type NumericQ } from "@/game/engine/question";
 import { runForks, forkSource, type Stmt } from "@/game/sim/fork";
 import { fcfs, ganttText, type Job } from "@/game/sim/scheduling";
 import { rng } from "@/lib/rng";
+import { BASICS_GENERATORS } from "./basicsGenerators";
 
 /** FCFS average waiting or turnaround time for 3–4 generated processes. */
 export const fcfsAverage: Generator = {
@@ -70,4 +71,5 @@ export const forkPrints: Generator = {
   },
 };
 
-export const GENERATORS: Generator[] = [fcfsAverage, forkPrints];
+/** Every generator in the game (the Leitner bank finds generated cards here). */
+export const GENERATORS: Generator[] = [fcfsAverage, forkPrints, ...BASICS_GENERATORS];

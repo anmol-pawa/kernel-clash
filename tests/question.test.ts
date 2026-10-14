@@ -159,10 +159,16 @@ describe("generators", () => {
         expect(q.id).toBe(`${g.id}#${seed}`);
         expect(questionProblems(q), q.id).toEqual([]);
         expect(g.make(seed)).toEqual(q);
-        expect(q.kind).toBe("numeric");
-        const n = q as NumericQ;
-        // the rounded answer shown to players is accepted
-        expect(grade(n, { kind: "numeric", value: answerText(n).replace(" ms", "") })).toBe(true);
+        if (q.kind === "numeric") {
+          // the rounded answer shown to players is accepted
+          expect(grade(q, { kind: "numeric", value: answerText(q).replace(` ${q.unit ?? ""}`, "") }), q.id).toBe(true);
+        } else if (q.kind === "multi") {
+          expect(grade(q, { kind: "multi", choices: q.answers }), q.id).toBe(true);
+          // a select-all always has something to leave unticked
+          expect(q.answers.length, q.id).toBeLessThan(q.options.length);
+        } else if (q.kind === "order") {
+          expect(grade(q, { kind: "order", order: q.steps.map((_, i) => i) }), q.id).toBe(true);
+        }
       }
     }
   });

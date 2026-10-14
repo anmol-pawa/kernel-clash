@@ -4,13 +4,14 @@ import { DEMO_QUESTIONS } from "./demo";
 import { GENERATORS } from "./generators";
 import { GYMS } from "./gyms";
 import { GYM_QUESTIONS } from "./gymQuestions";
+import { POOLS } from "./pools";
 import { SAMPLE_QUESTIONS } from "./questionSamples";
 
 /** Every authored question, keyed by its Leitner card key. */
 const AUTHORED = new Map<string, { q: Question; from: string }>();
 for (const q of DEMO_QUESTIONS) AUTHORED.set(cardKey(q), { q, from: "Practice" });
 for (const q of SAMPLE_QUESTIONS) AUTHORED.set(cardKey(q), { q, from: "Practice" });
-for (const g of GYMS) for (const q of GYM_QUESTIONS[g.id] ?? []) AUTHORED.set(cardKey(q), { q, from: g.name });
+for (const g of GYMS) for (const q of [...(GYM_QUESTIONS[g.id] ?? []), ...(POOLS[g.id]?.authored ?? [])]) AUTHORED.set(cardKey(q), { q, from: g.name });
 const GEN = new Map(GENERATORS.map((g) => [g.id, g]));
 
 /** Whether a card key names a question the game still has. */

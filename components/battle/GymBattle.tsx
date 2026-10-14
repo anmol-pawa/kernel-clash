@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
-import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
+import { gymBattleQuestions } from "@/content/pools";
 import { isEvolved, shouldEvolve, starterById, starterFighter, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { bossFighter } from "@/game/world/gymBattle";
@@ -23,6 +23,8 @@ export function GymBattle({ gymId }: { gymId: string }) {
   const hydrated = useSyncExternalStore(noSub, () => true, () => false);
   const [badgeShown, setBadgeShown] = useState(false);
   const [unlocked, setUnlocked] = useState<string | null>(null);
+  // seeds the draw from the gym's pool; Battle keeps the questions it mounted with
+  const [startedAt] = useState(() => Date.now());
   // winning only ever turns open → cleared, so this never swaps the battle out
   const entry = hydrated ? gymState(gym, save.badges) : null;
   const B = gym.boss.name.toUpperCase();
@@ -120,8 +122,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
         onXp: (total) => saveXp(starter.id, total),
       }}
       foe={{ art: BOSSES[gym.id], fighter: bossFighter(gym), attack: gym.type }}
-      questions={GYM_QUESTIONS[gym.id]}
-      dueFirst
+      questions={gymBattleQuestions(gym.id, Math.floor(startedAt / 1000), save.leitner, startedAt)}
       lines={{
         appear: `GYM BOSS ${B} blocks the way!`,
         counter: `Wrong! ${B} strikes back!`,
