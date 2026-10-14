@@ -7,8 +7,10 @@
 import { useSyncExternalStore } from "react";
 import { DEX_IDS, dexEntry, dexStatus } from "@/content/kerneldex";
 import { LESSON_IDS } from "@/content/lessons";
+import { GYMS } from "@/content/gyms";
 import { START_XP, STARTERS } from "@/content/starters";
 import { parseDeck, review, type Deck } from "@/game/engine/leitner";
+import { TRAINER_BATTLES } from "@/game/world/gymBattle";
 
 export interface SaveData {
   version: 1;
@@ -30,11 +32,13 @@ export interface SaveData {
   leitner: Deck;
   /** lesson ids whose quick check has been passed */
   lessons: string[];
+  /** trainer battles won per gym id (0 to TRAINER_BATTLES; gyms with no wins aren't listed) */
+  trainers: Record<string, number>;
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [] };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [], trainers: {} };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -46,6 +50,15 @@ function parseXp(v: unknown): Record<string, number> {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const out: Record<string, number> = {};
   for (const [k, n] of Object.entries(v)) if (typeof n === "number" && Number.isFinite(n) && n >= 0) out[k] = Math.min(MAX_XP, Math.floor(n));
+  return out;
+}
+
+/** Trainer wins for gyms that have a trainer, clamped to TRAINER_BATTLES. */
+function parseTrainers(v: unknown): Record<string, number> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(v))
+    if (typeof n === "number" && Number.isFinite(n) && n >= 1 && GYMS.some((g) => g.id === k && g.trainer)) out[k] = Math.min(TRAINER_BATTLES, Math.floor(n));
   return out;
 }
 
@@ -68,6 +81,7 @@ export function parseSave(raw: string | null): SaveData {
       caught: parseDex(d.caught),
       leitner: parseDeck(d.leitner),
       lessons: Array.isArray(d.lessons) ? [...new Set(d.lessons.filter((e): e is string => typeof e === "string" && LESSON_IDS.has(e)))] : [],
+      trainers: parseTrainers(d.trainers),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -134,6 +148,15 @@ export function recordAnswer(key: string, correct: boolean, now = Date.now()) {
 /** Mark a lesson as finished. */
 export function saveLessonDone(id: string) {
   updateSave((s) => (s.lessons.includes(id) ? s : { ...s, lessons: [...s.lessons, id] }));
+}
+
+/** Trainer battles won in a gym. */
+export const trainerWins = (s: SaveData, gymId: string) => s.trainers[gymId] ?? 0;
+
+/** Count a trainer battle win (never past TRAINER_BATTLES). Returns the new count. */
+export function saveTrainerWin(gymId: string): number {
+  updateSave((s) => ({ ...s, trainers: { ...s.trainers, [gymId]: Math.min(TRAINER_BATTLES, trainerWins(s, gymId) + 1) } }));
+  return trainerWins(getSave(), gymId);
 }
 
 export function resetSave() {

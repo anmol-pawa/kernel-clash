@@ -158,12 +158,12 @@ export const BATTLE_TURNS = 6;
 /**
  * A gym battle's questions. With a pool: the authored questions plus one
  * problem per generator (seeded from `seed`), shuffled by `seed`, due
- * Leitner cards first, the first BATTLE_TURNS of them. Without one: the six
- * boss questions, due cards first.
+ * Leitner cards first, the first `turns` of them (six for a boss, fewer for
+ * a trainer). Without one: the six boss questions, due cards first.
  */
-export function gymBattleQuestions(gymId: string, seed: number, deck: Deck, now: number): Question[] {
+export function gymBattleQuestions(gymId: string, seed: number, deck: Deck, now: number, turns = BATTLE_TURNS): Question[] {
   const pool = POOLS[gymId];
-  if (!pool) return dueFirst(GYM_QUESTIONS[gymId] ?? [], deck, now);
+  if (!pool) return dueFirst(GYM_QUESTIONS[gymId] ?? [], deck, now).slice(0, turns);
   const all = [...pool.authored, ...pool.generators.map((g) => g.make(seed))];
-  return dueFirst(rng(seed).shuffle(all), deck, now).slice(0, BATTLE_TURNS);
+  return dueFirst(rng(seed).shuffle(all), deck, now).slice(0, turns);
 }

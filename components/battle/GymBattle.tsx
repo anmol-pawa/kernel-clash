@@ -12,6 +12,7 @@ import { BOSSES, EVOLVED_ART, partnerArt } from "@/game/sprites/index";
 import { BADGES } from "@/game/sprites/overworld";
 import { getSave, saveEvolved, saveXp, updateSave, useSave, xpOf } from "@/lib/save";
 import { Battle, END_BUTTON, type Script } from "./Battle";
+import { GymLocked, NoStarter } from "./GymGates";
 
 const noSub = () => () => {};
 
@@ -31,40 +32,13 @@ export function GymBattle({ gymId }: { gymId: string }) {
 
   if (!entry) return <main className="h-dvh bg-[#100e24]" />;
 
-  if (!save.starter) {
-    return (
-      <main className="flex h-dvh items-center justify-center bg-[#100e24] p-4">
-        <div className="msg-box flex max-w-sm flex-col gap-3 p-4 text-center" data-testid="gym-no-starter">
-          <p className="font-pixel text-[11px] leading-5">NO PARTNER YET</p>
-          <p className="text-[15px]">You can&apos;t take on a gym alone. Choose your first creature!</p>
-          <Link href="/starter" className={END_BUTTON}>
-            ▶ CHOOSE A STARTER
-          </Link>
-        </div>
-      </main>
-    );
-  }
+  if (!save.starter) return <NoStarter />;
   const starter = starterById(save.starter);
   // Battle reads these once at mount, so saving XP after a win leaves the running battle alone
   const partnerXp = xpOf(save, starter.id);
   const evolved = isEvolved(starter, save.evolved);
 
-  if (entry === "locked") {
-    const prev = GYMS[gym.n - 2];
-    return (
-      <main className="flex h-dvh items-center justify-center bg-[#100e24] p-4">
-        <div className="msg-box flex max-w-sm flex-col gap-3 p-4 text-center" data-testid="gym-locked">
-          <p className="font-pixel text-[11px] leading-5">{gym.name.toUpperCase()} IS LOCKED</p>
-          <p className="text-[15px]">
-            The doors won&apos;t open until you earn the <b>{prev.badge}</b> at the {prev.name}.
-          </p>
-          <Link href="/map" className={END_BUTTON}>
-            ◀ BACK TO MAP
-          </Link>
-        </div>
-      </main>
-    );
-  }
+  if (entry === "locked") return <GymLocked gym={gym} />;
 
   async function onVictory(script: Script) {
     const { say } = script;
@@ -143,7 +117,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
       }
       endActions={(won) =>
         won ? (
-          <Link href="/map" className={`${END_BUTTON} bg-[#ffe27a]`} data-testid="to-map">
+          <Link href="/map" className={`${END_BUTTON} bg-[#ffe27a]!`} data-testid="to-map">
             {unlocked ? "▶ ONWARD (MAP)" : "▶ BACK TO MAP"}
           </Link>
         ) : (
