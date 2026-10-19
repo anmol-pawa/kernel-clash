@@ -8,10 +8,12 @@ import { GYMS } from "@/content/gyms";
 import { lessonsOf, type Lesson } from "@/content/lessons";
 import { isEvolved, starterById } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
+import { gymFlow } from "@/game/world/progress";
 import { answerText, grade, kindOf, type Response } from "@/game/engine/question";
 import { BOSSES, partnerArt } from "@/game/sprites/index";
 import { PLATFORM } from "@/game/sprites/scenery";
 import { saveLessonDone, useSave } from "@/lib/save";
+import { GymFlowStrip } from "@/components/world/GymFlow";
 import { Diagram } from "./Diagrams";
 
 const noSub = () => () => {};
@@ -54,6 +56,7 @@ export function LessonHall({ gymId }: { gymId: string }) {
   const starter = save.starter ? starterById(save.starter) : null;
   const art = starter ? partnerArt(starter, isEvolved(starter, save.evolved)) : BOSSES[gym.id];
   const done = lessons.filter((l) => save.lessons.includes(l.id)).length;
+  const flow = gymFlow(gym, save);
 
   if (open !== null) {
     const lesson = lessons[open];
@@ -86,7 +89,7 @@ export function LessonHall({ gymId }: { gymId: string }) {
         <div className="min-w-0">
           <p className="font-pixel text-[8px] leading-4 text-[#8a3a3a]">GYM {gym.n} · LECTURE HALL</p>
           <h1 className="font-pixel text-[12px] leading-5">{gym.chapter.toUpperCase()}</h1>
-          <p className="text-[14px] leading-snug">Read each lesson and pass its quick check before you face {gym.boss.name}.</p>
+          <p className="text-[14px] leading-snug">Read each lesson and pass its quick check{gym.trainer ? `, then beat ${gym.trainer.name} twice` : ""} before you face {gym.boss.name}.</p>
         </div>
         <span className="ml-auto hidden sm:block">
           <TypeBadge type={gym.type} />
@@ -125,8 +128,14 @@ export function LessonHall({ gymId }: { gymId: string }) {
           );
         })}
       </ol>
-      <Link href={`/gym/${gym.id}`} onClick={() => sfx.click()} className={`${BAR_BUTTON} flex-none !bg-[#ffe27a]`} data-testid="hall-boss">
-        ▶ CHALLENGE {gym.boss.name.toUpperCase()}
+      <GymFlowStrip flow={flow} className="justify-center" />
+      <Link
+        href={flow.bossReady ? `/gym/${gym.id}` : `/gym/${gym.id}/trainer`}
+        onClick={() => sfx.click()}
+        className={`${BAR_BUTTON} flex-none !bg-[#ffe27a]`}
+        data-testid="hall-boss"
+      >
+        {flow.bossReady ? `${flow.state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} ${gym.boss.name.toUpperCase()}` : `▶ TRAINER ${gym.trainer!.name.toUpperCase()} ${flow.trainers.won + 1}/${flow.trainers.total}`}
       </Link>
     </main>
   );

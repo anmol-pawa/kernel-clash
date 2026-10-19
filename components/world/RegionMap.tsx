@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
-import { lessonsOf } from "@/content/lessons";
 import { GYMS } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
 import { liveDeck } from "@/content/questionBank";
@@ -14,8 +13,9 @@ import { xpForLevel, xpProgress } from "@/game/engine/xp";
 import { partnerArt } from "@/game/sprites/index";
 import { BADGES, GYM_H, GYM_SPOTS, GYM_W, MAP_H, MAP_MARKER, MAP_W, OVERWORLD } from "@/game/sprites/overworld";
 import { dueKeys } from "@/game/engine/leitner";
-import { gymState, nextGym } from "@/game/world/progress";
+import { gymFlow, gymState, nextGym } from "@/game/world/progress";
 import { gridToRGBA, type SpriteSheet } from "@/lib/pixel";
+import { GymFlowStrip, LockIcon } from "./GymFlow";
 import { getSave, updateSave, useSave, xpOf, type SaveData } from "@/lib/save";
 
 /** Draws a one-frame sheet into a canvas at 1:1; CSS scales it with nearest-neighbour. */
@@ -32,19 +32,6 @@ function PixelImage({ sheet, className }: { sheet: SpriteSheet; className?: stri
 }
 
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
-
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 7 8" width={14} height={16} shapeRendering="crispEdges" aria-hidden>
-      <path d="M1 0h5v1h1v3H6V1H1v3H0V1h1z" fill="#1a1430" />
-      <path d="M1 1h1v3H1zM5 1h1v3H5z" fill="#c8c6dc" />
-      <rect x={0} y={3} width={7} height={5} fill="#1a1430" />
-      <rect x={1} y={4} width={5} height={3} fill="#e8a52a" />
-      <rect x={1} y={4} width={5} height={1} fill="#ffe27a" />
-      <rect x={3} y={5} width={1} height={1} fill="#1a1430" />
-    </svg>
-  );
-}
 
 /** Opens the Kerneldex, with the seen / caught totals. */
 function DexLink({ save }: { save: SaveData }) {
@@ -107,7 +94,8 @@ export function RegionMap() {
   const [picked, setPicked] = useState<string | null>(null);
   const selectedId = picked ?? save.lastGym ?? next?.id ?? GYMS[GYMS.length - 1].id;
   const gym = GYMS.find((g) => g.id === selectedId) ?? GYMS[0];
-  const state = gymState(gym, save.badges);
+  const flow = gymFlow(gym, save);
+  const state = flow.state;
   const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const router = useRouter();
 
@@ -236,6 +224,7 @@ export function RegionMap() {
         <p className="hidden text-[13px] lg:block">
           Reward: <b>{gym.badge}</b>
         </p>
+        {state !== "locked" && (flow.lessons.total > 0 || flow.trainers.total > 0) && <GymFlowStrip flow={flow} />}
         {state === "locked" ? (
           <p className="flex min-h-12 items-center justify-center gap-2 rounded-[4px] border-4 border-dashed border-[#b9b0d8] px-2 text-center font-pixel text-[9px] leading-4 text-[#6e6a8e]" data-testid="gym-action">
             <LockIcon /> EARN THE {GYMS[gymIndex - 1].badge.toUpperCase()} FIRST
@@ -243,14 +232,16 @@ export function RegionMap() {
         ) : (
           <div className="flex gap-2">
             <Link
-              href={`/gym/${gym.id}`}
+              href={flow.bossReady ? `/gym/${gym.id}` : `/gym/${gym.id}/trainer`}
               onClick={() => sfx.click()}
               className="flex min-h-12 flex-[2] items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-[#ffe27a] px-2 text-center font-pixel text-[10px] leading-4 text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#fff0a0]"
               data-testid="gym-action"
             >
-              {state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} {gym.boss.name.toUpperCase()}
+              {flow.bossReady
+                ? `${state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} ${gym.boss.name.toUpperCase()}`
+                : `▶ TRAINER ${gym.trainer!.name.toUpperCase()} ${flow.trainers.won + 1}/${flow.trainers.total}`}
             </Link>
-            {lessonsOf(gym.id).length > 0 && (
+            {flow.lessons.total > 0 && (
               <Link
                 href={`/learn/${gym.id}`}
                 onClick={() => sfx.click()}
@@ -259,7 +250,7 @@ export function RegionMap() {
               >
                 LEARN
                 <span className="text-[7px] text-[#5a5078]">
-                  {lessonsOf(gym.id).filter((l) => save.lessons.includes(l.id)).length}/{lessonsOf(gym.id).length}
+                  {flow.lessons.done}/{flow.lessons.total}
                 </span>
               </Link>
             )}

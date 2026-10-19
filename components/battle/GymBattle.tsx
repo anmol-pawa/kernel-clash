@@ -7,12 +7,12 @@ import { gymBattleQuestions } from "@/content/pools";
 import { isEvolved, shouldEvolve, starterById, starterFighter, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { bossFighter } from "@/game/world/gymBattle";
-import { earnBadge, gymState, nextGym } from "@/game/world/progress";
+import { earnBadge, gymFlow, nextGym } from "@/game/world/progress";
 import { BOSSES, EVOLVED_ART, partnerArt } from "@/game/sprites/index";
 import { BADGES } from "@/game/sprites/overworld";
 import { getSave, saveEvolved, saveXp, updateSave, useSave, xpOf } from "@/lib/save";
 import { Battle, END_BUTTON, type Script } from "./Battle";
-import { GymLocked, NoStarter } from "./GymGates";
+import { BossGated, GymLocked, NoStarter } from "./GymGates";
 
 const noSub = () => () => {};
 
@@ -26,8 +26,9 @@ export function GymBattle({ gymId }: { gymId: string }) {
   const [unlocked, setUnlocked] = useState<string | null>(null);
   // seeds the draw from the gym's pool; Battle keeps the questions it mounted with
   const [startedAt] = useState(() => Date.now());
-  // winning only ever turns open → cleared, so this never swaps the battle out
-  const entry = hydrated ? gymState(gym, save.badges) : null;
+  // winning only ever turns open → cleared (and trainer wins don't change mid-battle), so this never swaps the battle out
+  const flow = hydrated ? gymFlow(gym, save) : null;
+  const entry = flow?.state ?? null;
   const B = gym.boss.name.toUpperCase();
 
   if (!entry) return <main className="h-dvh bg-[#100e24]" />;
@@ -39,6 +40,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
   const evolved = isEvolved(starter, save.evolved);
 
   if (entry === "locked") return <GymLocked gym={gym} />;
+  if (!flow!.bossReady) return <BossGated gym={gym} flow={flow!} />;
 
   async function onVictory(script: Script) {
     const { say } = script;
