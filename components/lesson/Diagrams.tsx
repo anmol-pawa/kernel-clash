@@ -362,6 +362,333 @@ function Boot() {
   );
 }
 
+/** A plain 2-unit pixel segment with an outline (the first leg of an elbow arrow). */
+function Seg({ x1, y1, x2, y2, color = "#ffe27a" }: { x1: number; y1: number; x2: number; y2: number; color?: string }) {
+  const x = Math.min(x1, x2) - 1;
+  const y = Math.min(y1, y2) - 1;
+  const w = Math.abs(x2 - x1) + 2;
+  const h = Math.abs(y2 - y1) + 2;
+  return (
+    <g>
+      <rect x={x - 0.5} y={y - 0.5} width={w + 1} height={h + 1} fill={INK} />
+      <rect x={x} y={y} width={w} height={h} fill={color} />
+    </g>
+  );
+}
+
+/** A starry night backdrop shared by the process diagrams. */
+function Night({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#16303a" />
+      {Array.from({ length: 36 }, (_, i) => (
+        <rect key={i} x={(i * 41 + seed * 13) % W} y={(i * 29 + seed * 7) % H} width={1} height={1} fill="#2c5a64" />
+      ))}
+    </>
+  );
+}
+
+/**
+ * The five-state process diagram. A process token (a little gold "P1" chip)
+ * walks NEW → READY → RUNNING → WAITING → READY → RUNNING → TERMINATED on a
+ * loop (CSS `.ps-token`, still at RUNNING under reduced motion).
+ */
+function ProcessStates() {
+  const states: [string, number, number, number, Ramp, string][] = [
+    ["NEW", 4, 6, 40, STONE, "#f8f4e6"],
+    ["TERMINATED", 124, 6, 52, RED, "#f8f4e6"],
+    ["READY", 6, 44, 46, TEAL, "#f8f4e6"],
+    ["RUNNING", 118, 44, 54, GREEN, "#f8f4e6"],
+    ["WAITING", 64, 88, 52, PURPLE, "#f8f4e6"],
+  ];
+  return (
+    <>
+      <Night />
+      {/* admitted */}
+      <Arrow x1={24} y1={24} x2={24} y2={43} />
+      <Text x={28} y={36} size={3.5} fill="#ffe27a">
+        ADMITTED
+      </Text>
+      {/* dispatch and interrupt */}
+      <Arrow x1={53} y1={49} x2={117} y2={49} />
+      <Text x={83} y={46} size={3} fill="#ffe27a" anchor="middle">
+        SCHEDULER DISPATCH
+      </Text>
+      <Arrow x1={117} y1={58} x2={53} y2={58} color="#f87a8a" />
+      <Text x={85} y={67} size={3.5} fill="#f87a8a" anchor="middle">
+        INTERRUPT
+      </Text>
+      {/* exit */}
+      <Arrow x1={150} y1={43} x2={150} y2={24} />
+      <Text x={146} y={35} size={3.5} fill="#ffe27a" anchor="end">
+        EXIT
+      </Text>
+      {/* I/O wait: running → waiting */}
+      <Seg x1={158} y1={63} x2={158} y2={96} color="#cfc4ff" />
+      <Arrow x1={158} y1={96} x2={117} y2={96} color="#cfc4ff" />
+      <Text x={161} y={80} size={3.5} fill="#cfc4ff">
+        I/O
+      </Text>
+      <Text x={161} y={85} size={3.5} fill="#cfc4ff">
+        WAIT
+      </Text>
+      {/* I/O done: waiting → ready */}
+      <Seg x1={63} y1={96} x2={24} y2={96} color="#7cf0c8" />
+      <Arrow x1={24} y1={96} x2={24} y2={63} color="#7cf0c8" />
+      <Text x={28} y={80} size={3.5} fill="#7cf0c8">
+        I/O DONE
+      </Text>
+      {states.map(([l, x, y, w, r, ink]) => (
+        <Card key={l} x={x} y={y} w={w} h={l === "READY" || l === "RUNNING" ? 19 : 17} lines={[l]} size={4} ramp={r} ink={ink} />
+      ))}
+      <Text x={90} y={110} size={3.5} fill="#9ad8e0" anchor="middle">
+        ONE RUNNING PER CORE
+      </Text>
+      {/* the walking process token, drawn centred on (0,0) */}
+      <g className="ps-token" data-testid="ps-token">
+        <rect x={-6} y={-5} width={12} height={10} fill={INK} />
+        <rect x={-5} y={-4} width={10} height={8} fill={GOLD[1]} />
+        <rect x={-5} y={-4} width={10} height={1} fill={GOLD[2]} />
+        <rect x={-5} y={3} width={10} height={1} fill={GOLD[0]} />
+        <Text x={0} y={2} size={3.5} anchor="middle">
+          P1
+        </Text>
+      </g>
+    </>
+  );
+}
+
+/** P0 → save PCB0 → reload PCB1 → P1, with time running down the page. */
+function ContextSwitch() {
+  const lane = (x: number, label: string) => (
+    <Text x={x} y={8} size={4.5} fill="#ffe27a" anchor="middle">
+      {label}
+    </Text>
+  );
+  /** an executing bar (green) or an idle dotted line */
+  const run = (x: number, y: number, h: number) => <Card x={x - 12} y={y} w={24} h={h} lines={["RUN"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />;
+  const idle = (x: number, y: number, h: number) => (
+    <g>
+      {Array.from({ length: Math.floor(h / 4) }, (_, i) => (
+        <rect key={i} x={x - 1} y={y + i * 4} width={2} height={2} fill="#5e5a78" />
+      ))}
+    </g>
+  );
+  return (
+    <>
+      <Night seed={2} />
+      {lane(22, "P0")}
+      {lane(90, "KERNEL")}
+      {lane(158, "P1")}
+      {/* P0 runs, P1 idles */}
+      {run(22, 11, 20)}
+      {idle(158, 12, 46)}
+      <Arrow x1={35} y1={26} x2={63} y2={26} color="#f87a8a" />
+      <Text x={37} y={22} size={3} fill="#f87a8a">
+        INTERRUPT
+      </Text>
+      <Card x={64} y={16} w={52} h={16} lines={["SAVE STATE", "INTO PCB0"]} size={3.5} ramp={GOLD} />
+      <Arrow x1={90} y1={33} x2={90} y2={40} />
+      <Card x={64} y={41} w={52} h={16} lines={["RELOAD STATE", "FROM PCB1"]} size={3.5} ramp={GOLD} />
+      <Arrow x1={117} y1={52} x2={145} y2={52} color="#7cf0c8" />
+      {/* P1 runs, P0 idles */}
+      {idle(22, 34, 26)}
+      {run(158, 57, 20)}
+      <Text x={2} y={58} size={3} fill="#9ad8e0">
+        WAITS
+      </Text>
+      {/* the two PCBs */}
+      {[
+        ["PCB0", 10],
+        ["PCB1", 98],
+      ].map(([name, x]) => (
+        <Block key={name} x={x as number} y={80} w={72} h={30} ramp={CREAM}>
+          <rect x={(x as number) + 2} y={82} width={68} height={7} fill={TEAL[1]} />
+          <Text x={(x as number) + 36} y={87.5} size={3.5} fill="#f8f4e6" anchor="middle">
+            {name}
+          </Text>
+          {["STATE  PC", "REGISTERS", "PAGE TABLE"].map((f, i) => (
+            <Text key={f} x={(x as number) + 4} y={95 + i * 5.5} size={3}>
+              {f}
+            </Text>
+          ))}
+        </Block>
+      ))}
+      <Seg x1={60} y1={30} x2={46} y2={30} color="#e0a030" />
+      <Seg x1={46} y1={30} x2={46} y2={78} color="#e0a030" />
+      <Seg x1={120} y1={45} x2={134} y2={45} color="#e0a030" />
+      <Seg x1={134} y1={45} x2={134} y2={78} color="#e0a030" />
+      <Text x={90} y={70} size={3} fill="#ffe27a" anchor="middle">
+        TIME ↓
+      </Text>
+    </>
+  );
+}
+
+/** Parent → fork() → (parent: wait()) and (child: exec() → exit()) → resumes. */
+function ForkExec() {
+  return (
+    <>
+      <Night seed={4} />
+      <Card x={4} y={42} w={32} h={22} lines={["PARENT", "pid 100"]} size={3.5} ramp={TEAL} ink="#f8f4e6" />
+      <Arrow x1={37} y1={53} x2={45} y2={53} />
+      <Card x={46} y={44} w={30} h={18} lines={["fork()"]} size={4} ramp={GOLD} />
+      {/* parent branch: fork() returned the child's pid */}
+      <Seg x1={61} y1={43} x2={61} y2={21} />
+      <Arrow x1={61} y1={21} x2={95} y2={21} />
+      <Text x={58} y={31} size={3} fill="#ffe27a" anchor="end">
+        RETURNS 101
+      </Text>
+      <Card x={96} y={12} w={36} h={18} lines={["wait()", "blocks"]} size={3.5} ramp={STONE} ink="#f8f4e6" />
+      <Arrow x1={133} y1={21} x2={141} y2={21} />
+      <Card x={142} y={12} w={34} h={18} lines={["PARENT", "RESUMES"]} size={3.5} ramp={TEAL} ink="#f8f4e6" />
+      {/* child branch: fork() returned 0 */}
+      <Seg x1={61} y1={63} x2={61} y2={87} color="#7cf0c8" />
+      <Arrow x1={61} y1={87} x2={79} y2={87} color="#7cf0c8" />
+      <Text x={58} y={78} size={3} fill="#7cf0c8" anchor="end">
+        RETURNS 0
+      </Text>
+      <Card x={80} y={78} w={30} h={18} lines={["CHILD", "pid 101"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+      <Arrow x1={111} y1={87} x2={115} y2={87} color="#7cf0c8" />
+      <Card x={116} y={78} w={28} h={18} lines={["exec()", "\"ls\""]} size={3.5} ramp={PURPLE} ink="#f8f4e6" />
+      <Arrow x1={145} y1={87} x2={149} y2={87} color="#7cf0c8" />
+      <Card x={150} y={78} w={26} h={18} lines={["exit()"]} size={3.5} ramp={RED} ink="#f8f4e6" />
+      {/* exit wakes the waiting parent */}
+      <Arrow x1={163} y1={77} x2={163} y2={31} color="#f87a8a" />
+      <Text x={160} y={56} size={3} fill="#f87a8a" anchor="end">
+        STATUS
+      </Text>
+      <Text x={90} y={108} size={3.5} fill="#9ad8e0" anchor="middle">
+        exec() REPLACES THE CHILD&apos;S CODE
+      </Text>
+    </>
+  );
+}
+
+/** A 2-wide pixel zigzag: one thread of execution. */
+function Squiggle({ x, y, h, color = "#ffe27a" }: { x: number; y: number; h: number; color?: string }) {
+  return (
+    <g>
+      {Array.from({ length: Math.floor(h / 3) }, (_, i) => {
+        const dx = [0, 1, 2, 1][i % 4];
+        return (
+          <g key={i}>
+            <rect x={x + dx - 0.5} y={y + i * 3 - 0.5} width={3} height={4} fill={INK} />
+            <rect x={x + dx} y={y + i * 3} width={2} height={3} fill={color} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** A single-threaded process next to a multithreaded one (shared code/data/files). */
+function Threads() {
+  const shared = (x: number, w: number, size: number) => {
+    const cw = (w - 8) / 3;
+    return ["CODE", "DATA", "FILES"].map((l, i) => <Card key={l} x={x + 3 + i * (cw + 1)} y={20} w={cw} h={12} lines={[l]} size={size} ramp={GOLD} />);
+  };
+  const own = (x: number, cx: number) => (
+    <g>
+      <Card x={x} y={36} w={22} h={10} lines={["REGS"]} size={3} ramp={CREAM} />
+      <Card x={x} y={47} w={22} h={10} lines={["STACK"]} size={3} ramp={CREAM} />
+      <Card x={x} y={58} w={22} h={8} lines={["PC"]} size={3} ramp={CREAM} />
+      <Squiggle x={cx} y={70} h={24} />
+    </g>
+  );
+  return (
+    <>
+      <Night seed={6} />
+      <Block x={4} y={10} w={50} h={90} ramp={BLUE}>
+        <Text x={29} y={17} size={3.5} fill="#cfe4ff" anchor="middle">
+          ONE THREAD
+        </Text>
+      </Block>
+      {shared(4, 50, 2.5)}
+      {own(18, 28)}
+      <Block x={62} y={10} w={114} h={90} ramp={BLUE}>
+        <Text x={119} y={17} size={3.5} fill="#cfe4ff" anchor="middle">
+          THREE THREADS
+        </Text>
+      </Block>
+      {shared(62, 114, 3)}
+      {[0, 1, 2].map((i) => (
+        <g key={i}>{own(70 + i * 35, 80 + i * 35)}</g>
+      ))}
+      <Text x={90} y={108} size={3.5} fill="#ffe27a" anchor="middle">
+        GOLD: SHARED · CREAM: PER THREAD
+      </Text>
+    </>
+  );
+}
+
+/** Shared memory beside message passing through the kernel. */
+function Ipc() {
+  const proc = (x: number, y: number, l: string) => <Card x={x} y={y} w={30} h={16} lines={[l]} size={4} ramp={TEAL} ink="#f8f4e6" />;
+  return (
+    <>
+      <Night seed={8} />
+      <Text x={44} y={8} size={4} fill="#ffe27a" anchor="middle">
+        SHARED MEMORY
+      </Text>
+      <Text x={136} y={8} size={4} fill="#ffe27a" anchor="middle">
+        MESSAGE PASSING
+      </Text>
+      <rect x={89} y={0} width={2} height={88} fill={INK} />
+      {/* shared memory: both map one region; the kernel only sets it up */}
+      {proc(4, 14, "A")}
+      {proc(54, 14, "B")}
+      <Block x={14} y={42} w={60} h={20} ramp={GOLD}>
+        <Text x={44} y={50} size={3.5} anchor="middle">
+          SHARED REGION
+        </Text>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <rect key={i} x={18 + i * 9} y={54} width={7} height={5} fill={i < 3 ? "#8a5a10" : "#fff4c0"} />
+        ))}
+      </Block>
+      <Arrow x1={19} y1={31} x2={19} y2={41} />
+      <Text x={23} y={38} size={3} fill="#ffe27a">
+        WRITE
+      </Text>
+      <Arrow x1={69} y1={41} x2={69} y2={31} color="#7cf0c8" />
+      <Text x={66} y={38} size={3} fill="#7cf0c8" anchor="end">
+        READ
+      </Text>
+      {/* message passing: send/receive go through a kernel queue */}
+      {proc(96, 14, "A")}
+      {proc(146, 14, "B")}
+      <Arrow x1={104} y1={31} x2={104} y2={68} />
+      <Text x={107} y={42} size={3} fill="#ffe27a">
+        send()
+      </Text>
+      <Arrow x1={170} y1={68} x2={170} y2={31} color="#7cf0c8" />
+      <Text x={167} y={56} size={3} fill="#7cf0c8" anchor="end">
+        receive()
+      </Text>
+      <Band y={88} h={24} ramp={PURPLE} title="KERNEL" />
+      <Block x={98} y={69} w={78} h={16} ramp={CREAM}>
+        {[0, 1, 2, 3].map((i) => (
+          <g key={i}>
+            <rect x={110 + i * 15} y={72} width={11} height={10} fill={INK} />
+            <rect x={111 + i * 15} y={73} width={9} height={8} fill={i === 0 ? "#ffe27a" : "#e8e0cc"} />
+            <rect x={111 + i * 15} y={73} width={9} height={1} fill="#b9b0a0" />
+            <rect x={112 + i * 15} y={75} width={4} height={1} fill="#b9b0a0" />
+          </g>
+        ))}
+      </Block>
+      <Text x={136} y={101} size={3.5} fill="#ffe27a" anchor="middle">
+        MESSAGE QUEUE
+      </Text>
+      <Text x={44} y={101} size={3.5} fill="#cfc4ff" anchor="middle">
+        SET UP ONCE (shmget)
+      </Text>
+      <Text x={44} y={78} size={3} fill="#9ad8e0" anchor="middle">
+        NO KERNEL PER ACCESS
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -374,6 +701,11 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   },
   kernels: { title: "Monolithic, micro and hybrid kernels", draw: Kernels },
   boot: { title: "The boot chain from power-on to init", draw: Boot },
+  pstates: { title: "The five process states and the transitions between them", draw: ProcessStates },
+  context: { title: "A context switch from P0 to P1 through their PCBs", draw: ContextSwitch },
+  fork: { title: "fork() splits a process; the child calls exec() while the parent waits", draw: ForkExec },
+  threads: { title: "A single-threaded and a multithreaded process", draw: Threads },
+  ipc: { title: "Shared memory beside message passing", draw: Ipc },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

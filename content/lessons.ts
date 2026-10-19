@@ -4,10 +4,10 @@ import type { Question } from "@/game/engine/question";
  * Concept lessons, read before a gym's battles (ROADMAP §2: lessons →
  * generated battles → boss). A lesson is a few short pages, some with an
  * illustrated diagram, and ends with one quick-check question of any kind.
- * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–2;
+ * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–4;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc";
 
 export interface LessonPage {
   heading: string;
@@ -25,6 +25,7 @@ export interface Lesson {
 }
 
 const MOVE = { name: "Recall", type: "io", power: 30 } as const;
+const PMOVE = { name: "Recall", type: "process", power: 30 } as const;
 
 export const LESSONS: Lesson[] = [
   {
@@ -215,6 +216,201 @@ export const LESSONS: Lesson[] = [
       steps: ["Power on: the CPU runs the firmware (BIOS / UEFI)", "Power-on self-test", "The boot loader is loaded and run", "The boot loader loads the kernel into memory", "The kernel starts init (PID 1)"],
       explain: "Firmware → POST → boot loader → kernel → init. Each stage loads the next, larger one.",
       move: MOVE,
+    },
+  },
+  {
+    id: "processes-states",
+    gym: "processes",
+    title: "Processes and their states",
+    pages: [
+      {
+        heading: "A program in action",
+        body: [
+          "A program is a passive file on disk. A process is a program in execution: it has a program counter, registers and memory, and it changes as it runs. Two processes can run the same program.",
+          "A process's memory has four parts: the text section (the code), the data section (global variables), the heap (memory allocated at run time, growing up) and the stack (function frames, growing down).",
+        ],
+      },
+      {
+        heading: "Five states",
+        body: [
+          "A process is new while it is being created, ready while it waits for a CPU, running while its instructions execute, waiting while it waits for an event such as I/O, and terminated when it has finished.",
+          "Only one process can be running on a CPU core at a time, but many can be ready or waiting. A waiting process never goes straight back to running: when its event happens it becomes ready and waits for the scheduler.",
+        ],
+        diagram: "pstates",
+      },
+      {
+        heading: "The PCB",
+        body: [
+          "The kernel keeps a process control block (PCB) for each process: its state, program counter, CPU registers, scheduling information (priority, queue pointers), memory-management information (such as page tables), accounting information and I/O status (open files).",
+          "On Linux the PCB is a `task_struct`. The kernel keeps them in a list and in its ready and wait queues.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-pstates",
+      prompt: "Which transition does NOT exist in the five-state process model?",
+      options: ["Ready → Running", "Running → Waiting", "Waiting → Running", "Running → Ready"],
+      answer: 2,
+      explain: "When a waiting process's I/O or event completes, it moves to Ready. Only the scheduler's dispatch moves a process from Ready to Running.",
+      move: PMOVE,
+    },
+  },
+  {
+    id: "processes-context",
+    gym: "processes",
+    title: "Context switch",
+    pages: [
+      {
+        heading: "Saving and restoring",
+        body: [
+          "A process's context is its CPU state: the program counter, the registers and its memory-management state, all kept in its PCB.",
+          "To switch the CPU to another process, the kernel saves the context of the old process in its PCB and loads the saved context of the new one. This is a context switch.",
+        ],
+        diagram: "context",
+      },
+      {
+        heading: "When it happens",
+        body: [
+          "A switch can follow an interrupt (the timer ends a process's time slice), a system call that blocks (such as a disk read), or a process exiting.",
+          "The scheduler chooses who runs next. The dispatcher does the switch: it loads the context, switches to user mode and jumps to the right place in the program. The time it takes is the dispatch latency.",
+          "A system call alone is a mode switch, not a context switch: the same process keeps running, now in kernel mode.",
+        ],
+      },
+      {
+        heading: "Pure overhead",
+        body: [
+          "No useful work is done while switching, so it is overhead. It typically takes a few microseconds, depending on memory speed, the number of registers and special instructions. Some CPUs keep several register sets, so a switch only changes a pointer.",
+          "There is a hidden cost too: the new process starts with caches and TLB entries full of the old process's data.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-context",
+      kind: "order",
+      prompt: "Put a context switch from P0 to P1 in order.",
+      steps: [
+        "P0 is running in user mode",
+        "A timer interrupt switches the CPU to kernel mode",
+        "The kernel saves P0's state in PCB0",
+        "The kernel reloads P1's state from PCB1",
+        "P1 resumes in user mode",
+      ],
+      explain: "Interrupt into the kernel → save the old state into its PCB → reload the new state from its PCB → back to user mode in the new process.",
+      move: PMOVE,
+    },
+  },
+  {
+    id: "processes-fork",
+    gym: "processes",
+    title: "fork(), exec() and wait()",
+    pages: [
+      {
+        heading: "fork()",
+        body: [
+          "On UNIX, `fork()` creates a new process: the child, a copy of the parent's address space. Both go on running from the instruction after the call.",
+          "`fork()` returns 0 in the child and the child's PID in the parent (or -1 if it fails), so the code can tell them apart. Modern systems use copy-on-write: pages are shared until one side writes to them.",
+        ],
+      },
+      {
+        heading: "exec() and wait()",
+        body: [
+          "The child usually calls one of the `exec()` family to replace its memory image with a new program. On success `exec()` never returns: the old code is gone.",
+          "The parent can call `wait()` to block until a child terminates. It gets back the child's PID and its exit status.",
+        ],
+        diagram: "fork",
+      },
+      {
+        heading: "Zombies and orphans",
+        body: [
+          "A child that has exited but whose parent has not yet called `wait()` is a zombie: its process-table entry stays to hold the exit status.",
+          "If a parent exits without waiting, its children are orphans. On Linux, init (or systemd) adopts them and calls `wait()` for them.",
+          "Every process alive at a `fork()` splits in two, so n `fork()` calls in a row make 2^n processes.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-fork",
+      kind: "numeric",
+      prompt: "How many times does this program print \"hi\"?",
+      code: 'int main() {\n  fork();\n  fork();\n  printf("hi\\n");\n}',
+      answer: 4,
+      explain: "The first fork() makes 2 processes and the second fork() runs in both, making 4. Each of the 4 prints once.",
+      move: PMOVE,
+    },
+  },
+  {
+    id: "processes-threads",
+    gym: "processes",
+    title: "Threads",
+    pages: [
+      {
+        heading: "Threads in a process",
+        body: [
+          "A thread is a basic unit of CPU use. Each thread has its own thread ID, program counter, registers and stack.",
+          "Threads of the same process share its code, data (globals), heap and open files, so they can work on the same data without any IPC.",
+        ],
+        diagram: "threads",
+      },
+      {
+        heading: "Why threads",
+        body: [
+          "Threads keep an app responsive (one thread blocks while another serves the user), share resources for free, are cheaper to create and switch than processes, and can run in parallel on a multicore CPU.",
+          "Concurrency means more than one task makes progress; parallelism means more than one task runs at the same instant, which needs more than one core.",
+        ],
+      },
+      {
+        heading: "User and kernel threads",
+        body: [
+          "User threads are managed by a library in user space; kernel threads are managed by the OS. A model maps one onto the other.",
+          "Many-to-one: all user threads share one kernel thread, so one blocking call blocks them all and they can't run in parallel. One-to-one: each user thread gets a kernel thread (Linux, Windows). Many-to-many: many user threads share a smaller or equal number of kernel threads.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-threads",
+      kind: "multi",
+      prompt: "Which of these does each thread have its own copy of? Select all.",
+      options: ["Registers", "Stack", "Heap", "Global variables", "Program counter", "Open files"],
+      answers: [0, 1, 4],
+      explain: "Each thread has its own registers, stack and program counter. The heap, globals and open files belong to the process and are shared by its threads.",
+      move: PMOVE,
+    },
+  },
+  {
+    id: "processes-ipc",
+    gym: "processes",
+    title: "Interprocess communication",
+    pages: [
+      {
+        heading: "Two models",
+        body: [
+          "Cooperating processes exchange data through interprocess communication (IPC). There are two models.",
+          "Shared memory: system calls set up a region both processes map, then they read and write it at memory speed with no kernel help, but they must synchronise themselves. Message passing: `send()` and `receive()` go through the kernel; it is simpler and works across machines, but every message is a system call.",
+        ],
+        diagram: "ipc",
+      },
+      {
+        heading: "Message passing choices",
+        body: [
+          "Communication is direct (name the other process) or indirect (through a mailbox or port).",
+          "Send and receive can each be blocking (synchronous) or non-blocking (asynchronous). When both block, it is a rendezvous. The link's buffer has zero, bounded or unbounded capacity.",
+        ],
+      },
+      {
+        heading: "Pipes",
+        body: [
+          "An ordinary pipe, `pipe(fd)`, is one-way: write to `fd[1]`, read from `fd[0]`. It only links related processes, such as a parent and a child that inherits it, and is gone when they are. The shell's `ls | wc` is one.",
+          "A named pipe (a FIFO, made with `mkfifo`) has a name in the file system, so unrelated processes can use it, and it lasts until it is deleted.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-ipc",
+      prompt: "Two processes on one machine exchange large amounts of data many times a second. Which IPC model is usually faster?",
+      options: ["Message passing through the kernel", "Shared memory", "A file on disk", "They are always equally fast"],
+      answer: 1,
+      explain: "Once the region is set up, shared-memory reads and writes need no system calls. Message passing pays a trip into the kernel for every message.",
+      move: PMOVE,
     },
   },
 ];

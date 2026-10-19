@@ -143,3 +143,26 @@ a,
     animation: none;
   }
 }
+
+/* the process token walking the five-state diagram (lesson "pstates"):
+   NEW → READY → RUNNING → WAITING → READY → RUNNING → TERMINATED, on a loop */
+@keyframes ps-walk {
+  0%, 8% { transform: translate(8px, 6px); opacity: 1; }
+  12%, 20% { transform: translate(10px, 44px); }
+  24%, 32% { transform: translate(122px, 44px); }
+  36%, 44% { transform: translate(68px, 88px); }
+  48%, 56% { transform: translate(10px, 44px); }
+  60%, 68% { transform: translate(122px, 44px); }
+  72%, 90% { transform: translate(128px, 6px); opacity: 1; }
+  95% { transform: translate(128px, 6px); opacity: 0; }
+  96%, 100% { transform: translate(8px, 6px); opacity: 0; }
+}
+.ps-token {
+  transform: translate(122px, 44px);
+  animation: ps-walk 12s steps(1, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-token {
+    animation: none;
+  }
+}
