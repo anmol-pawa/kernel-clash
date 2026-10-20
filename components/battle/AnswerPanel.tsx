@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { MenuChoice } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
-import { kindOf, scrambled, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
+import { rampFor } from "@/components/lesson/Gantt";
+import { chartOf, kindOf, scrambled, unitsOf, type GanttQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -24,8 +25,8 @@ const CONFIRM = "gb-box flex min-h-12 w-full items-center justify-center font-pi
 
 /**
  * The answer controls under the message box, one layout per question kind:
- * a 2×2 menu (MCQ), toggles plus CONFIRM (select all), a keypad (numeric) or
- * tap-to-number steps (order). Remount it per question (`key`) to reset it.
+ * a 2×2 menu (MCQ), toggles plus CONFIRM (select all), a keypad (numeric),
+ * tap-to-number steps (order) or a tap-to-build Gantt chart (gantt). Remount it per question (`key`) to reset it.
  */
 export function AnswerPanel(p: Props) {
   switch (kindOf(p.q)) {
@@ -35,6 +36,8 @@ export function AnswerPanel(p: Props) {
       return <NumericPanel {...p} q={p.q as NumericQ} />;
     case "order":
       return <OrderPanel {...p} q={p.q as OrderQ} />;
+    case "gantt":
+      return <GanttPanel {...p} q={p.q as GanttQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -198,6 +201,128 @@ function OrderPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: O
       {!reveal && (
         <button type="button" className={CONFIRM} disabled={locked || placed.length !== q.steps.length} onClick={() => onSubmit({ kind: "order", order: placed })}>
           {placed.length === q.steps.length ? "▶ CONFIRM ORDER" : `TAP STEPS IN ORDER (${placed.length}/${q.steps.length})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const KEY_BTN =
+  "flex min-h-10 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-[4px] border-[3px] border-[var(--box-edge)] bg-[var(--box)] px-1 font-pixel text-[10px] text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0001] active:bg-[#efe6c8] disabled:opacity-45 pointer-coarse:min-h-11";
+
+/** Hatched fill for idle time, like the explanation charts. */
+const IDLE_FILL = "repeating-linear-gradient(135deg, #3a3850 0 3px, #5e5a78 3px 5px)";
+
+/**
+ * Tap-to-build Gantt chart: each tap on a process (or IDLE) gives it the next
+ * time unit. The bar fills left to right, merged into blocks with their start
+ * times; UNDO takes back the last unit. After answering, each unit is marked
+ * right or wrong against the simulator's chart.
+ */
+function GanttPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: GanttQ }) {
+  const [units, setUnits] = useState<(string | null)[]>([]);
+  const want = unitsOf(q.answer);
+  const total = want.length;
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "gantt" ? reveal.response.units : units;
+  const left = (name: string) => want.filter((u) => u === name).length - shown.filter((u) => u === name).length;
+  const add = (name: string | null) => {
+    if (locked || units.length >= total) return;
+    sfx.blip();
+    setUnits((u) => [...u, name]);
+  };
+  // block start times (and the end), skipping a label that would crowd the one before
+  const gap = Math.max(2, total / 8);
+  const labels: number[] = [];
+  for (const t of [...chartOf(shown).map((b) => b.start), total]) {
+    // the end always shows, displacing a crowding label before it (but never 0)
+    if (t === total && labels.length > 1 && t - labels[labels.length - 1] < gap) labels.pop();
+    if (!labels.length || t - labels[labels.length - 1] >= gap || t === total) labels.push(t);
+  }
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="gantt">
+      <div className="flex gap-2">
+        {q.code && (
+          <pre className="gb-box min-w-0 shrink self-start overflow-x-auto px-2 py-1.5 font-mono text-[11px] leading-[1.35] sm:text-[13px]" data-testid="code">
+            {q.code}
+          </pre>
+        )}
+        <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-1">
+          {q.jobs.map((name) => {
+            const n = left(name);
+            const [dark, mid, light] = rampFor(name, q.jobs);
+            return (
+              <button
+                key={name}
+                type="button"
+                disabled={locked || n <= 0 || units.length >= total}
+                onClick={() => add(name)}
+                className={KEY_BTN}
+                style={{ background: mid, borderColor: dark, boxShadow: `inset 0 3px 0 ${light}, inset 0 -3px 0 ${dark}` }}
+                aria-label={`${name}, ${n} left`}
+              >
+                <span>{name}</span>
+                <span className="text-[8px] opacity-70">×{n}</span>
+              </button>
+            );
+          })}
+          <button type="button" disabled={locked || units.length >= total} onClick={() => add(null)} className={`${KEY_BTN} !text-[#f8f4e6]`} style={{ background: IDLE_FILL, borderColor: "#2a2838" }}>
+            IDLE
+          </button>
+          <button
+            type="button"
+            disabled={locked || units.length === 0}
+            onClick={() => {
+              sfx.blip();
+              setUnits((u) => u.slice(0, -1));
+            }}
+            className={KEY_BTN}
+            aria-label="Undo"
+          >
+            ⌫ UNDO
+          </button>
+        </div>
+      </div>
+      <div className="rounded-[4px] border-[3px] border-[var(--box-edge)] bg-[#2a2440] px-1.5 pb-1 pt-1.5" data-testid="gantt-build" aria-label={`Chart so far: ${chartOf(shown).map((b) => `${b.name ?? "idle"} ${b.start} to ${b.end}`).join(", ") || "empty"}`}>
+        <div className="flex h-7">
+          {Array.from({ length: total }, (_, t) => {
+            const has = t < shown.length;
+            const name = shown[t];
+            const [dark, mid, light] = rampFor(name ?? null, q.jobs);
+            const joinsPrev = has && t > 0 && shown[t - 1] === name;
+            const mark = reveal ? (has && name === want[t] ? "#4ade80" : "#f87171") : undefined;
+            return (
+              <div
+                key={t}
+                className={`relative flex min-w-0 flex-1 items-center justify-center ${has ? "" : "border-y-2 border-dashed border-[#5e5a78]"} ${!has && t === shown.length && !locked ? "blink bg-[#ffe27a]/30" : ""}`}
+                style={has ? { background: name === null ? IDLE_FILL : mid, boxShadow: `inset 0 3px 0 ${name === null ? "#5e5a78" : light}, inset 0 -3px 0 ${dark}`, borderLeft: joinsPrev ? undefined : "2px solid #1a1430" } : undefined}
+                data-unit={has ? (name ?? "idle") : ""}
+              >
+                {has && !joinsPrev && name && <span className="pointer-events-none absolute left-0.5 font-pixel text-[7px] text-[#1a1430] sm:text-[8px]">{name}</span>}
+                {mark && <span className="absolute inset-x-0 -bottom-1 h-1" style={{ background: mark }} />}
+              </div>
+            );
+          })}
+        </div>
+        <div className="relative mt-1 h-3 font-pixel text-[7px] text-[#f8f4e6] sm:text-[8px]">
+          {labels.map((t) => (
+            <span key={t} className="absolute top-0" style={{ left: `${(t / total) * 100}%`, transform: t === 0 ? "none" : t === total ? "translateX(-100%)" : "translateX(-50%)" }}>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || units.length !== total}
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "gantt", units });
+          }}
+        >
+          {units.length === total ? "▶ CONFIRM CHART" : `TAP TO FILL t = ${units.length}/${total}`}
         </button>
       )}
     </div>

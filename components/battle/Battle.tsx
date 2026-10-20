@@ -184,7 +184,7 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
     }
     // the menu shows an MCQ's right answer; other kinds state it
     if (!correct && kindOf(q) !== "mcq") {
-      await say(kindOf(q) === "order" ? "Here is the right order." : `The answer: ${answerText(q)}.`);
+      await say(kindOf(q) === "order" ? "Here is the right order." : kindOf(q) === "gantt" ? "Here is the right chart." : `The answer: ${answerText(q)}.`);
       await pause();
     }
     setExplaining(true);

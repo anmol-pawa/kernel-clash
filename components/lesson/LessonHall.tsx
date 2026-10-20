@@ -236,7 +236,7 @@ function LessonReader({
           {reveal && (
             <div className={`msg-box px-4 py-3 text-[15px] leading-[1.35]`} data-testid="check-result" data-correct={reveal.correct}>
               <p className={`font-pixel text-[10px] leading-5 ${reveal.correct ? "text-[#2f8a3a]" : "text-[#c83a4a]"}`}>{reveal.correct ? "✓ LESSON COMPLETE!" : "✗ NOT QUITE"}</p>
-              {!reveal.correct && kindOf(lesson.check) !== "mcq" && <p>{kindOf(lesson.check) === "order" ? "Here is the right order." : `The answer: ${answerText(lesson.check)}.`}</p>}
+              {!reveal.correct && kindOf(lesson.check) !== "mcq" && <p>{kindOf(lesson.check) === "order" ? "Here is the right order." : kindOf(lesson.check) === "gantt" ? "Here is the right chart." : `The answer: ${answerText(lesson.check)}.`}</p>}
               <p>{lesson.check.explain}</p>
               {lesson.check.gantt && <GanttChart gantt={lesson.check.gantt} className="mt-2 max-w-md border-2 border-[#1a1430]" />}
             </div>

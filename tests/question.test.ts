@@ -3,7 +3,7 @@ import { DEMO_QUESTIONS } from "@/content/demo";
 import { fcfsAverage, forkPrints, GENERATORS } from "@/content/generators";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { PCB_CONTENTS, SAMPLE_QUESTIONS, SYSCALL_STEPS } from "@/content/questionSamples";
-import { answerText, grade, kindOf, parseNumber, questionProblems, scrambled, type NumericQ, type Question } from "@/game/engine/question";
+import { answerText, chartOf, grade, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type GanttQ, type NumericQ, type Question } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { fcfs, ganttText } from "@/game/sim/scheduling";
 import { rng } from "@/lib/rng";
@@ -57,6 +57,57 @@ describe("grade", () => {
   it("a response of the wrong kind is wrong", () => {
     expect(grade(SYSCALL_STEPS, { kind: "mcq", choice: 0 })).toBe(false);
     expect(grade(DEMO_QUESTIONS[0], { kind: "numeric", value: "1" })).toBe(false);
+  });
+});
+
+describe("gantt build questions", () => {
+  // Silberschatz's SJF example (P4 3, P1 6, P3 7, P2 8, all at 0)
+  const sjfChart = [
+    { name: "P4", start: 0, end: 3 },
+    { name: "P1", start: 3, end: 9 },
+    { name: "P3", start: 9, end: 16 },
+    { name: "P2", start: 16, end: 24 },
+  ];
+  const q: GanttQ = { kind: "gantt", id: "g", prompt: "Build the SJF chart", explain: "x", jobs: ["P1", "P2", "P3", "P4"], answer: sjfChart, move };
+
+  it("expands charts to time units and merges them back", () => {
+    expect(unitsOf([{ name: "P1", start: 0, end: 2 }, { name: null, start: 2, end: 3 }, { name: "P2", start: 3, end: 4 }])).toEqual(["P1", "P1", null, "P2"]);
+    expect(chartOf(["P1", "P1", null, "P2", "P2", "P1"])).toEqual([
+      { name: "P1", start: 0, end: 2 },
+      { name: null, start: 2, end: 3 },
+      { name: "P2", start: 3, end: 5 },
+      { name: "P1", start: 5, end: 6 },
+    ]);
+    expect(chartOf(unitsOf(sjfChart))).toEqual(sjfChart);
+    expect(chartOf([])).toEqual([]);
+  });
+
+  it("grades the chart unit by unit", () => {
+    const right = unitsOf(sjfChart);
+    expect(grade(q, { kind: "gantt", units: right })).toBe(true);
+    // FCFS order instead (P1 first) is wrong
+    expect(grade(q, { kind: "gantt", units: unitsOf([{ name: "P1", start: 0, end: 6 }, { name: "P2", start: 6, end: 14 }, { name: "P3", start: 14, end: 21 }, { name: "P4", start: 21, end: 24 }]) })).toBe(false);
+    // one unit off, one short, one too long, idle in place of a job
+    const swapped = [...right];
+    [swapped[2], swapped[3]] = [swapped[3], swapped[2]];
+    expect(grade(q, { kind: "gantt", units: swapped })).toBe(false);
+    expect(grade(q, { kind: "gantt", units: right.slice(0, -1) })).toBe(false);
+    expect(grade(q, { kind: "gantt", units: [...right, "P2"] })).toBe(false);
+    expect(grade(q, { kind: "gantt", units: [null, ...right.slice(1)] })).toBe(false);
+    expect(grade(q, { kind: "order", order: [0, 1, 2] })).toBe(false);
+    expect(answerText(q)).toBe("P4 0–3 | P1 3–9 | P3 9–16 | P2 16–24");
+  });
+
+  it("flags malformed charts", () => {
+    expect(questionProblems(q)).toEqual([]);
+    const bad = (answer: GanttQ["answer"], jobs: GanttQ["jobs"] = q.jobs) => questionProblems({ ...q, answer, jobs });
+    expect(bad([{ name: "P1", start: 1, end: 3 }, { name: "P2", start: 3, end: 4 }], ["P1", "P2"])).toContain("chart must start at 0");
+    expect(bad([{ name: "P1", start: 0, end: 3 }, { name: "P2", start: 4, end: 5 }], ["P1", "P2"])).toContain("chart must be contiguous whole units");
+    expect(bad([{ name: "P1", start: 0, end: 1.5 }, { name: "P2", start: 1.5, end: 3 }], ["P1", "P2"])).toContain("chart must be contiguous whole units");
+    expect(bad([{ name: "P1", start: 0, end: 1 }, { name: "P1", start: 1, end: 2 }, { name: "P2", start: 2, end: 3 }], ["P1", "P2"])).toContain("chart blocks must be merged");
+    expect(bad([{ name: "P1", start: 0, end: 1 }, { name: "P9", start: 1, end: 2 }], ["P1", "P2"])).toEqual(expect.arrayContaining(["chart names a job not in jobs", "a job never runs"]));
+    expect(bad([{ name: "P1", start: 0, end: 20 }, { name: "P2", start: 20, end: 25 }], ["P1", "P2"])).toContain("chart too long to build by tapping");
+    expect(bad(sjfChart, ["P1"])).toContain("gantt needs 2–5 jobs");
   });
 });
 
@@ -168,6 +219,8 @@ describe("generators", () => {
           expect(q.answers.length, q.id).toBeLessThan(q.options.length);
         } else if (q.kind === "order") {
           expect(grade(q, { kind: "order", order: q.steps.map((_, i) => i) }), q.id).toBe(true);
+        } else if (q.kind === "gantt") {
+          expect(grade(q, { kind: "gantt", units: unitsOf(q.answer) }), q.id).toBe(true);
         }
       }
     }

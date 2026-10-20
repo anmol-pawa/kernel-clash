@@ -4,11 +4,11 @@ import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { GYMS } from "@/content/gyms";
 import { BATTLE_TURNS, POOLS, PROCESSES_EXTRA, SCHEDULING_EXTRA, BASICS_EXTRA, gymBattleQuestions } from "@/content/pools";
 import { cardLabel, inBank } from "@/content/questionBank";
-import { WHICH_ALGOS, quantumEnds, rrAmbiguous, schedAverage, schedFinish, schedWhich } from "@/content/schedulingGenerators";
+import { BUILD_ALGOS, WHICH_ALGOS, quantumEnds, rrAmbiguous, schedAverage, schedBuild, schedFinish, schedWhich } from "@/content/schedulingGenerators";
 import { STARTERS, starterFighter } from "@/content/starters";
 import { initialState, reducer, type Fighter } from "@/game/engine/battle";
 import { cardKey } from "@/game/engine/leitner";
-import { grade, kindOf, questionProblems, type McqQ, type NumericQ, type OrderQ, type Question } from "@/game/engine/question";
+import { grade, kindOf, MAX_GANTT_UNITS, questionProblems, unitsOf, type GanttQ, type McqQ, type NumericQ, type OrderQ, type Question } from "@/game/engine/question";
 import { xpForLevel } from "@/game/engine/xp";
 import { fcfs, ganttText, priority, roundRobin, sjf, srtf, type Job, type PriorityJob, type Schedule, type Slice } from "@/game/sim/scheduling";
 import { bossFighter } from "@/game/world/gymBattle";
@@ -209,7 +209,76 @@ function solve(prompt: string, jobs: PriorityJob[]): Schedule {
   return g;
 }
 
+/**
+ * A tick-by-tick scheduler, written independently of the game's simulators:
+ * each time unit, pick who runs. Returns one entry per unit (null = idle).
+ */
+function tickSchedule(key: string, jobs: PriorityJob[]): (string | null)[] {
+  const left = jobs.map((j) => j.burst);
+  const units: (string | null)[] = [];
+  const queue: number[] = [];
+  let cur = -1;
+  let used = 0;
+  for (let t = 0; left.some((x) => x > 0); t++) {
+    const ready = jobs.map((_, i) => i).filter((i) => jobs[i].arrival <= t && left[i] > 0);
+    if (cur >= 0 && left[cur] === 0) cur = -1;
+    if (key === "rr") {
+      jobs.forEach((j, i) => j.arrival === t && queue.push(i));
+      if (cur >= 0 && used === 2) {
+        queue.push(cur);
+        cur = -1;
+      }
+      if (cur < 0 && queue.length) {
+        cur = queue.shift()!;
+        used = 0;
+      }
+    } else {
+      const k = (i: number) => (key === "fcfs" ? 0 : key === "sjf" ? jobs[i].burst : key === "srtf" ? left[i] : jobs[i].priority);
+      const best = ready.sort((a, b) => k(a) - k(b) || jobs[a].arrival - jobs[b].arrival || a - b)[0] ?? -1;
+      const preemptive = key === "srtf" || key === "prio-p";
+      // non-preemptive keeps the running job; preemptive switches only for a strictly better one
+      if (cur < 0 || (preemptive && best >= 0 && k(best) < k(cur))) cur = best;
+    }
+    units.push(cur >= 0 ? jobs[cur].name : null);
+    if (cur >= 0) {
+      left[cur]--;
+      used++;
+    }
+  }
+  return units;
+}
+
 describe("Clocktower generators", () => {
+  it("build: the chart to tap out matches a tick-by-tick re-solve, for every algorithm, and is short enough", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 400; seed++) {
+      const q = schedBuild.make(seed) as GanttQ;
+      expect(questionProblems(q), q.id).toEqual([]);
+      const algo = BUILD_ALGOS.find((a) => q.prompt.startsWith(`Build the ${a.label} Gantt chart`))!;
+      expect(algo, q.prompt).toBeDefined();
+      seen.add(algo.key);
+      const jobs = parseTable(q.code!);
+      expect(q.jobs).toEqual(jobs.map((j) => j.name));
+      const units = tickSchedule(algo.key, jobs);
+      expect(unitsOf(q.answer), `${q.id} ${q.code}`).toEqual(units);
+      expect(units.length).toBeLessThanOrEqual(MAX_GANTT_UNITS);
+      expect(q.gantt).toEqual(q.answer);
+      expect(grade(q, { kind: "gantt", units })).toBe(true);
+      // running jobs in table order (FCFS-style) is only right when the algorithm agrees
+      const fcfsUnits = unitsOf(fcfs(jobs).gantt);
+      expect(grade(q, { kind: "gantt", units: fcfsUnits })).toBe(ganttText(fcfs(jobs).gantt) === ganttText(q.answer));
+    }
+    expect(seen).toEqual(new Set(BUILD_ALGOS.map((a) => a.key)));
+  });
+
+  it("build: the tick-by-tick re-solve reproduces Silberschatz's SRTF and RR charts", () => {
+    const srtfJobs = [job("P1", 0, 8), job("P2", 1, 4), job("P3", 2, 9), job("P4", 3, 5)].map((j) => ({ ...j, priority: 0 }));
+    expect(tickSchedule("srtf", srtfJobs)).toEqual(unitsOf(srtf(srtfJobs).gantt));
+    expect(ganttText(srtf(srtfJobs).gantt)).toBe("P1 0–1 | P2 1–5 | P4 5–10 | P1 10–17 | P3 17–26");
+    const rrJobs = [job("P1", 0, 5), job("P2", 0, 3), job("P3", 0, 1)].map((j) => ({ ...j, priority: 0 }));
+    expect(tickSchedule("rr", rrJobs)).toEqual(["P1", "P1", "P2", "P2", "P3", "P1", "P1", "P2", "P1"]);
+  });
+
   it("averages: the answer is the re-solved metric, for every algorithm and metric", () => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 400; seed++) {

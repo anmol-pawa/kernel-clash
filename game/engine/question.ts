@@ -1,16 +1,17 @@
 /**
- * The question engine: every battle turn asks one Question. There are four
+ * The question engine: every battle turn asks one Question. There are five
  * kinds, all graded by `grade` (pure, no UI):
  *
  *   mcq      pick one of the options
  *   multi    select every correct option (all of them, nothing else)
  *   numeric  type a number (within a tolerance, fractions like 17/3 allowed)
  *   order    put shuffled steps back in order
+ *   gantt    build a scheduler's Gantt chart one time unit per tap
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
-import type { Slice } from "@/game/sim/scheduling";
+import { ganttText, type Slice } from "@/game/sim/scheduling";
 import type { MoveType } from "./types";
 
 export interface Move {
@@ -62,8 +63,21 @@ export interface OrderQ extends Base {
   steps: readonly string[];
 }
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order";
+export interface GanttQ extends Base {
+  kind: "gantt";
+  /** the processes the player can tap, in palette order */
+  jobs: readonly string[];
+  /** the process table, shown with the prompt */
+  code?: string;
+  /** the right chart (from a simulator), starting at 0 with whole-unit blocks */
+  answer: readonly Slice[];
+}
+
+/** Longest chart a build question may ask for: one tap per unit, so keep it short. */
+export const MAX_GANTT_UNITS = 24;
+
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -72,7 +86,25 @@ export type Response =
   | { kind: "multi"; choices: readonly number[] }
   | { kind: "numeric"; value: string }
   /** step indexes (into `steps`) in the order the player put them */
-  | { kind: "order"; order: readonly number[] };
+  | { kind: "order"; order: readonly number[] }
+  /** who runs in each time unit from 0 (null = idle) */
+  | { kind: "gantt"; units: readonly (string | null)[] };
+
+/** A chart as one entry per time unit: [P1, P1, P2, null, …]. */
+export function unitsOf(chart: readonly Slice[]): (string | null)[] {
+  return chart.flatMap((b) => Array<string | null>(b.end - b.start).fill(b.name));
+}
+
+/** Time units merged back into a chart's blocks. */
+export function chartOf(units: readonly (string | null)[]): Slice[] {
+  const out: Slice[] = [];
+  units.forEach((name, t) => {
+    const last = out[out.length - 1];
+    if (last && last.name === name) last.end = t + 1;
+    else out.push({ name, start: t, end: t + 1 });
+  });
+  return out;
+}
 
 /** Parse a typed number: "17", "-2.5", ".5", "17/3", "1,000". Null if it isn't one. */
 export function parseNumber(input: string): number | null {
@@ -109,6 +141,10 @@ export function grade(q: Question, r: Response): boolean {
     }
     case "order":
       return r.order.length === (q as OrderQ).steps.length && r.order.every((s, i) => s === i);
+    case "gantt": {
+      const want = unitsOf((q as GanttQ).answer);
+      return r.units.length === want.length && r.units.every((u, i) => u === want[i]);
+    }
   }
 }
 
@@ -128,6 +164,8 @@ export function answerText(q: Question): string {
       return q.unit ? `${fmt(q.answer)} ${q.unit}` : fmt(q.answer);
     case "order":
       return q.steps.map((s, i) => `${i + 1}. ${s}`).join(" ");
+    case "gantt":
+      return ganttText(q.answer);
     default:
       return q.options[q.answer];
   }
@@ -174,6 +212,18 @@ export function questionProblems(q: Question): string[] {
       if (q.steps.length < 3 || q.steps.length > 6) p.push("order needs 3–6 steps");
       if (new Set(q.steps).size !== q.steps.length) p.push("duplicate steps");
       break;
+    case "gantt": {
+      const a = q.answer;
+      if (q.jobs.length < 2 || q.jobs.length > 5) p.push("gantt needs 2–5 jobs");
+      if (new Set(q.jobs).size !== q.jobs.length) p.push("duplicate jobs");
+      if (a.length === 0 || a[0].start !== 0) p.push("chart must start at 0");
+      if (a.some((b, i) => !Number.isInteger(b.start) || !Number.isInteger(b.end) || b.end <= b.start || (i > 0 && a[i - 1].end !== b.start))) p.push("chart must be contiguous whole units");
+      if (a.some((b, i) => i > 0 && a[i - 1].name === b.name)) p.push("chart blocks must be merged");
+      if (a.some((b) => b.name !== null && !q.jobs.includes(b.name))) p.push("chart names a job not in jobs");
+      if (q.jobs.some((j) => !a.some((b) => b.name === j))) p.push("a job never runs");
+      if (a.length && a[a.length - 1].end > MAX_GANTT_UNITS) p.push("chart too long to build by tapping");
+      break;
+    }
     default:
       if (q.options.length !== 4) p.push("mcq needs 4 options");
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) p.push("answer out of range");

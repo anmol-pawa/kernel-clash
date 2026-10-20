@@ -1,4 +1,4 @@
-import { fmt, type Generator, type McqQ, type NumericQ } from "@/game/engine/question";
+import { fmt, MAX_GANTT_UNITS, type GanttQ, type Generator, type McqQ, type NumericQ } from "@/game/engine/question";
 import { fcfs, ganttText, priority, roundRobin, sjf, srtf, type Job, type PriorityJob, type Schedule, type Slice } from "@/game/sim/scheduling";
 import { rng, type Rng } from "@/lib/rng";
 
@@ -64,10 +64,10 @@ export const rrAmbiguous = (jobs: readonly Job[], q: number) => {
   return jobs.some((j) => j.arrival > 0 && ends.has(j.arrival));
 };
 
-/** 3–4 jobs with staggered arrivals (P1 at 0), bursts 1–9, all distinct; with priorities 1–5, distinct too. */
-function workload(r: Rng, opts: { n?: number; priorities?: boolean; together?: boolean } = {}): PriorityJob[] {
+/** 3–4 jobs with staggered arrivals (P1 at 0), bursts 1–9 (or up to `maxBurst`), all distinct; with priorities 1–5, distinct too. */
+function workload(r: Rng, opts: { n?: number; priorities?: boolean; together?: boolean; maxBurst?: number } = {}): PriorityJob[] {
   const n = opts.n ?? r.int(3, 4);
-  const bursts = r.shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, n);
+  const bursts = r.shuffle([...Array(opts.maxBurst ?? 9).keys()].map((i) => i + 1)).slice(0, n);
   const prios = r.shuffle([1, 2, 3, 4, 5]).slice(0, n);
   let at = 0;
   return bursts.map((burst, i) => {
@@ -221,4 +221,41 @@ export const schedWhich: Generator = {
   },
 };
 
-export const SCHEDULING_GENERATORS: Generator[] = [fcfsAverage, schedAverage, schedFinish, schedWhich];
+/** The schedulers a player builds charts for, each with the hint shown in its prompt. */
+export const BUILD_ALGOS: { key: string; label: string; hint: string; priorities: boolean; quantum?: number; run: (jobs: PriorityJob[]) => Schedule }[] = [
+  { key: "fcfs", label: "FCFS", hint: "Run each job to the end, in arrival order.", priorities: false, run: fcfs },
+  { key: "sjf", label: "Non-preemptive SJF", hint: "When the CPU frees up, take the shortest job that has arrived (ties: earlier arrival).", priorities: false, run: sjf },
+  { key: "srtf", label: "SRTF", hint: "At every moment run the job with the least time left (a tie never preempts).", priorities: false, run: srtf },
+  { key: "prio-p", label: "Preemptive priority", hint: "At every moment run the highest-priority job that has arrived (lower number = higher priority).", priorities: true, run: (j) => priority(j, { preemptive: true }) },
+  { key: "rr", label: "Round Robin, quantum 2", hint: "Give each job at most 2 units, then send it to the back of the queue.", priorities: false, quantum: 2, run: (j) => roundRobin(j, 2) },
+];
+
+/** Build the Gantt chart for FCFS, SJF, SRTF, preemptive priority or Round Robin by tapping. */
+export const schedBuild: Generator = {
+  id: "gen-sched-build",
+  topic: "Building a Gantt chart",
+  make(seed): GanttQ {
+    const r = rng(seed);
+    const algo = r.pick(BUILD_ALGOS);
+    let jobs: PriorityJob[];
+    let s: Schedule;
+    // short enough to tap out, and with no Round Robin tie between conventions
+    do {
+      jobs = workload(r, { priorities: algo.priorities, maxBurst: 6 });
+      s = algo.run(jobs);
+    } while (s.gantt[s.gantt.length - 1].end > MAX_GANTT_UNITS || (algo.quantum !== undefined && rrAmbiguous(jobs, algo.quantum)));
+    return {
+      kind: "gantt",
+      id: `${this.id}#${seed}`,
+      prompt: `Build the ${algo.label} Gantt chart: each tap gives the next time unit to a process. ${algo.hint}`,
+      jobs: jobs.map((j) => j.name),
+      code: table(jobs, algo.priorities),
+      answer: s.gantt,
+      explain: `${algo.label}: ${ganttText(s.gantt)}. ${algo.hint}`,
+      gantt: s.gantt,
+      move: sched("Gantt Forge", 34),
+    };
+  },
+};
+
+export const SCHEDULING_GENERATORS: Generator[] = [fcfsAverage, schedAverage, schedFinish, schedWhich, schedBuild];
