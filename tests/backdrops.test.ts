@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
 import { SCENERY } from "@/game/sprites";
-import { BACKDROPS, FORK_GROVE, KERNEL_CITY, backdropFor, type Backdrop } from "@/game/sprites/scenery";
+import { BACKDROPS, CLOCKTOWER, FORK_GROVE, KERNEL_CITY, backdropFor, type Backdrop } from "@/game/sprites/scenery";
 
 const ALL: Backdrop[] = [...new Set(Object.values(BACKDROPS))];
 const size = (s: { idle: string[][] }) => ({ w: s.idle[0][0].length, h: s.idle[0].length });
@@ -31,6 +31,17 @@ describe("battle backdrops", () => {
     expect(FORK_GROVE.sky).not.toEqual(KERNEL_CITY.sky);
     expect(FORK_GROVE.specks.kind).toBe("fireflies");
     expect(FORK_GROVE.props.length).toBeGreaterThan(5);
+  });
+
+  it("the Clocktower has its own scene: clock skyline, cog platform, dusk sky, stars and props", () => {
+    expect(backdropFor("scheduling")).toBe(CLOCKTOWER);
+    for (const other of [KERNEL_CITY, FORK_GROVE]) {
+      expect(CLOCKTOWER.horizon).not.toBe(other.horizon);
+      expect(CLOCKTOWER.platform).not.toBe(other.platform);
+      expect(CLOCKTOWER.sky).not.toEqual(other.sky);
+    }
+    expect(CLOCKTOWER.specks.kind).toBe("stars");
+    expect(new Set(CLOCKTOWER.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
   });
 
   for (const b of ALL)

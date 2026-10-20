@@ -18,7 +18,7 @@ import { RAIDSNAIL_ART } from "./raidsnail";
 import { RAMSTER_ART } from "./ramster";
 import { SPINNAIL_ART } from "./spinnail";
 import { SYSCALLOW_ART } from "./syscallow";
-import { GROVE_BUSH, GROVE_ROOTS, GROVE_SHROOMS, GROVE_TREES, GROVE_TUFT, PLATFORM, ROOT_PLATFORM, SKYLINE } from "./scenery";
+import { CLOCK_LAMP, CLOCK_SKYLINE, COBBLES, COG_PLATFORM, GROVE_BUSH, GROVE_ROOTS, GROVE_SHROOMS, GROVE_TREES, GROVE_TUFT, HOURGLASS, PLATFORM, PLAZA_COG, ROOT_PLATFORM, SKYLINE } from "./scenery";
 import { THREADRAKE_ART } from "./threadrake";
 import { THRASHMOTH_ART } from "./thrashmoth";
 import { TORTICK_ART } from "./tortick";
@@ -35,7 +35,7 @@ export const TRAINERS: Record<string, CreatureArt> = { basics: SYSCALLOW_ART, pr
 
 /** Move effects and scenery sheets. */
 export const EFFECTS: SpriteSheet[] = [BIT_ORB, IMPACT];
-export const SCENERY: SpriteSheet[] = [PLATFORM, SKYLINE, ROOT_PLATFORM, GROVE_TREES, GROVE_ROOTS, GROVE_BUSH, GROVE_SHROOMS, GROVE_TUFT];
+export const SCENERY: SpriteSheet[] = [PLATFORM, SKYLINE, ROOT_PLATFORM, GROVE_TREES, GROVE_ROOTS, GROVE_BUSH, GROVE_SHROOMS, GROVE_TUFT, COG_PLATFORM, CLOCK_SKYLINE, PLAZA_COG, CLOCK_LAMP, HOURGLASS, COBBLES];
 
 /** Overworld sheets: the map marker, the nine badges and gym buildings, and the region map itself. */
 export const WORLD: SpriteSheet[] = [MAP_MARKER, ...BADGES, ...GYM_SHEETS, OVERWORLD];
