@@ -55,7 +55,7 @@ export function TrainerBattle({ gymId }: { gymId: string }) {
     sfx.levelUp();
     await say(`Trainer battles won: ${now}/${TRAINER_BATTLES}.`);
     await pause();
-    await say(now < TRAINER_BATTLES ? `${T} flaps back to its perch. One more battle before ${B}!` : `${B} will now accept your challenge!`);
+    await say(now < TRAINER_BATTLES ? `${T} ${trainer.retreats}. One more battle before ${B}!` : `${B} will now accept your challenge!`);
   }
 
   return (
@@ -73,7 +73,7 @@ export function TrainerBattle({ gymId }: { gymId: string }) {
         appear: rematch ? `GYM TRAINER ${T} wants a rematch!` : `GYM TRAINER ${T} wants to battle! (${round}/${TRAINER_BATTLES})`,
         counter: `Wrong! ${T} strikes back!`,
         fainted: `${T} was defeated!`,
-        fled: `${T} is still flying… You ran out of questions.`,
+        fled: `${T} ${trainer.holdsOn}… You ran out of questions.`,
       }}
       onVictory={onVictory}
       endActions={(won) =>

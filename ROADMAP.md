@@ -45,7 +45,8 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.2a Five processes-and-threads lessons in the Fork Grove lecture hall (states and the PCB, context switch, fork/exec/wait, threads and threading models, IPC), each with a pixel diagram (an animated five-state diagram) and a tested quick check.
   - [x] 2.2b Processes question pool (every kind, ~20) plus generators (fork() tree print/process counts, state-transition traces, pipe/IPC choices), all tested; gym battles draw from it.
   - [x] 2.2c The Fork Grove trainer creature (64×64, front + back, idle/attack/hurt), dex entry and tests.
-  - [ ] 2.2d Fork Grove trainer battles and the gated flow (lessons → trainers → Hydrafork), with screenshots.
+  - [x] 2.2d Fork Grove trainer battles and the gated flow (lessons → trainers → Hydrafork), with screenshots.
+  - [ ] 2.2e Per-gym battle backdrops: every battle still uses the Bootstrap kernel-city skyline. Add a backdrop per gym (start with an illustrated Fork Grove: forked trees, roots, a grove floor) chosen by gym id in the stage, shown in `/dev/sprites`, with a test that every gym has one.
 - [ ] 2.3 CPU scheduling: FCFS, SJF, SRTF, Priority (with aging), Round Robin, MLFQ. A **simulator draws Gantt charts**. Generated problems ask for average waiting/turnaround/response time, and the player builds the Gantt chart by tapping. Validated against textbook examples.
 - [ ] 2.4 Synchronization: race conditions (spot-the-race in pseudocode), critical-section requirements, Peterson's algorithm, mutex vs semaphore, monitors and condition variables, producer–consumer, readers–writers, dining philosophers. Interactive step-through interleavings.
 - [ ] 2.5 Deadlocks: Coffman conditions, resource-allocation graphs (cycle detection), prevention/avoidance/detection/recovery, and the **Banker's algorithm** (generated safe-sequence and request-granting problems, solver-checked).

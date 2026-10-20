@@ -53,6 +53,17 @@ describe("trainer fighters", () => {
   it("every gym with a trainer has a question pool to draw from", () => {
     for (const g of trainerGyms) expect(POOLS[g.id], g.id).toBeDefined();
   });
+
+  it("every trainer has its own retreat and hold-on lines (Forkupine doesn't fly)", () => {
+    for (const g of trainerGyms) {
+      const { retreats, holdsOn } = g.trainer!;
+      expect(retreats, g.id).toMatch(/^[a-z][a-z ]+[a-z]$/);
+      expect(holdsOn, g.id).toMatch(/^[a-z][a-z ]+[a-z]$/);
+    }
+    expect(new Set(trainerGyms.map((g) => g.trainer!.retreats)).size).toBe(trainerGyms.length);
+    expect(new Set(trainerGyms.map((g) => g.trainer!.holdsOn)).size).toBe(trainerGyms.length);
+    expect(GYMS.find((g) => g.id === "processes")!.trainer).toMatchObject({ retreats: "curls up under its quills", holdsOn: "is still bristling" });
+  });
 });
 
 describe("trainer battle questions", () => {
