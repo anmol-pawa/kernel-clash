@@ -50,7 +50,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [ ] 2.3 CPU scheduling: FCFS, SJF, SRTF, Priority (with aging), Round Robin, MLFQ. A **simulator draws Gantt charts**. Generated problems ask for average waiting/turnaround/response time, and the player builds the Gantt chart by tapping. Validated against textbook examples.
   - [x] 2.3a Scheduling simulators beyond FCFS: SJF, SRTF, priority (preemptive or not, with aging), Round Robin and MLFQ, each returning a merged Gantt chart and per-job times, tested against Silberschatz's worked examples plus random-workload invariants.
   - [x] 2.3b A pixel Gantt-chart renderer (the simulator's chart drawn as blocks with a time axis) used in explanations, plus five scheduling lessons in the Clocktower lecture hall (criteria and FCFS/convoy, SJF/SRTF, priority and aging, Round Robin and the quantum, MLFQ) with tested quick checks.
-  - [ ] 2.3c Scheduling question pool (every kind, ~20) plus generators (average waiting/turnaround/response for each algorithm, which algorithm produced this chart), all solver-checked; gym battles draw from it.
+  - [x] 2.3c Scheduling question pool (every kind, ~20) plus generators (average waiting/turnaround/response for each algorithm, which algorithm produced this chart), all solver-checked; gym battles draw from it.
   - [ ] 2.3d A tap-to-build Gantt-chart question kind: the player taps processes into the chart block by block, graded against the simulator, on desktop and iPhone.
   - [ ] 2.3e The Clocktower trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and the gated flow, with screenshots.
   - [ ] 2.3f The Clocktower battle backdrop (sky, horizon, platform, props) in `game/sprites/scenery.ts`.

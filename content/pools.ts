@@ -3,6 +3,7 @@ import type { Generator, Question } from "@/game/engine/question";
 import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
 import { PROCESS_GENERATORS } from "./processGenerators";
+import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
 import { GYM_QUESTIONS } from "./gymQuestions";
 
 /**
@@ -293,9 +294,155 @@ export const PROCESSES_EXTRA: Question[] = [
   },
 ];
 
+const sched = (name: string, power: number) => ({ name, type: "scheduler" as const, power });
+
+/** CPU scheduling (Silberschatz ch. 5), beyond the six boss questions. */
+export const SCHEDULING_EXTRA: Question[] = [
+  {
+    id: "sched-dispatch-latency",
+    prompt: "What is dispatch latency?",
+    options: ["How long a process waits in the ready queue", "The time the dispatcher takes to stop one process and start another", "The length of one time quantum", "The time from submitting a job until it finishes"],
+    answer: 1,
+    explain: "The dispatcher switches context, switches to user mode and jumps to the right place in the new program. Everything it does is overhead, so it must be fast.",
+    move: sched("Swift Switch", 30),
+  },
+  {
+    id: "sched-convoy",
+    prompt: "Many short I/O-bound jobs queue behind one long CPU-bound job, and the devices sit idle. Which scheduler is known for this convoy effect?",
+    options: ["SRTF", "Round Robin", "FCFS", "MLFQ"],
+    answer: 2,
+    explain: "FCFS never takes the CPU away, so one long job holds it while every short job waits behind it. Any preemptive scheduler, or SJF, lets the short jobs through.",
+    move: sched("Convoy Crush", 32),
+  },
+  {
+    id: "sched-tiny-quantum",
+    prompt: "Round Robin's time quantum is made much shorter than a context switch takes. What happens?",
+    options: ["It turns into FCFS", "Long jobs start to starve", "Average waiting time drops to zero", "Most of the CPU's time goes on context switches"],
+    answer: 3,
+    explain: "Every quantum ends in a switch, so with a tiny quantum the CPU spends more time switching than running jobs. The textbook rule of thumb: about 80% of CPU bursts should fit in one quantum.",
+    move: sched("Timer Tick", 30),
+  },
+  {
+    id: "sched-mlfq-demote",
+    prompt: "In a multilevel feedback queue, a process uses up its whole time quantum. What happens to it?",
+    options: ["It moves down to a lower-priority queue", "It moves up to a higher-priority queue", "It is terminated", "It stays in the same queue forever"],
+    answer: 0,
+    explain: "Using the whole quantum marks it as CPU-bound, so it drops a level. Processes that block for I/O before their quantum ends stay high, which is how MLFQ favours interactive jobs.",
+    move: sched("Queue Drop", 32),
+  },
+  {
+    id: "sched-interactive",
+    prompt: "For a user typing into an editor, which criterion matters most?",
+    options: ["Throughput", "CPU utilization", "Turnaround time", "Response time"],
+    answer: 3,
+    explain: "Response time is the delay from a request until the first response appears. Interactive systems aim to keep it low and predictable; throughput and turnaround matter more for batch jobs.",
+    move: sched("Quick Dispatch", 32),
+  },
+  {
+    id: "sched-cfs",
+    prompt: "Linux's Completely Fair Scheduler (CFS) runs which task next?",
+    options: ["The one with the highest static priority", "The one with the smallest virtual runtime", "The one that arrived first", "The one with the shortest next CPU burst"],
+    answer: 1,
+    explain: "CFS keeps runnable tasks in a red-black tree ordered by virtual runtime (CPU time scaled by the nice value) and always picks the leftmost, the task that has had the least.",
+    move: sched("Fair Share", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-sched-preemptive",
+    prompt: "Which of these schedulers are preemptive? Select all that apply.",
+    options: ["FCFS", "SRTF", "Round Robin", "Non-preemptive SJF", "MLFQ"],
+    answers: [1, 2, 4],
+    explain: "SRTF preempts when a shorter job arrives, Round Robin when a quantum expires, and MLFQ both on quantum expiry and when a higher queue gets a job. FCFS and plain SJF always let a job run until it blocks or ends.",
+    move: sched("Preempt", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-sched-starve",
+    prompt: "Without aging, which of these can starve a process forever? Select all that apply.",
+    options: ["FCFS", "Round Robin", "SRTF", "Priority scheduling", "Non-preemptive SJF"],
+    answers: [2, 3, 4],
+    explain: "SJF and SRTF can keep choosing newly arrived short jobs, and priority scheduling higher-priority ones, so a long or low-priority job may never run. FCFS and Round Robin serve everyone in turn.",
+    move: sched("Aging Strike", 32),
+  },
+  {
+    kind: "multi",
+    id: "multi-sched-decisions",
+    prompt: "Under non-preemptive scheduling, which events make the scheduler choose a new process? Select all that apply.",
+    options: ["The running process blocks for I/O", "A timer interrupt fires", "The running process terminates", "A higher-priority process arrives", "An I/O operation completes"],
+    answers: [0, 2],
+    explain: "Non-preemptive (cooperative) scheduling only switches when the running process gives up the CPU: it waits or it exits. Acting on a timer, an arrival or an I/O completion would mean preempting it.",
+    move: sched("Yield", 30),
+  },
+  {
+    kind: "numeric",
+    id: "num-sched-rr2",
+    prompt: "Round Robin with quantum 2. All three jobs arrive at time 0, in this order. What is the average waiting time (ms)?",
+    code: "Proc  Burst\nP1    5\nP2    3\nP3    1",
+    answer: 13 / 3,
+    unit: "ms",
+    explain: "The chart: P1 0–2, P2 2–4, P3 4–5, P1 5–7, P2 7–8, P1 8–9. They finish at 9, 8 and 5, so they wait 9 − 5 = 4, 8 − 3 = 5 and 5 − 1 = 4. Average = 13/3 ≈ 4.33 ms.",
+    gantt: [
+      { name: "P1", start: 0, end: 2 },
+      { name: "P2", start: 2, end: 4 },
+      { name: "P3", start: 4, end: 5 },
+      { name: "P1", start: 5, end: 7 },
+      { name: "P2", start: 7, end: 8 },
+      { name: "P1", start: 8, end: 9 },
+    ],
+    move: sched("Time Slice", 34),
+  },
+  {
+    kind: "numeric",
+    id: "num-sched-srtf-p1",
+    prompt: "SRTF scheduling. At what time does P1 finish?",
+    code: "Proc  Arrival  Burst\nP1    0        8\nP2    1        4\nP3    2        9\nP4    3        5",
+    answer: 17,
+    explain: "P2 arrives with 4 left against P1's 7 and takes over. Then P4 (5) runs, then P1 finishes its last 7 units, then P3: P1 0–1, P2 1–5, P4 5–10, P1 10–17, P3 17–26 (Silberschatz's SRTF example).",
+    gantt: [
+      { name: "P1", start: 0, end: 1 },
+      { name: "P2", start: 1, end: 5 },
+      { name: "P4", start: 5, end: 10 },
+      { name: "P1", start: 10, end: 17 },
+      { name: "P3", start: 17, end: 26 },
+    ],
+    move: sched("Preempt", 36),
+  },
+  {
+    kind: "numeric",
+    id: "num-sched-tau",
+    prompt: "SJF predicts the next CPU burst with τₙ₊₁ = α·tₙ + (1 − α)·τₙ. With α = 1/2 and τ₀ = 10, the process's first two bursts are 6 and 4. What is the prediction τ₂?",
+    answer: 6,
+    explain: "τ₁ = ½·6 + ½·10 = 8, then τ₂ = ½·4 + ½·8 = 6. Each prediction averages the last real burst with the previous prediction, so older history fades by half each time (Silberschatz's example).",
+    move: sched("Burst Guess", 34),
+  },
+  {
+    kind: "order",
+    id: "order-sched-sjf",
+    prompt: "All four jobs arrive at time 0. Put them in the order non-preemptive SJF runs them.",
+    steps: ["P4 (burst 3)", "P1 (burst 6)", "P3 (burst 7)", "P2 (burst 8)"],
+    explain: "SJF always picks the shortest job: P4 0–3, P1 3–9, P3 9–16, P2 16–24. P1 waits 3, P2 16, P3 9 and P4 0: average 7 ms (Silberschatz's SJF example).",
+    move: sched("Short Burst", 32),
+  },
+  {
+    kind: "order",
+    id: "order-sched-switch",
+    prompt: "A time slice ends. Put the steps of switching to the next process in order.",
+    steps: [
+      "The timer interrupt traps into the kernel",
+      "The kernel saves the running process's state in its PCB",
+      "The scheduler picks the next process from the ready queue",
+      "The dispatcher loads that process's state from its PCB",
+      "It switches to user mode and jumps to the saved program counter",
+    ],
+    explain: "The interrupt gets the kernel control, the old state goes into the PCB, the scheduler chooses, and the dispatcher restores the new process's state and returns to user mode where it left off.",
+    move: sched("Timer Tick", 30),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
+  scheduling: { authored: [...GYM_QUESTIONS.scheduling, ...SCHEDULING_EXTRA], generators: SCHEDULING_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */

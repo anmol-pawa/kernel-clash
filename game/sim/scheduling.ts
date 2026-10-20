@@ -54,7 +54,7 @@ export function fcfs(jobs: Job[]): Schedule {
 }
 
 /** The Gantt chart as text, e.g. "P1 0–24 | P2 24–27 | P3 27–30". */
-export const ganttText = (g: Slice[]) => g.map((s) => `${s.name ?? "idle"} ${s.start}–${s.end}`).join(" | ");
+export const ganttText = (g: readonly Slice[]) => g.map((s) => `${s.name ?? "idle"} ${s.start}–${s.end}`).join(" | ");
 
 /** Job with a priority number; lower numbers mean higher priority (Silberschatz's convention). */
 export interface PriorityJob extends Job {

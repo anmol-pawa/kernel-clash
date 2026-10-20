@@ -26,6 +26,8 @@ interface Base {
   explain: string;
   /** a Gantt chart drawn beside the explanation (scheduling problems) */
   gantt?: readonly Slice[];
+  /** a Gantt chart shown with the question itself (e.g. "which algorithm drew this?") */
+  chart?: readonly Slice[];
   move: Move;
 }
 

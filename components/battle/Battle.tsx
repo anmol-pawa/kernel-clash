@@ -253,6 +253,8 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
 
   const over = s.phase === "victory" || s.phase === "defeat";
   const level = levelFor(xp);
+  // a question's own chart while it's asked; the answer's chart while it's explained
+  const chart = explaining ? q.gantt : !busy && s.phase === "ask" ? q.chart : undefined;
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-[#100e24]">
@@ -260,9 +262,9 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
         <div ref={host} className="absolute inset-0" data-testid="stage" />
         <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
         <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
-        {explaining && q.gantt && (
-          <div className="pointer-events-none absolute inset-x-3 top-1/2 mx-auto max-w-md -translate-y-1/2 border-4 border-[#1a1430] bg-[#2a2440] p-1" data-testid="explain-gantt">
-            <GanttChart gantt={q.gantt} />
+        {chart && (
+          <div className="pointer-events-none absolute inset-x-3 top-1/2 mx-auto max-w-md -translate-y-1/2 border-4 border-[#1a1430] bg-[#2a2440] p-1" data-testid={explaining ? "explain-gantt" : "question-gantt"}>
+            <GanttChart gantt={chart} />
           </div>
         )}
         {overlay}

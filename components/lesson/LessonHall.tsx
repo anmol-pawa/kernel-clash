@@ -231,6 +231,7 @@ function LessonReader({
               <p className="text-[16px] leading-[1.35]">{lesson.check.prompt}</p>
             </div>
           </div>
+          {lesson.check.chart && <GanttChart gantt={lesson.check.chart} title="The chart" className="max-w-md border-2 border-[#1a1430]" />}
           <AnswerPanel key={attempt} q={lesson.check} disabled={reveal !== null} reveal={reveal} onSubmit={submit} />
           {reveal && (
             <div className={`msg-box px-4 py-3 text-[15px] leading-[1.35]`} data-testid="check-result" data-correct={reveal.correct}>
