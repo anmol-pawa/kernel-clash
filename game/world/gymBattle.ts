@@ -21,14 +21,16 @@ export const TRAINER_TURNS = 4;
 
 /**
  * The gym trainer's stats for battle `round` (1 or 2; rematches use round 2).
- * A warm-up before the boss: at Lv5–7, four questions from the gym's pool, a
- * perfect run or one slip anywhere always wins and two right answers never
- * do. The trainer's counter (10 + 1.5 × level) is about a quarter of a fresh
- * starter's HP.
+ * A warm-up before the boss: two levels under it, four questions from the
+ * gym's pool, and a partner from the gym's par level to two levels past it
+ * wins with a perfect run or one slip anywhere but never with two right
+ * answers (HP 100/110 in the first gym, +5 per gym after). The trainer's
+ * counter (10 + 1.5 × level) is under a third of a par partner's HP, or
+ * under half when it's super effective.
  */
 export function trainerFighter(gym: Gym, round: number): Fighter {
   if (!gym.trainer) throw new Error(`${gym.id} has no trainer`);
   const r = Math.min(Math.max(1, Math.floor(round)), TRAINER_BATTLES);
-  const hp = 90 + 10 * r;
+  const hp = 90 + 10 * r + 5 * (gym.n - 1);
   return { name: gym.trainer.name, level: 2 + gym.n + r - 1, hp, maxHp: hp, type: gym.type };
 }

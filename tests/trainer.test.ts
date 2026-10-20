@@ -11,6 +11,8 @@ import { DEFAULT_SAVE, parseSave, trainerWins } from "@/lib/save";
 
 const T = 1_700_000_000_000;
 const trainerGyms = GYMS.filter((g) => g.trainer);
+/** XP a partner has on reaching gym n: the start plus one win over each earlier boss (a gym is locked until the one before is cleared). */
+const parXp = (n: number) => START_XP + GYMS.slice(0, n - 1).reduce((t, g) => t + xpYield(bossFighter(g).level, true), 0);
 
 /** Play a trainer battle on these questions with a right/wrong pattern. */
 function play(gymId: string, round: number, qs: { move: { power: number; type: string } }[], pattern: boolean[], player: Fighter) {
@@ -24,6 +26,12 @@ function play(gymId: string, round: number, qs: { move: { power: number; type: s
 }
 
 describe("trainer fighters", () => {
+  it("Forkupine is the Fork Grove Gym's trainer: process type, Lv4 then Lv5, 5 HP sturdier than Syscallow", () => {
+    const gym = GYMS.find((g) => g.id === "processes")!;
+    expect(trainerFighter(gym, 1)).toEqual({ name: "Forkupine", level: 4, hp: 105, maxHp: 105, type: "process" });
+    expect(trainerFighter(gym, 2)).toEqual({ name: "Forkupine", level: 5, hp: 115, maxHp: 115, type: "process" });
+  });
+
   it("Syscallow is the Bootstrap Gym's trainer: io type, Lv3 then Lv4, weaker than the boss", () => {
     const gym = GYMS[0];
     expect(trainerFighter(gym, 1)).toEqual({ name: "Syscallow", level: 3, hp: 100, maxHp: 100, type: "io" });
@@ -67,8 +75,9 @@ describe("trainer balance for any draw", () => {
     const all = [...pool.authored, ...pool.generators.map((x) => x.make(1))].sort((a, b) => a.move.power - b.move.power);
     const weakest = all.slice(0, TRAINER_TURNS);
     const strongest = all.slice(-TRAINER_TURNS);
-    // a fresh partner, and one that has ground two levels past the boss's first win
-    const players = STARTERS.flatMap((s) => [starterFighter(s), starterFighter(s, xpForLevel(levelFor(START_XP + xpYield(bossFighter(g).level, true)) + 1))]);
+    // a partner at the gym's par level, and one that has ground two levels past the boss's first win
+    const par = parXp(g.n);
+    const players = STARTERS.flatMap((s) => [starterFighter(s, par), starterFighter(s, xpForLevel(levelFor(par + xpYield(bossFighter(g).level, true)) + 1))]);
 
     it(`${g.id}: a perfect run and one slip anywhere always win`, () => {
       for (let r = 1; r <= TRAINER_BATTLES; r++)
@@ -86,13 +95,17 @@ describe("trainer balance for any draw", () => {
         }
     });
 
-    it(`${g.id}: the trainer's counter is under a third of a fresh partner's HP`, () => {
-      for (let r = 1; r <= TRAINER_BATTLES; r++) for (const s of STARTERS) expect(3 * counterDamage(trainerFighter(g, r).level, effectiveness(g.type, s.type))).toBeLessThan(starterFighter(s).maxHp);
+    it(`${g.id}: the trainer's counter is under a third of a par partner's HP (half when super effective)`, () => {
+      for (let r = 1; r <= TRAINER_BATTLES; r++)
+        for (const s of STARTERS) {
+          const effect = effectiveness(g.type, s.type);
+          expect((effect > 1 ? 2 : 3) * counterDamage(trainerFighter(g, r).level, effect), `${s.name} r${r}`).toBeLessThan(starterFighter(s, par).maxHp);
+        }
     });
 
-    it(`${g.id}: both trainer wins don't push a fresh partner past the boss's balance range`, () => {
-      const xp = START_XP + [1, 2].reduce((t, r) => t + xpYield(trainerFighter(g, r).level), 0);
-      expect(levelFor(xp)).toBeLessThanOrEqual(levelFor(START_XP) + 2);
+    it(`${g.id}: both trainer wins don't push a par partner past the boss's balance range`, () => {
+      const xp = par + [1, 2].reduce((t, r) => t + xpYield(trainerFighter(g, r).level), 0);
+      expect(levelFor(xp)).toBeLessThanOrEqual(levelFor(par) + 2);
     });
   }
 });
@@ -100,8 +113,8 @@ describe("trainer balance for any draw", () => {
 describe("saved trainer wins", () => {
   it("counts wins per gym with a trainer, clamped, dropping junk", () => {
     expect(DEFAULT_SAVE.trainers).toEqual({});
-    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, nowhere: 1, x: "2" } }));
-    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES });
+    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 1, nowhere: 1, x: "2" } }));
+    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 1.7 } })).trainers).toEqual({ basics: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 0 } })).trainers).toEqual({});
     expect(parseSave(JSON.stringify({ trainers: [1] })).trainers).toEqual({});

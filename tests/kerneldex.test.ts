@@ -77,6 +77,16 @@ describe("Kerneldex status", () => {
     expect(status("syscallow", { badges: ["basics"] })).toBe("caught");
   });
 
+  it("Forkupine guards the Fork Grove Gym just before Hydrafork", () => {
+    const e = dexEntry("forkupine")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "processes", type: "process", name: "Forkupine" });
+    expect(dexEntry("hydrafork")!.no).toBe(e.no + 1);
+    expect(dexEntry("trapjaw")!.no).toBe(e.no - 1);
+    expect(status("forkupine", { badges: ["basics"] })).toBe("unknown");
+    expect(status("forkupine", { seen: ["forkupine"] })).toBe("seen");
+    expect(status("forkupine", { badges: ["basics", "processes"] })).toBe("caught");
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

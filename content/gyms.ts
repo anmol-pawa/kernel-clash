@@ -43,6 +43,7 @@ export const GYMS: Gym[] = [
     type: "process",
     topics: ["PCB and process states", "Context switch", "fork / exec / wait", "Threads", "IPC"],
     boss: { name: "Hydrafork", blurb: "Every head it loses calls fork(). Count the children before they count you." },
+    trainer: { name: "Forkupine", blurb: "A grove porcupine whose quills split in two at every tip. Each new quill gets a PID tag of its own: the parent's fork() returns that number, the quill's returns 0." },
     badge: "Fork Badge",
     ramp: ["#0f5a55", "#178f84", "#3cc9b5", "#9af2e2"],
   },

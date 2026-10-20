@@ -100,6 +100,7 @@ describe("gym trainers", () => {
   it("every gym with a trainer has its art, starting with the Bootstrap Gym", () => {
     expect(Object.keys(TRAINERS).sort()).toEqual(GYMS.filter((g) => g.trainer).map((g) => g.id).sort());
     expect(TRAINERS.basics.id).toBe("syscallow");
+    expect(TRAINERS.processes.id).toBe("forkupine");
   });
 });
 
