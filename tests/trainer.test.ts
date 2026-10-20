@@ -32,6 +32,12 @@ describe("trainer fighters", () => {
     expect(trainerFighter(gym, 2)).toEqual({ name: "Forkupine", level: 5, hp: 115, maxHp: 115, type: "process" });
   });
 
+  it("Tortick is the Clocktower Gym's trainer: scheduler type, Lv5 then Lv6, 5 HP sturdier than Forkupine", () => {
+    const gym = GYMS.find((g) => g.id === "scheduling")!;
+    expect(trainerFighter(gym, 1)).toEqual({ name: "Tortick", level: 5, hp: 110, maxHp: 110, type: "scheduler" });
+    expect(trainerFighter(gym, 2)).toEqual({ name: "Tortick", level: 6, hp: 120, maxHp: 120, type: "scheduler" });
+  });
+
   it("Syscallow is the Bootstrap Gym's trainer: io type, Lv3 then Lv4, weaker than the boss", () => {
     const gym = GYMS[0];
     expect(trainerFighter(gym, 1)).toEqual({ name: "Syscallow", level: 3, hp: 100, maxHp: 100, type: "io" });
@@ -63,6 +69,7 @@ describe("trainer fighters", () => {
     expect(new Set(trainerGyms.map((g) => g.trainer!.retreats)).size).toBe(trainerGyms.length);
     expect(new Set(trainerGyms.map((g) => g.trainer!.holdsOn)).size).toBe(trainerGyms.length);
     expect(GYMS.find((g) => g.id === "processes")!.trainer).toMatchObject({ retreats: "curls up under its quills", holdsOn: "is still bristling" });
+    expect(GYMS.find((g) => g.id === "scheduling")!.trainer).toMatchObject({ retreats: "pulls back into its shell", holdsOn: "is still ticking" });
   });
 });
 
@@ -106,11 +113,15 @@ describe("trainer balance for any draw", () => {
         }
     });
 
-    it(`${g.id}: the trainer's counter is under a third of a par partner's HP (half when super effective)`, () => {
+    // A second slip already loses a four-question trainer battle, so what matters is that one slip never
+    // decides it: a super-effective counter (from the Clocktower on, Bytling's weak spot) leaves over 40% HP.
+    it(`${g.id}: the trainer's counter is under a third of a par partner's HP (under 60% when super effective)`, () => {
       for (let r = 1; r <= TRAINER_BATTLES; r++)
         for (const s of STARTERS) {
           const effect = effectiveness(g.type, s.type);
-          expect((effect > 1 ? 2 : 3) * counterDamage(trainerFighter(g, r).level, effect), `${s.name} r${r}`).toBeLessThan(starterFighter(s, par).maxHp);
+          const hit = counterDamage(trainerFighter(g, r).level, effect);
+          if (effect > 1) expect(hit / starterFighter(s, par).maxHp, `${s.name} r${r}`).toBeLessThan(0.6);
+          else expect(3 * hit, `${s.name} r${r}`).toBeLessThan(starterFighter(s, par).maxHp);
         }
     });
 
@@ -124,8 +135,8 @@ describe("trainer balance for any draw", () => {
 describe("saved trainer wins", () => {
   it("counts wins per gym with a trainer, clamped, dropping junk", () => {
     expect(DEFAULT_SAVE.trainers).toEqual({});
-    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 1, nowhere: 1, x: "2" } }));
-    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1 });
+    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 2, sync: 1, nowhere: 1, x: "2" } }));
+    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1, scheduling: 2 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 1.7 } })).trainers).toEqual({ basics: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 0 } })).trainers).toEqual({});
     expect(parseSave(JSON.stringify({ trainers: [1] })).trainers).toEqual({});

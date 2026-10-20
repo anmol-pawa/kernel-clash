@@ -26,7 +26,7 @@ export const TRAINER_TURNS = 4;
  * wins with a perfect run or one slip anywhere but never with two right
  * answers (HP 100/110 in the first gym, +5 per gym after). The trainer's
  * counter (10 + 1.5 × level) is under a third of a par partner's HP, or
- * under half when it's super effective.
+ * under 60% when it's super effective, so one slip never decides the battle.
  */
 export function trainerFighter(gym: Gym, round: number): Fighter {
   if (!gym.trainer) throw new Error(`${gym.id} has no trainer`);

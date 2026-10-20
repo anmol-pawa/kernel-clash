@@ -87,6 +87,16 @@ describe("Kerneldex status", () => {
     expect(status("forkupine", { badges: ["basics", "processes"] })).toBe("caught");
   });
 
+  it("Tortick guards the Clocktower Gym just before Chronogolem", () => {
+    const e = dexEntry("tortick")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "scheduling", type: "scheduler", name: "Tortick" });
+    expect(dexEntry("chronogolem")!.no).toBe(e.no + 1);
+    expect(dexEntry("hydrafork")!.no).toBe(e.no - 1);
+    expect(status("tortick", { badges: ["basics", "processes"] })).toBe("unknown");
+    expect(status("tortick", { seen: ["tortick"] })).toBe("seen");
+    expect(status("tortick", { badges: ["basics", "processes", "scheduling"] })).toBe("caught");
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

@@ -62,6 +62,7 @@ export const GYMS: Gym[] = [
     type: "scheduler",
     topics: ["Criteria and FCFS", "SJF and SRTF", "Priority and aging", "Round Robin", "MLFQ"],
     boss: { name: "Chronogolem", blurb: "A golem of gears that hands out time slices, and takes them back on the tick." },
+    trainer: { name: "Tortick", blurb: "A slow tortoise whose shell is a clock face cut into four time slices. Its hand moves one slice per tick, and only the job in the lit slice may run: everyone gets a turn, nobody gets two in a row.", retreats: "pulls back into its shell", holdsOn: "is still ticking" },
     badge: "Quantum Badge",
     ramp: ["#7a3d0c", "#b8641a", "#e89a2c", "#ffd77a"],
   },

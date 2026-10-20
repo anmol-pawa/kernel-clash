@@ -52,7 +52,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.3b A pixel Gantt-chart renderer (the simulator's chart drawn as blocks with a time axis) used in explanations, plus five scheduling lessons in the Clocktower lecture hall (criteria and FCFS/convoy, SJF/SRTF, priority and aging, Round Robin and the quantum, MLFQ) with tested quick checks.
   - [x] 2.3c Scheduling question pool (every kind, ~20) plus generators (average waiting/turnaround/response for each algorithm, which algorithm produced this chart), all solver-checked; gym battles draw from it.
   - [x] 2.3d A tap-to-build Gantt-chart question kind: the player taps processes into the chart block by block, graded against the simulator, on desktop and iPhone.
-  - [ ] 2.3e The Clocktower trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and the gated flow, with screenshots.
+  - [x] 2.3e The Clocktower trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and the gated flow, with screenshots.
   - [ ] 2.3f The Clocktower battle backdrop (sky, horizon, platform, props) in `game/sprites/scenery.ts`.
 - [ ] 2.4 Synchronization: race conditions (spot-the-race in pseudocode), critical-section requirements, Peterson's algorithm, mutex vs semaphore, monitors and condition variables, producer–consumer, readers–writers, dining philosophers. Interactive step-through interleavings.
 - [ ] 2.5 Deadlocks: Coffman conditions, resource-allocation graphs (cycle detection), prevention/avoidance/detection/recovery, and the **Banker's algorithm** (generated safe-sequence and request-granting problems, solver-checked).

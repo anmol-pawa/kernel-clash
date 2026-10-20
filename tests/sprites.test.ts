@@ -101,6 +101,7 @@ describe("gym trainers", () => {
     expect(Object.keys(TRAINERS).sort()).toEqual(GYMS.filter((g) => g.trainer).map((g) => g.id).sort());
     expect(TRAINERS.basics.id).toBe("syscallow");
     expect(TRAINERS.processes.id).toBe("forkupine");
+    expect(TRAINERS.scheduling.id).toBe("tortick");
   });
 });
 
