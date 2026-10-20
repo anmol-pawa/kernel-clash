@@ -1,8 +1,8 @@
 import { fmt, type Generator, type NumericQ } from "@/game/engine/question";
-import { runForks, forkSource, type Stmt } from "@/game/sim/fork";
 import { fcfs, ganttText, type Job } from "@/game/sim/scheduling";
 import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
+import { PROCESS_GENERATORS } from "./processGenerators";
 
 /** FCFS average waiting or turnaround time for 3–4 generated processes. */
 export const fcfsAverage: Generator = {
@@ -37,39 +37,7 @@ export const fcfsAverage: Generator = {
   },
 };
 
-/** How many lines a straight run of fork()s and printf()s prints. */
-export const forkPrints: Generator = {
-  id: "gen-fork-prints",
-  topic: "fork() trees",
-  make(seed): NumericQ {
-    const r = rng(seed);
-    const forks = r.int(2, 4);
-    // forks in order, with a printf after a random subset of them (always one at the end)
-    const program: Stmt[] = [];
-    for (let i = 0; i < forks; i++) {
-      program.push("fork");
-      if (i === forks - 1 || r.next() < 0.4) program.push("print");
-    }
-    if (r.next() < 0.3) program.unshift("print");
-    const run = runForks(program);
-    // after k forks there are 2^k processes, and each one runs the printf
-    let alive = 1;
-    const terms: number[] = [];
-    for (const s of program) {
-      if (s === "fork") alive *= 2;
-      else terms.push(alive);
-    }
-    return {
-      kind: "numeric",
-      id: `${this.id}#${seed}`,
-      prompt: "How many times is \"hi\" printed in total (by every process)?",
-      code: forkSource(program),
-      answer: run.prints,
-      explain: `Each fork() doubles the processes that reach it, and every process that reaches a printf runs it: ${terms.join(" + ")} = ${run.prints}. ${run.processes} processes exist at the end.`,
-      move: { name: "Fork Bomb", type: "process", power: 34 },
-    };
-  },
-};
-
 /** Every generator in the game (the Leitner bank finds generated cards here). */
-export const GENERATORS: Generator[] = [fcfsAverage, forkPrints, ...BASICS_GENERATORS];
+export const GENERATORS: Generator[] = [fcfsAverage, ...PROCESS_GENERATORS, ...BASICS_GENERATORS];
+
+export { forkPrints } from "./processGenerators";

@@ -43,7 +43,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
     - [x] 2.1c3 The gated flow: the boss locked until the trainer battles are won (gym page, map card and lecture-hall CHALLENGE show LESSONS → TRAINERS n/2 → BOSS), with tests and screenshots.
 - [ ] 2.2 Processes and threads: PCB, states and transitions (an animated state diagram), context switch, fork/exec/wait (predict-the-output puzzles for `fork()` trees), user vs kernel threads, IPC (pipes, shared memory, message passing).
   - [x] 2.2a Five processes-and-threads lessons in the Fork Grove lecture hall (states and the PCB, context switch, fork/exec/wait, threads and threading models, IPC), each with a pixel diagram (an animated five-state diagram) and a tested quick check.
-  - [ ] 2.2b Processes question pool (every kind, ~20) plus generators (fork() tree print/process counts, state-transition traces, pipe/IPC choices), all tested; gym battles draw from it.
+  - [x] 2.2b Processes question pool (every kind, ~20) plus generators (fork() tree print/process counts, state-transition traces, pipe/IPC choices), all tested; gym battles draw from it.
   - [ ] 2.2c The Fork Grove trainer creature (64×64, front + back, idle/attack/hurt), dex entry and tests.
   - [ ] 2.2d Fork Grove trainer battles and the gated flow (lessons → trainers → Hydrafork), with screenshots.
 - [ ] 2.3 CPU scheduling: FCFS, SJF, SRTF, Priority (with aging), Round Robin, MLFQ. A **simulator draws Gantt charts**. Generated problems ask for average waiting/turnaround/response time, and the player builds the Gantt chart by tapping. Validated against textbook examples.

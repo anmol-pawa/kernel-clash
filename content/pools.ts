@@ -2,6 +2,7 @@ import { dueFirst, type Deck } from "@/game/engine/leitner";
 import type { Generator, Question } from "@/game/engine/question";
 import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
+import { PROCESS_GENERATORS } from "./processGenerators";
 import { GYM_QUESTIONS } from "./gymQuestions";
 
 /**
@@ -148,8 +149,153 @@ export const BASICS_EXTRA: Question[] = [
   },
 ];
 
+const proc = (name: string, power: number) => ({ name, type: "process" as const, power });
+
+/** Processes and threads (Silberschatz ch. 3–4), beyond the six boss questions. */
+export const PROCESSES_EXTRA: Question[] = [
+  {
+    id: "proc-pcb",
+    prompt: "Which of these is NOT kept in a process control block (PCB)?",
+    options: ["The saved program counter and registers", "The process state and PID", "The list of open files", "The program's source code"],
+    answer: 3,
+    explain: "The PCB holds what the kernel needs to manage and resume the process: state, PID, saved PC and registers, scheduling info, memory-management info and open files. Source code is never loaded at all; the process runs compiled machine code.",
+    move: proc("PCB Press", 30),
+  },
+  {
+    id: "proc-ctx-save",
+    prompt: "During a context switch, where does the kernel save the outgoing process's registers?",
+    options: ["On the user's stack", "In that process's PCB", "In the interrupt vector", "Nowhere: they are recomputed later"],
+    answer: 1,
+    explain: "The kernel stores the CPU state (PC, registers) in the old process's PCB and reloads the new process's state from its PCB. That save and reload is pure overhead: no useful work runs meanwhile.",
+    move: proc("Context Swap", 32),
+  },
+  {
+    id: "proc-fork-ret",
+    prompt: "What does fork() return in the newly created child?",
+    options: ["The child's own PID", "The parent's PID", "0", "-1"],
+    answer: 2,
+    explain: "fork() returns twice: 0 in the child and the child's PID in the parent (or -1 in the parent if it fails). That is how `if (fork() == 0)` tells them apart.",
+    move: proc("Fork Strike", 32),
+  },
+  {
+    id: "proc-orphan",
+    prompt: "A parent exits while its child is still running. On Linux, what happens to the child?",
+    options: ["It is adopted by init (PID 1) or a subreaper, which reaps it when it exits", "It is killed at once", "It becomes a zombie immediately", "It takes over its parent's PID"],
+    answer: 0,
+    explain: "The child becomes an orphan and is re-parented to init/systemd (or a designated subreaper), which calls wait() for it when it exits, so it doesn't stay a zombie forever.",
+    move: proc("Adopt", 32),
+  },
+  {
+    id: "proc-cow",
+    prompt: "Why is fork() fast on modern systems even when the parent uses gigabytes of memory?",
+    options: ["Parent and child really share one address space for good", "The child gets an empty address space", "Only the stack is copied", "Copy-on-write: pages are shared until one of them writes to a page"],
+    answer: 3,
+    explain: "With copy-on-write the child's page table points at the parent's pages, marked read-only. A page is copied only when either side writes to it, and since the child usually calls exec() soon, most pages are never copied.",
+    move: proc("Cow Clone", 34),
+  },
+  {
+    id: "proc-m2o",
+    prompt: "In the many-to-one threading model, one user thread makes a blocking system call. What happens?",
+    options: ["Only that thread blocks", "The whole process blocks", "The kernel creates a new kernel thread", "The call fails at once"],
+    answer: 1,
+    explain: "All the user threads map to one kernel thread, so when it blocks in the kernel no other thread of the process can run. They can't run in parallel on several cores either. One-to-one (Linux, Windows) avoids both problems.",
+    move: proc("Thread Knot", 32),
+  },
+  {
+    id: "proc-pipe-eof",
+    prompt: "A process reads from an empty pipe whose write ends have all been closed. What does read() do?",
+    options: ["Blocks forever", "Returns an error and kills the process", "Returns 0, meaning end of file", "Returns the last byte again"],
+    answer: 2,
+    explain: "With no writer left, no data can ever arrive, so read() returns 0 (EOF). While any write end is still open, read() on an empty pipe blocks instead. That's why each process must close the pipe ends it doesn't use.",
+    move: proc("Pipe Drain", 34),
+  },
+  {
+    id: "proc-mode-switch",
+    prompt: "Which is usually cheaper: a mode switch (entering the kernel for a system call and returning) or a context switch?",
+    options: ["A mode switch: the same process keeps running, with no PCB swap or cache/TLB disruption", "A context switch: it never enters the kernel", "They always cost exactly the same", "Neither has any cost"],
+    answer: 0,
+    explain: "A system call only switches the CPU between user and kernel mode for the same process. A context switch also saves one process's state to its PCB, loads another's and often changes address space, which disturbs caches and the TLB.",
+    move: proc("Mode Flip", 30),
+  },
+  {
+    kind: "multi",
+    id: "multi-proc-off-cpu",
+    prompt: "Which of these take a running process off the CPU? Select all that apply.",
+    options: ["A timer interrupt ends its time slice", "It requests disk I/O and must wait", "It calls exit()", "It adds two numbers", "It reads one of its own variables"],
+    answers: [0, 1, 2],
+    explain: "A process leaves Running when it is preempted (back to Ready), waits for I/O or an event (to Waiting) or terminates. Ordinary instructions on its own memory never involve the kernel.",
+    move: proc("Preempt", 32),
+  },
+  {
+    kind: "multi",
+    id: "multi-proc-inherit",
+    prompt: "Right after fork(), which of these does the child get from its parent? Select all that apply.",
+    options: ["A copy of the parent's address space (data, heap, stack)", "Copies of the parent's open file descriptors", "The parent's PID as its own", "Execution continuing just after the fork() call", "The parent's used CPU time"],
+    answers: [0, 1, 3],
+    explain: "The child is a copy: same memory contents (copy-on-write), duplicated file descriptors pointing at the same open files, and it resumes right after fork(). It gets a new PID, and its CPU-time counters start at zero.",
+    move: proc("Fork Strike", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-proc-pipe",
+    prompt: "Which are true of an ordinary (anonymous) UNIX pipe? Select all that apply.",
+    options: ["Data flows in one direction only", "It is normally shared between a parent and its child", "It has a name in the file system", "It keeps existing after every process using it has exited", "Reading from it when empty blocks while a write end is still open"],
+    answers: [0, 1, 4],
+    explain: "pipe() gives a read end and a write end, so data flows one way; the ends are inherited across fork(), so it links related processes. It has no name and disappears with its processes; a named pipe (FIFO) is the one with a name that can outlive them.",
+    move: proc("Pipe Lash", 34),
+  },
+  {
+    kind: "order",
+    id: "order-proc-shell",
+    prompt: "Put the steps of a shell running the command `ls` in order.",
+    steps: [
+      "The shell reads and parses the command line",
+      "The shell calls fork() to create a child",
+      "The child calls exec() to load the ls program",
+      "ls prints its output and calls exit()",
+      "The shell's wait() returns and it prints the next prompt",
+    ],
+    explain: "This is the classic fork-exec-wait pattern: the shell forks a copy of itself, the copy replaces itself with ls through exec(), and the parent waits until the child exits before reading the next command.",
+    move: proc("Exec Swap", 34),
+  },
+  {
+    kind: "order",
+    id: "order-proc-life",
+    prompt: "Put this process's life in order.",
+    steps: [
+      "NEW: fork() creates it",
+      "READY: the OS admits it to the ready queue",
+      "RUNNING: the scheduler dispatches it",
+      "WAITING: it requests a disk read",
+      "READY: the disk read completes",
+      "TERMINATED: dispatched again, it calls exit()",
+    ],
+    explain: "New → Ready (admitted) → Running (dispatched) → Waiting (I/O request) → Ready (I/O done; never straight back to Running) → Running → Terminated (exit).",
+    move: proc("State Shift", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-proc-loop",
+    prompt: "Including the original process, how many processes exist when this loop is done?",
+    code: "for (int i = 0; i < 4; i++)\n  fork();",
+    answer: 16,
+    explain: "Every pass through the loop doubles the processes, and each child keeps looping from where its parent was: 1 → 2 → 4 → 8 → 16 (Silberschatz exercise 3.12).",
+    move: proc("Hydra Split", 36),
+  },
+  {
+    kind: "numeric",
+    id: "num-proc-child",
+    prompt: "Including the original process, how many processes exist at the end?",
+    code: "if (fork() == 0) {\n  fork();\n  fork();\n}",
+    answer: 5,
+    explain: "The first fork() makes one child; only it (fork() returned 0) enters the block. Its two forks turn it into 4 processes: the parent plus 4 = 5.",
+    move: proc("Fork Bomb", 34),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
+  processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
