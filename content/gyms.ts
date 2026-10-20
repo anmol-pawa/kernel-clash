@@ -60,7 +60,7 @@ export const GYMS: Gym[] = [
     name: "Clocktower Gym",
     chapter: "CPU scheduling",
     type: "scheduler",
-    topics: ["FCFS and SJF", "SRTF and priority", "Round Robin", "MLFQ", "Gantt charts"],
+    topics: ["Criteria and FCFS", "SJF and SRTF", "Priority and aging", "Round Robin", "MLFQ"],
     boss: { name: "Chronogolem", blurb: "A golem of gears that hands out time slices, and takes them back on the tick." },
     badge: "Quantum Badge",
     ramp: ["#7a3d0c", "#b8641a", "#e89a2c", "#ffd77a"],

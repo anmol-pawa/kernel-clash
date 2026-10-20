@@ -12,6 +12,7 @@ import type { CreatureArt } from "@/lib/creature";
 import { cardKey, dueFirst } from "@/game/engine/leitner";
 import { getSave, markCaught, markSeen, recordAnswer } from "@/lib/save";
 import { useTypewriter } from "@/lib/typewriter";
+import { GanttChart } from "@/components/lesson/Gantt";
 import { AnswerPanel, type Reveal } from "./AnswerPanel";
 
 const noSub = () => () => {};
@@ -60,6 +61,8 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
   const [waiting, setWaiting] = useState(false);
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const [busy, setBusy] = useState(true);
+  /** true while the explanation is up, so a scheduling chart can show over the stage */
+  const [explaining, setExplaining] = useState(false);
   // HP shown in the boxes: lags the reducer so bars drop on impact, not on tap
   const [shown, setShown] = useState({ player: player.fighter.hp, foe: foe.fighter.hp });
   const [xp, setXp] = useState(player.xp);
@@ -184,8 +187,10 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
       await say(kindOf(q) === "order" ? "Here is the right order." : `The answer: ${answerText(q)}.`);
       await pause();
     }
+    setExplaining(true);
     await say(q.explain);
     await pause();
+    setExplaining(false);
     const after = reducer(next, { type: "next" });
     if (after.phase === "victory") {
       await st?.faint("foe");
@@ -255,6 +260,11 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
         <div ref={host} className="absolute inset-0" data-testid="stage" />
         <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
         <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
+        {explaining && q.gantt && (
+          <div className="pointer-events-none absolute inset-x-3 top-1/2 mx-auto max-w-md -translate-y-1/2 border-4 border-[#1a1430] bg-[#2a2440] p-1" data-testid="explain-gantt">
+            <GanttChart gantt={q.gantt} />
+          </div>
+        )}
         {overlay}
       </div>
 

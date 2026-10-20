@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { DiagramId } from "@/content/lessons";
+import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
+import { GanttRows } from "./Gantt";
 
 /**
  * Illustrated lesson diagrams, drawn as pixel art in SVG: shaded blocks with
@@ -689,6 +691,180 @@ function Ipc() {
   );
 }
 
+/* ---- CPU scheduling: every chart is the simulator's own output ---- */
+
+const jobs = (...js: [string, number, number][]): Job[] => js.map(([name, arrival, burst]) => ({ name, arrival, burst }));
+/** an average to at most two decimals, the way the lessons write it */
+const avgText = (n: number) => String(Math.round(n * 100) / 100);
+
+/** The charts each scheduling diagram draws, exported so tests can check them. */
+export const SCHEDULING_EXAMPLES = {
+  convoy: fcfs(jobs(["P1", 0, 24], ["P2", 0, 3], ["P3", 0, 3])),
+  shortFirst: fcfs(jobs(["P2", 0, 3], ["P3", 0, 3], ["P1", 0, 24])),
+  sjf: sjf(jobs(["P1", 0, 6], ["P2", 0, 8], ["P3", 0, 7], ["P4", 0, 3])),
+  srtf: srtf(jobs(["P1", 0, 8], ["P2", 1, 4], ["P3", 2, 9], ["P4", 3, 5])),
+  priority: priority([
+    { name: "P1", arrival: 0, burst: 10, priority: 3 },
+    { name: "P2", arrival: 0, burst: 1, priority: 1 },
+    { name: "P3", arrival: 0, burst: 2, priority: 4 },
+    { name: "P4", arrival: 0, burst: 1, priority: 5 },
+    { name: "P5", arrival: 0, burst: 5, priority: 2 },
+  ]),
+  starve: priority([
+    { name: "H1", arrival: 0, burst: 4, priority: 1 },
+    { name: "L", arrival: 0, burst: 2, priority: 5 },
+    { name: "H2", arrival: 4, burst: 8, priority: 1 },
+  ]),
+  aged: priority(
+    [
+      { name: "H1", arrival: 0, burst: 4, priority: 1 },
+      { name: "L", arrival: 0, burst: 2, priority: 5 },
+      { name: "H2", arrival: 4, burst: 8, priority: 1 },
+    ],
+    { aging: 1 },
+  ),
+  rr4: roundRobin(jobs(["P1", 0, 24], ["P2", 0, 3], ["P3", 0, 3]), 4),
+  rrBig: roundRobin(jobs(["P1", 0, 24], ["P2", 0, 3], ["P3", 0, 3]), 30),
+  mlfq: mlfq(jobs(["A", 0, 30], ["B", 10, 4], ["C", 12, 20]), [8, 16, Infinity]),
+} satisfies Record<string, Schedule>;
+
+/** Number of context switches in a chart: changes from one process to another. */
+export const switches = (s: Schedule) => s.gantt.filter((b) => b.name !== null).length - 1;
+
+/** The Clocktower's dusk: a warm brown sky with faint gear-tooth specks. */
+function Dusk({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#2a1c24" />
+      {Array.from({ length: 30 }, (_, i) => (
+        <rect key={i} x={(i * 37 + seed * 11) % W} y={(i * 23 + seed * 5) % H} width={1} height={1} fill="#5a3a3a" />
+      ))}
+    </>
+  );
+}
+
+/** A captioned chart row: a label above, the chart, and a gold note on the right of the label. */
+function ChartRow({ y, label, note, s, ink = "#ffe27a" }: { y: number; label: string; note: string; s: Schedule; ink?: string }) {
+  return (
+    <>
+      <Text x={6} y={y} size={4} fill="#f8f4e6">
+        {label}
+      </Text>
+      <Text x={W - 6} y={y} size={4} fill={ink} anchor="end">
+        {note}
+      </Text>
+      <GanttRows gantt={s.gantt} x={6} y={y + 3} width={W - 12} />
+    </>
+  );
+}
+
+function Fcfs() {
+  const { convoy, shortFirst } = SCHEDULING_EXAMPLES;
+  return (
+    <>
+      <Dusk />
+      <Text x={W / 2} y={9} size={4.5} fill="#ffe27a" anchor="middle">
+        FIRST COME, FIRST SERVED
+      </Text>
+      <ChartRow y={22} label="P1 FIRST" note={`AVG WAIT ${avgText(convoy.avgWaiting)}`} s={convoy} ink="#f87a8a" />
+      <ChartRow y={58} label="P1 LAST" note={`AVG WAIT ${avgText(shortFirst.avgWaiting)}`} s={shortFirst} ink="#7cf0c8" />
+      <Text x={W / 2} y={98} size={3.5} fill="#e0a030" anchor="middle">
+        CONVOY: SHORT JOBS STUCK
+      </Text>
+      <Text x={W / 2} y={105} size={3.5} fill="#e0a030" anchor="middle">
+        BEHIND ONE LONG JOB
+      </Text>
+    </>
+  );
+}
+
+function SjfSrtf() {
+  const { sjf: a, srtf: b } = SCHEDULING_EXAMPLES;
+  return (
+    <>
+      <Dusk seed={1} />
+      <Text x={W / 2} y={9} size={4.5} fill="#ffe27a" anchor="middle">
+        SHORTEST JOB FIRST
+      </Text>
+      <ChartRow y={22} label="SJF ALL AT 0" note={`AVG WAIT ${avgText(a.avgWaiting)}`} s={a} />
+      <ChartRow y={58} label="SRTF ARRIVE 0,1,2,3" note={`AVG WAIT ${avgText(b.avgWaiting)}`} s={b} />
+      <Text x={W / 2} y={98} size={3.5} fill="#e0a030" anchor="middle">
+        SRTF: A SHORTER ARRIVAL
+      </Text>
+      <Text x={W / 2} y={105} size={3.5} fill="#e0a030" anchor="middle">
+        PREEMPTS THE RUNNING JOB
+      </Text>
+    </>
+  );
+}
+
+function Priority() {
+  const { priority: p, starve, aged } = SCHEDULING_EXAMPLES;
+  return (
+    <>
+      <Dusk seed={2} />
+      <ChartRow y={8} label="PRIORITY (1 = HIGH)" note={`AVG WAIT ${avgText(p.avgWaiting)}`} s={p} />
+      <ChartRow y={42} label="NO AGING" note={`L WAITS ${starve.waiting[1]}`} s={starve} ink="#f87a8a" />
+      <ChartRow y={76} label="AGING" note={`L WAITS ${aged.waiting[1]}`} s={aged} ink="#7cf0c8" />
+      <Text x={W / 2} y={109} size={3.5} fill="#e0a030" anchor="middle">
+        WAITING RAISES PRIORITY
+      </Text>
+    </>
+  );
+}
+
+function RoundRobin() {
+  const { rr4, rrBig } = SCHEDULING_EXAMPLES;
+  return (
+    <>
+      <Dusk seed={3} />
+      <Text x={W / 2} y={9} size={4.5} fill="#ffe27a" anchor="middle">
+        ROUND ROBIN
+      </Text>
+      <ChartRow y={22} label="QUANTUM 4" note={`${switches(rr4)} SWITCHES`} s={rr4} />
+      <ChartRow y={58} label="QUANTUM 30" note={`${switches(rrBig)} SWITCHES`} s={rrBig} ink="#f87a8a" />
+      <Text x={W / 2} y={98} size={3.5} fill="#e0a030" anchor="middle">
+        TOO BIG A QUANTUM IS FCFS
+      </Text>
+      <Text x={W / 2} y={105} size={3.5} fill="#e0a030" anchor="middle">
+        TOO SMALL IS ALL SWITCHING
+      </Text>
+    </>
+  );
+}
+
+function Mlfq() {
+  const queues: [string, string, Ramp][] = [
+    ["Q0", "QUANTUM 8", GOLD],
+    ["Q1", "QUANTUM 16", TEAL],
+    ["Q2", "FCFS", PURPLE],
+  ];
+  return (
+    <>
+      <Dusk seed={4} />
+      {queues.map(([q, rule, r], i) => (
+        <g key={q}>
+          <Card x={6 + i * 60} y={4} w={48} h={20} lines={[q, rule]} size={4} ramp={r} ink={i === 0 ? INK : "#f8f4e6"} />
+          {i < 2 && <Arrow x1={55 + i * 60} y1={14} x2={65 + i * 60} y2={14} color="#f87a8a" />}
+        </g>
+      ))}
+      <Text x={W / 2} y={33} size={3.5} fill="#f87a8a" anchor="middle">
+        USE YOUR WHOLE QUANTUM: DROP A QUEUE
+      </Text>
+      <ChartRow y={46} label="A 30, B 4 AT 10, C 20 AT 12" note="" s={SCHEDULING_EXAMPLES.mlfq} />
+      <Text x={W / 2} y={82} size={3.5} fill="#e0a030" anchor="middle">
+        NEW JOBS START IN Q0 AND
+      </Text>
+      <Text x={W / 2} y={89} size={3.5} fill="#e0a030" anchor="middle">
+        PREEMPT LOWER QUEUES
+      </Text>
+      <Text x={W / 2} y={101} size={3.5} fill="#7cf0c8" anchor="middle">
+        SHORT JOBS FINISH FAST
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -706,6 +882,11 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   fork: { title: "fork() splits a process; the child calls exec() while the parent waits", draw: ForkExec },
   threads: { title: "A single-threaded and a multithreaded process", draw: Threads },
   ipc: { title: "Shared memory beside message passing", draw: Ipc },
+  fcfs: { title: "FCFS Gantt charts: a long job first makes a convoy", draw: Fcfs },
+  sjf: { title: "SJF and SRTF Gantt charts", draw: SjfSrtf },
+  priority: { title: "Priority scheduling, and aging stopping starvation", draw: Priority },
+  rr: { title: "Round Robin with a small and a huge quantum", draw: RoundRobin },
+  mlfq: { title: "A three-queue MLFQ and its Gantt chart", draw: Mlfq },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

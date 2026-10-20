@@ -1,13 +1,14 @@
 import type { Question } from "@/game/engine/question";
+import { roundRobin, sjf } from "@/game/sim/scheduling";
 
 /**
  * Concept lessons, read before a gym's battles (ROADMAP §2: lessons →
  * generated battles → boss). A lesson is a few short pages, some with an
  * illustrated diagram, and ends with one quick-check question of any kind.
- * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–4;
+ * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–5;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq";
 
 export interface LessonPage {
   heading: string;
@@ -26,6 +27,23 @@ export interface Lesson {
 
 const MOVE = { name: "Recall", type: "io", power: 30 } as const;
 const PMOVE = { name: "Recall", type: "process", power: 30 } as const;
+const SMOVE = { name: "Recall", type: "scheduler", power: 30 } as const;
+
+/** The quick checks' workloads; their answers and charts come from the simulators. */
+export const SJF_CHECK_JOBS = [
+  { name: "P1", arrival: 0, burst: 7 },
+  { name: "P2", arrival: 0, burst: 4 },
+  { name: "P3", arrival: 0, burst: 1 },
+  { name: "P4", arrival: 0, burst: 4 },
+];
+const SJF_CHECK = sjf(SJF_CHECK_JOBS);
+export const RR_CHECK_JOBS = [
+  { name: "P1", arrival: 0, burst: 5 },
+  { name: "P2", arrival: 0, burst: 3 },
+  { name: "P3", arrival: 0, burst: 1 },
+];
+const RR_CHECK = roundRobin(RR_CHECK_JOBS, 2);
+const table = (js: { name: string; burst: number }[]) => ["Proc  Burst", ...js.map((j) => `${j.name.padEnd(6)}${j.burst}`)].join("\n");
 
 export const LESSONS: Lesson[] = [
   {
@@ -411,6 +429,189 @@ export const LESSONS: Lesson[] = [
       answer: 1,
       explain: "Once the region is set up, shared-memory reads and writes need no system calls. Message passing pays a trip into the kernel for every message.",
       move: PMOVE,
+    },
+  },
+  {
+    id: "scheduling-fcfs",
+    gym: "scheduling",
+    title: "Criteria and FCFS",
+    pages: [
+      {
+        heading: "Who runs next?",
+        body: [
+          "Processes alternate CPU bursts with I/O bursts. Whenever the CPU goes idle, the CPU scheduler picks a process from the ready queue, and the dispatcher hands it the CPU.",
+          "A scheduling decision can happen when a process (1) switches from running to waiting, (2) is interrupted from running back to ready, (3) finishes I/O and becomes ready, or (4) terminates. A non-preemptive (cooperative) scheduler only decides at 1 and 4; a preemptive one can also take the CPU away at 2 and 3.",
+        ],
+      },
+      {
+        heading: "Criteria",
+        body: [
+          "Schedulers are judged on CPU utilisation (keep it busy) and throughput (processes finished per unit of time), which we want high, and on turnaround, waiting and response time, which we want low.",
+          "Turnaround = completion − arrival. Waiting = turnaround − burst: the time spent in the ready queue. Response = first run − arrival: how long before a process first gets the CPU.",
+        ],
+      },
+      {
+        heading: "First come, first served",
+        body: [
+          "FCFS runs processes in arrival order, each to the end of its burst. It is a simple FIFO queue and non-preemptive.",
+          "Its average waiting time depends on the order. With bursts 24, 3 and 3, running the 24 first makes the others wait 24 and 27: an average of 17 ms. Running it last gives 3 ms. Short jobs stuck behind a long one is the convoy effect.",
+        ],
+        diagram: "fcfs",
+      },
+    ],
+    check: {
+      id: "lesson-fcfs",
+      kind: "multi",
+      prompt: "Which scheduling criteria should be as HIGH as possible? Select all.",
+      options: ["CPU utilisation", "Throughput", "Turnaround time", "Waiting time", "Response time"],
+      answers: [0, 1],
+      explain: "We want to maximise CPU utilisation and throughput, and minimise turnaround, waiting and response time.",
+      move: SMOVE,
+    },
+  },
+  {
+    id: "scheduling-sjf",
+    gym: "scheduling",
+    title: "SJF and SRTF",
+    pages: [
+      {
+        heading: "Shortest job first",
+        body: [
+          "SJF gives the CPU to the process with the shortest next CPU burst; ties go first come, first served. Moving a short job ahead of a long one cuts the short job's wait by more than it adds to the long one's.",
+          "For a given set of processes, SJF gives the minimum average waiting time. With bursts 6, 8, 7 and 3 all at time 0 it runs 3, 6, 7, 8 for an average wait of 7 ms (FCFS would give 10.25).",
+        ],
+        diagram: "sjf",
+      },
+      {
+        heading: "Preemptive SJF: SRTF",
+        body: [
+          "Shortest-remaining-time-first is the preemptive version: when a new process arrives with a shorter burst than what the running process has left, it takes the CPU.",
+          "With P1 (8) at 0, P2 (4) at 1, P3 (9) at 2 and P4 (5) at 3, P2 preempts P1 at time 1. The chart is P1, P2, P4, P1, P3 and the average wait is 6.5 ms, against 7.75 for non-preemptive SJF.",
+        ],
+      },
+      {
+        heading: "The catch",
+        body: [
+          "The scheduler can't know the next CPU burst. It predicts one with an exponential average of past bursts: τₙ₊₁ = α·tₙ + (1 − α)·τₙ, often with α = 1/2.",
+          "Long jobs can also starve if short ones keep arriving.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-sjf",
+      kind: "numeric",
+      prompt: "All four arrive at time 0. What is the average waiting time under SJF (ms)?",
+      code: table(SJF_CHECK_JOBS),
+      answer: SJF_CHECK.avgWaiting,
+      unit: "ms",
+      explain: `SJF runs P3, P2, P4, P1 (P2 and P4 tie at 4, so FCFS order puts P2 first). Waits: ${SJF_CHECK_JOBS.map((j, i) => `${j.name} ${SJF_CHECK.waiting[i]}`).join(", ")}. Average = ${SJF_CHECK.waiting.reduce((a, b) => a + b, 0)}/4 = ${SJF_CHECK.avgWaiting} ms.`,
+      gantt: SJF_CHECK.gantt,
+      move: SMOVE,
+    },
+  },
+  {
+    id: "scheduling-priority",
+    gym: "scheduling",
+    title: "Priority and aging",
+    pages: [
+      {
+        heading: "Priority scheduling",
+        body: [
+          "Each process gets a priority and the CPU goes to the highest. Here, as in Silberschatz, a lower number means a higher priority (some systems use the opposite). Equal priorities are FCFS.",
+          "SJF is a special case: the priority is the predicted next burst. Priority scheduling can be preemptive (a higher-priority arrival takes the CPU) or non-preemptive (it goes to the head of the queue).",
+        ],
+        diagram: "priority",
+      },
+      {
+        heading: "Starvation",
+        body: [
+          "A low-priority process can wait forever while higher-priority work keeps arriving. This is starvation, or indefinite blocking. Legend has it that when MIT shut down its IBM 7094 in 1973 they found a low-priority job submitted in 1967 that had never run.",
+        ],
+      },
+      {
+        heading: "Aging",
+        body: [
+          "The fix is aging: a process's priority rises the longer it waits. In the diagram, L's priority number drops by 1 each tick it waits, so after 4 ticks it can run instead of waiting behind H2.",
+          "Another fix combines priority with Round Robin: processes of equal priority take turns.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-priority",
+      prompt: "Low-priority processes never get the CPU because higher-priority ones keep arriving. Which technique fixes this?",
+      options: ["The convoy effect", "Aging", "A bigger time quantum", "Shortest job first"],
+      answer: 1,
+      explain: "Aging gradually raises the priority of processes that wait a long time, so they eventually run. SJF and the convoy effect don't help: SJF can starve long jobs too.",
+      move: SMOVE,
+    },
+  },
+  {
+    id: "scheduling-rr",
+    gym: "scheduling",
+    title: "Round Robin and the quantum",
+    pages: [
+      {
+        heading: "Taking turns",
+        body: [
+          "Round Robin is FCFS with preemption: each process runs for at most one time quantum (typically 10 to 100 ms), then a timer interrupt sends it to the back of the ready queue. A process with less left than a quantum gives up the CPU when it finishes.",
+          "With n processes and quantum q, no process waits more than (n − 1)·q before its next turn, so response time is good.",
+        ],
+      },
+      {
+        heading: "Choosing the quantum",
+        body: [
+          "With bursts 24, 3 and 3 and q = 4 the chart is P1, P2, P3, then P1 to the end: average wait 17/3 ≈ 5.67 ms. The average wait under RR is often long, but no one waits long for a first turn.",
+          "If q is huge, RR becomes FCFS. If q is tiny, the CPU spends its time on context switches. A rule of thumb: about 80% of CPU bursts should be shorter than q, and q should be large next to the context-switch time.",
+        ],
+        diagram: "rr",
+      },
+    ],
+    check: {
+      id: "lesson-rr",
+      kind: "numeric",
+      prompt: "Round Robin with a 2 ms quantum; all arrive at 0 in the order P1, P2, P3. At what time does P1 finish?",
+      code: table(RR_CHECK_JOBS),
+      answer: RR_CHECK.completion[0],
+      unit: "ms",
+      explain: `The chart is ${RR_CHECK.gantt.map((b) => `${b.name} ${b.start}–${b.end}`).join(", ")}. P3 finishes in its first turn and P2 in its second, so P1 runs its last 1 ms from 8 to 9.`,
+      gantt: RR_CHECK.gantt,
+      move: SMOVE,
+    },
+  },
+  {
+    id: "scheduling-mlfq",
+    gym: "scheduling",
+    title: "Multilevel feedback queues",
+    pages: [
+      {
+        heading: "Several queues",
+        body: [
+          "A multilevel queue splits the ready queue by kind, such as real-time, system, interactive and batch, each with its own algorithm. Higher queues always go first.",
+          "In a plain multilevel queue a process stays in its queue. A multilevel feedback queue (MLFQ) lets processes move between queues according to how they behave.",
+        ],
+      },
+      {
+        heading: "Feedback",
+        body: [
+          "In the classic example, a new process enters Q0 (quantum 8). If it uses its whole quantum it drops to Q1 (quantum 16), and then to Q2, which is FCFS. A process arriving in a higher queue preempts a lower one.",
+          "Short and I/O-bound (interactive) processes finish or block inside their small quantum and stay on top. CPU-bound ones sink. Aging can move a process that waits too long back up, so nothing starves.",
+        ],
+        diagram: "mlfq",
+      },
+      {
+        heading: "The most general scheduler",
+        body: [
+          "An MLFQ is defined by the number of queues, each queue's algorithm, when to promote and when to demote a process, and which queue a new process enters. Tuning it can make it fit almost any system, which makes it the most general and the most complex scheme.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-mlfq",
+      prompt: "Which processes does a multilevel feedback queue favour by keeping them in the top queues?",
+      options: ["Long CPU-bound processes", "Short or I/O-bound processes", "Whichever process arrived first", "Processes with the most memory"],
+      answer: 1,
+      explain: "A process that uses up its quantum is CPU-bound and gets demoted. Short and I/O-bound processes give up the CPU before their quantum ends, so they stay in the high-priority queues and get quick response.",
+      move: SMOVE,
     },
   },
 ];

@@ -32,6 +32,7 @@ export const fcfsAverage: Generator = {
       answer,
       unit: "ms",
       explain: `FCFS runs them in arrival order: ${ganttText(s.gantt)}. ${rule}: ${jobs.map((j, i) => `${j.name} ${per[i]}`).join(", ")}. Average = ${sum}/${n} = ${fmt(answer)} ms.`,
+      gantt: s.gantt,
       move: { name: "Queue Crush", type: "scheduler", power: 36 },
     };
   },

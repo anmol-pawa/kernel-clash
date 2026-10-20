@@ -14,6 +14,7 @@ import { BOSSES, partnerArt } from "@/game/sprites/index";
 import { PLATFORM } from "@/game/sprites/scenery";
 import { saveLessonDone, useSave } from "@/lib/save";
 import { GymFlowStrip } from "@/components/world/GymFlow";
+import { GanttChart } from "@/components/lesson/Gantt";
 import { Diagram } from "./Diagrams";
 
 const noSub = () => () => {};
@@ -236,6 +237,7 @@ function LessonReader({
               <p className={`font-pixel text-[10px] leading-5 ${reveal.correct ? "text-[#2f8a3a]" : "text-[#c83a4a]"}`}>{reveal.correct ? "✓ LESSON COMPLETE!" : "✗ NOT QUITE"}</p>
               {!reveal.correct && kindOf(lesson.check) !== "mcq" && <p>{kindOf(lesson.check) === "order" ? "Here is the right order." : `The answer: ${answerText(lesson.check)}.`}</p>}
               <p>{lesson.check.explain}</p>
+              {lesson.check.gantt && <GanttChart gantt={lesson.check.gantt} className="mt-2 max-w-md border-2 border-[#1a1430]" />}
             </div>
           )}
         </section>

@@ -3,12 +3,15 @@ import { GYMS } from "@/content/gyms";
 import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
-import { DIAGRAM_IDS } from "@/components/lesson/Diagrams";
+import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, switches } from "@/components/lesson/Diagrams";
+import { RR_CHECK_JOBS, SJF_CHECK_JOBS } from "@/content/lessons";
+import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
 const PROCESS_DIAGRAMS = ["pstates", "context", "fork", "threads", "ipc"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS];
+const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -139,6 +142,110 @@ describe("processes-and-threads quick checks", () => {
   it("IPC check: shared memory avoids a system call per exchange", () => {
     const q = mcq("processes-ipc");
     expect(q.options[q.answer]).toBe("Shared memory");
+  });
+});
+
+describe("CPU-scheduling lessons", () => {
+  const mcq = (id: string) => {
+    const q = lessonById(id)!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    return q;
+  };
+
+  it("cover every scheduling topic in order, with each diagram used once", () => {
+    const ls = lessonsOf("scheduling");
+    const gym = GYMS.find((g) => g.id === "scheduling")!;
+    expect(ls).toHaveLength(gym.topics.length);
+    expect(ls.map((l) => l.id)).toEqual(["scheduling-fcfs", "scheduling-sjf", "scheduling-priority", "scheduling-rr", "scheduling-mlfq"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(SCHEDULING_DIAGRAMS);
+    for (const l of ls) expect(l.check.move.type).toBe("scheduler");
+  });
+
+  it("diagram charts match Silberschatz ch. 5's worked examples", () => {
+    const x = SCHEDULING_EXAMPLES;
+    expect(x.convoy.avgWaiting).toBe(17);
+    expect(x.shortFirst.avgWaiting).toBe(3);
+    expect(ganttText(x.sjf.gantt)).toBe("P4 0–3 | P1 3–9 | P3 9–16 | P2 16–24");
+    expect(x.sjf.avgWaiting).toBe(7);
+    expect(ganttText(x.srtf.gantt)).toBe("P1 0–1 | P2 1–5 | P4 5–10 | P1 10–17 | P3 17–26");
+    expect(x.srtf.avgWaiting).toBe(6.5);
+    expect(ganttText(x.priority.gantt)).toBe("P2 0–1 | P5 1–6 | P1 6–16 | P3 16–18 | P4 18–19");
+    expect(x.priority.avgWaiting).toBeCloseTo(8.2);
+    expect(x.starve.waiting[1]).toBe(12);
+    expect(x.aged.waiting[1]).toBe(4);
+    expect(ganttText(x.rr4.gantt)).toBe("P1 0–4 | P2 4–7 | P3 7–10 | P1 10–30");
+    expect(x.rr4.avgWaiting).toBeCloseTo(17 / 3);
+    // a quantum bigger than every burst is FCFS
+    expect(ganttText(x.rrBig.gantt)).toBe(ganttText(x.convoy.gantt));
+    expect(switches(x.rr4)).toBe(3);
+    expect(switches(x.rrBig)).toBe(2);
+    expect(ganttText(x.mlfq.gantt)).toBe("A 0–10 | B 10–14 | C 14–22 | A 22–38 | C 38–50 | A 50–54");
+  });
+
+  it("the lesson text quotes the simulators' numbers", () => {
+    const text = (id: string) => lessonById(id)!.pages.flatMap((p) => p.body).join(" ");
+    const fc = fcfs(SCHEDULING_EXAMPLES.sjf.gantt.map((b) => ({ name: b.name!, arrival: 0, burst: b.end - b.start })).sort((a, b) => a.name.localeCompare(b.name)));
+    expect(fc.avgWaiting).toBe(10.25);
+    expect(text("scheduling-sjf")).toContain("FCFS would give 10.25");
+    const srtfSet = [
+      { name: "P1", arrival: 0, burst: 8 },
+      { name: "P2", arrival: 1, burst: 4 },
+      { name: "P3", arrival: 2, burst: 9 },
+      { name: "P4", arrival: 3, burst: 5 },
+    ];
+    expect(sjf(srtfSet).avgWaiting).toBe(7.75);
+    expect(text("scheduling-sjf")).toContain("7.75 for non-preemptive SJF");
+    expect(text("scheduling-fcfs")).toContain("an average of 17 ms");
+    expect(text("scheduling-rr")).toContain("17/3 ≈ 5.67");
+  });
+
+  it("FCFS check: maximise utilisation and throughput, minimise the times", () => {
+    const q = lessonById("scheduling-fcfs")!.check;
+    if (q.kind !== "multi") throw new Error("expected select-all");
+    expect(q.answers.map((i) => q.options[i]).sort()).toEqual(["CPU utilisation", "Throughput"]);
+    expect(grade(q, { kind: "multi", choices: [1, 0] })).toBe(true);
+    expect(grade(q, { kind: "multi", choices: [0, 1, 4] })).toBe(false);
+  });
+
+  it("SJF check: P3, P2, P4, P1 gives an average wait of 15/4 = 3.75", () => {
+    const q = lessonById("scheduling-sjf")!.check;
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    const s = sjf(SJF_CHECK_JOBS);
+    expect(ganttText(s.gantt)).toBe("P3 0–1 | P2 1–5 | P4 5–9 | P1 9–16");
+    expect(s.waiting).toEqual([9, 1, 0, 5]);
+    expect(q.answer).toBe(3.75);
+    expect(q.gantt).toEqual(s.gantt);
+    expect(q.code).toBe("Proc  Burst\nP1    7\nP2    4\nP3    1\nP4    4");
+    expect(q.explain).toContain("15/4 = 3.75");
+    expect(grade(q, { kind: "numeric", value: "3.75" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "15/4" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "4" })).toBe(false);
+  });
+
+  it("priority check: aging fixes starvation (and the simulator shows it)", () => {
+    const q = mcq("scheduling-priority");
+    expect(q.options[q.answer]).toBe("Aging");
+    expect(SCHEDULING_EXAMPLES.aged.waiting[1]).toBeLessThan(SCHEDULING_EXAMPLES.starve.waiting[1]);
+  });
+
+  it("RR check: with q = 2, P1 (5), P2 (3), P3 (1) — P1 finishes at 9", () => {
+    const q = lessonById("scheduling-rr")!.check;
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    const s = roundRobin(RR_CHECK_JOBS, 2);
+    expect(ganttText(s.gantt)).toBe("P1 0–2 | P2 2–4 | P3 4–5 | P1 5–7 | P2 7–8 | P1 8–9");
+    expect(q.answer).toBe(9);
+    expect(q.gantt).toEqual(s.gantt);
+    expect(grade(q, { kind: "numeric", value: "9" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "8" })).toBe(false);
+  });
+
+  it("MLFQ check: short and I/O-bound jobs stay on top", () => {
+    const q = mcq("scheduling-mlfq");
+    expect(q.options[q.answer]).toMatch(/Short or I\/O-bound/);
+    // in the diagram's MLFQ the short job B never waits, while long A waits most
+    const s = mlfq([{ name: "A", arrival: 0, burst: 30 }, { name: "B", arrival: 10, burst: 4 }, { name: "C", arrival: 12, burst: 20 }], [8, 16, Infinity]);
+    expect(s.waiting[1]).toBe(0);
+    expect(s.waiting[0]).toBe(Math.max(...s.waiting));
   });
 });
 

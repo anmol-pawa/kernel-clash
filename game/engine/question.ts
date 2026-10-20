@@ -10,6 +10,7 @@
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
+import type { Slice } from "@/game/sim/scheduling";
 import type { MoveType } from "./types";
 
 export interface Move {
@@ -23,6 +24,8 @@ interface Base {
   prompt: string;
   /** shown after every answer, right or wrong */
   explain: string;
+  /** a Gantt chart drawn beside the explanation (scheduling problems) */
+  gantt?: readonly Slice[];
   move: Move;
 }
 
