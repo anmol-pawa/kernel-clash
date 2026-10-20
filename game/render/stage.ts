@@ -13,7 +13,7 @@ import { Application, Container, Graphics } from "pixi.js";
 import type { CreatureArt } from "@/lib/creature";
 import { TYPE_COLOR, type MoveType } from "@/game/engine/types";
 import { BIT_ORB, IMPACT } from "@/game/sprites/effects";
-import { PLATFORM, SKYLINE } from "@/game/sprites/scenery";
+import { backdropFor } from "@/game/sprites/scenery";
 import { Camera, FxContext, popText, ring } from "./fx";
 import { Particles } from "./particles";
 import { PixiPixelSprite } from "./pixiSprite";
@@ -31,13 +31,13 @@ const HOME: Record<Who, { x: number; y: number }> = {
   foe: { x: 700, y: 270 },
 };
 
-const SKY = [0x1b1446, 0x251a5c, 0x33226e, 0x4a2c7e, 0x6b3a86, 0x94508a, 0xc46f86];
-
 export interface StageOptions {
   player: CreatureArt;
   foe: CreatureArt;
   reducedMotion: boolean;
   font: string;
+  /** Gym id whose backdrop to paint; kernel city when absent. */
+  scene?: string;
 }
 
 export class CreatureStage {
@@ -56,6 +56,7 @@ export class CreatureStage {
   private fxc!: FxContext;
   private mon!: Record<Who, PixiPixelSprite>;
   private anims: PixiPixelSprite[] = [];
+  private fireflies: { g: Graphics; x: number; y: number; phase: number }[] = [];
   private t = 0;
   private destroyed = false;
 
@@ -75,35 +76,54 @@ export class CreatureStage {
 
   private build() {
     this.fx.scale = this.opts.reducedMotion ? 0.35 : 1;
+    const scene = backdropFor(this.opts.scene);
     // banded pixel sky, wider than the stage so wide screens never letterbox
     const sky = new Graphics();
-    const band = Math.ceil(432 / SKY.length);
-    SKY.forEach((c, i) => sky.rect(-600, -200 + i * band - (i ? 0 : 400), W + 1200, band + (i ? 0 : 400)).fill({ color: c }));
+    const band = Math.ceil(432 / scene.sky.length);
+    scene.sky.forEach((c, i) => sky.rect(-600, -200 + i * band - (i ? 0 : 400), W + 1200, band + (i ? 0 : 400)).fill({ color: c }));
     this.bg.addChild(sky);
-    // stars
-    const stars = new Graphics();
     let seed = 11;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-    for (let i = 0; i < 60; i++) stars.rect(-600 + rnd() * (W + 1200), -150 + rnd() * 220, 3, 3).fill({ color: 0xffffff, alpha: 0.4 + rnd() * 0.5 });
-    this.bg.addChild(stars);
-    // kernel city skyline sitting on the horizon
+    if (scene.specks.kind === "stars") {
+      const stars = new Graphics();
+      for (let i = 0; i < scene.specks.count; i++) stars.rect(-600 + rnd() * (W + 1200), -150 + rnd() * 220, 3, 3).fill({ color: scene.specks.color, alpha: 0.4 + rnd() * 0.5 });
+      this.bg.addChild(stars);
+    }
+    // the area's horizon art (skyline, tree line…)
     for (let i = -2; i < 4; i++) {
-      const city = new PixiPixelSprite(SKYLINE, 3);
-      city.position.set(i * 480 + 240, 232);
-      this.bg.addChild(city);
+      const h = new PixiPixelSprite(scene.horizon, 3);
+      h.position.set(i * 480 + 240, 232);
+      this.bg.addChild(h);
     }
     // ground: two tones with dithered stripes for depth
+    const { base, stripe, edge } = scene.ground;
     const ground = new Graphics();
-    ground.rect(-600, 232, W + 1200, H + 400).fill({ color: 0x2a5a3a });
-    for (let y = 232, i = 0; y < H + 200; y += 6 + i * 2, i++) ground.rect(-600, y, W + 1200, 3).fill({ color: 0x336b44, alpha: 0.8 });
-    ground.rect(-600, 232, W + 1200, 6).fill({ color: 0x1d3f2a });
+    ground.rect(-600, 232, W + 1200, H + 400).fill({ color: base });
+    for (let y = 232, i = 0; y < H + 200; y += 6 + i * 2, i++) ground.rect(-600, y, W + 1200, 3).fill({ color: stripe, alpha: 0.8 });
+    ground.rect(-600, 232, W + 1200, 6).fill({ color: edge });
     this.bg.addChild(ground);
+    for (const p of scene.props) {
+      const s = new PixiPixelSprite(p.sheet, p.scale, p.flip);
+      s.position.set(p.x, p.y);
+      this.bg.addChild(s);
+    }
     // platforms under each creature
     for (const who of ["player", "foe"] as Who[]) {
-      const p = new PixiPixelSprite(PLATFORM, who === "player" ? 4 : 3);
+      const p = new PixiPixelSprite(scene.platform, who === "player" ? 4 : 3);
       p.position.set(HOME[who].x, HOME[who].y + (who === "player" ? 40 : 30));
       this.bg.addChild(p);
     }
+    // fireflies drift over the ground and pulse (frame() moves them)
+    if (scene.specks.kind === "fireflies")
+      for (let i = 0; i < scene.specks.count; i++) {
+        const g = new Graphics();
+        g.rect(-4, -4, 9, 9).fill({ color: scene.specks.color, alpha: 0.25 });
+        g.rect(-1, -1, 3, 3).fill({ color: scene.specks.color });
+        const f = { g, x: -300 + rnd() * (W + 600), y: 60 + rnd() * 380, phase: rnd() * Math.PI * 2 };
+        g.position.set(f.x, f.y);
+        this.fireflies.push(f);
+        this.bg.addChild(g);
+      }
 
     this.mon = {
       // the player's creature is seen from behind, the foe from the front
@@ -151,6 +171,12 @@ export class CreatureStage {
     this.tw.update(dt);
     this.fx.update(dt);
     for (const a of this.anims) a.update(dt);
+    if (!this.opts.reducedMotion)
+      for (const f of this.fireflies) {
+        const p = f.phase + this.t * 0.9;
+        f.g.position.set(Math.round(f.x + Math.sin(p * 0.7) * 18), Math.round(f.y + Math.sin(p * 1.3) * 10));
+        f.g.alpha = 0.35 + 0.65 * Math.max(0, Math.sin(p * 2));
+      }
   }
 
   /* --------------------------------------------------------------- API */

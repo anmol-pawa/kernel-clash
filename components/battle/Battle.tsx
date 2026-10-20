@@ -44,10 +44,12 @@ export interface BattleProps {
   endActions: (won: boolean) => ReactNode;
   /** drawn over the stage (e.g. a badge being awarded) */
   overlay?: ReactNode;
+  /** gym id whose battle backdrop to paint (kernel city when absent) */
+  scene?: string;
 }
 
 /** A question battle: the player's creature vs one foe, one OS question per turn. */
-export function Battle({ player, foe, questions: given, dueFirst: due, lines, onVictory, endActions, overlay }: BattleProps) {
+export function Battle({ player, foe, questions: given, dueFirst: due, lines, onVictory, endActions, overlay, scene }: BattleProps) {
   const host = useRef<HTMLDivElement>(null);
   // fixed at mount: generated questions must not change when a win saves XP
   const [questions] = useState(() => (due ? dueFirst(given, getSave().leitner, Date.now()) : given));
@@ -122,6 +124,7 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
         foe: foe.art,
         reducedMotion: reduced,
         font: pixel.style.fontFamily,
+        scene,
       });
       if (dead) return st.destroy();
       stage.current = st;

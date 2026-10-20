@@ -18,7 +18,7 @@ import { RAIDSNAIL_ART } from "./raidsnail";
 import { RAMSTER_ART } from "./ramster";
 import { SPINNAIL_ART } from "./spinnail";
 import { SYSCALLOW_ART } from "./syscallow";
-import { PLATFORM, SKYLINE } from "./scenery";
+import { GROVE_BUSH, GROVE_ROOTS, GROVE_SHROOMS, GROVE_TREES, GROVE_TUFT, PLATFORM, ROOT_PLATFORM, SKYLINE } from "./scenery";
 import { THREADRAKE_ART } from "./threadrake";
 import { THRASHMOTH_ART } from "./thrashmoth";
 import { TRAPJAW_ART } from "./trapjaw";
@@ -34,7 +34,7 @@ export const TRAINERS: Record<string, CreatureArt> = { basics: SYSCALLOW_ART, pr
 
 /** Move effects and scenery sheets. */
 export const EFFECTS: SpriteSheet[] = [BIT_ORB, IMPACT];
-export const SCENERY: SpriteSheet[] = [PLATFORM, SKYLINE];
+export const SCENERY: SpriteSheet[] = [PLATFORM, SKYLINE, ROOT_PLATFORM, GROVE_TREES, GROVE_ROOTS, GROVE_BUSH, GROVE_SHROOMS, GROVE_TUFT];
 
 /** Overworld sheets: the map marker, the nine badges and gym buildings, and the region map itself. */
 export const WORLD: SpriteSheet[] = [MAP_MARKER, ...BADGES, ...GYM_SHEETS, OVERWORLD];

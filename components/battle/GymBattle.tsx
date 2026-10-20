@@ -105,6 +105,7 @@ export function GymBattle({ gymId }: { gymId: string }) {
         fainted: `${B} was defeated!`,
         fled: `${B} is still standing… You ran out of questions.`,
       }}
+      scene={gym.id}
       onVictory={onVictory}
       overlay={
         badgeShown ? (

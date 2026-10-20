@@ -75,6 +75,7 @@ export function TrainerBattle({ gymId }: { gymId: string }) {
         fainted: `${T} was defeated!`,
         fled: `${T} ${trainer.holdsOn}… You ran out of questions.`,
       }}
+      scene={gym.id}
       onVictory={onVictory}
       endActions={(won) =>
         won ? (

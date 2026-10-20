@@ -3,8 +3,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { CREATURES, EFFECTS, SCENERY, WORLD } from "@/game/sprites";
+import { BACKDROPS, type Backdrop } from "@/game/sprites/scenery";
+import { GYMS } from "@/content/gyms";
 import { creatureProblems } from "@/lib/creature";
-import type { SpriteSheet } from "@/lib/pixel";
+import { runs, type SpriteSheet } from "@/lib/pixel";
 
 const BACKGROUNDS = ["#9fd3a8", "#f8f4e8", "#33226e", "#100e24"];
 
@@ -27,6 +29,51 @@ function SheetRow({ sheet, bg, scale, white }: { sheet: SpriteSheet; bg: string;
         ))}
       </div>
     </div>
+  );
+}
+
+const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+
+/** A sheet's first frame placed like the battle stage does: bottom-centre at (x, y). */
+function Placed({ sheet, x, y, scale, flip = false }: { sheet: SpriteSheet; x: number; y: number; scale: number; flip?: boolean }) {
+  const grid = sheet.idle[0];
+  const w = grid[0].length;
+  const h = grid.length;
+  const left = x - (w * scale) / 2;
+  const tf = flip ? `translate(${left + w * scale} ${y - h * scale}) scale(${-scale} ${scale})` : `translate(${left} ${y - h * scale}) scale(${scale})`;
+  return (
+    <g transform={tf}>
+      {runs(grid).map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={sheet.palette[r.c]} />
+      ))}
+    </g>
+  );
+}
+
+/** The battle stage's backdrop (sky, horizon, ground, props, platforms) without creatures, at 960×540. */
+function BackdropPreview({ scene }: { scene: Backdrop }) {
+  const band = Math.ceil(432 / scene.sky.length);
+  const stripes: number[] = [];
+  for (let y = 232, i = 0; y < 540; y += 6 + i * 2, i++) stripes.push(y);
+  return (
+    <svg viewBox="0 0 960 540" shapeRendering="crispEdges" className="h-auto w-full rounded" role="img" aria-label={`${scene.name} backdrop`}>
+      {scene.sky.map((c, i) => (
+        <rect key={i} x={0} y={i ? -200 + i * band : -600} width={960} height={i ? band : band + 400} fill={hex(c)} />
+      ))}
+      {[0, 1].map((i) => (
+        <Placed key={i} sheet={scene.horizon} x={i * 480 + 240} y={232} scale={3} />
+      ))}
+      <rect x={0} y={232} width={960} height={308} fill={hex(scene.ground.base)} />
+      {stripes.map((y) => (
+        <rect key={y} x={0} y={y} width={960} height={3} fill={hex(scene.ground.stripe)} opacity={0.8} />
+      ))}
+      <rect x={0} y={232} width={960} height={6} fill={hex(scene.ground.edge)} />
+      {scene.props.map((p, i) => (
+        <Placed key={i} {...p} />
+      ))}
+      <Placed sheet={scene.platform} x={250} y={510} scale={4} />
+      <Placed sheet={scene.platform} x={700} y={300} scale={3} />
+    </svg>
   );
 }
 
@@ -84,6 +131,18 @@ export function SpriteViewer() {
           </section>
         );
       })}
+
+      <section className="flex flex-col gap-4 rounded-lg border-2 border-white/10 bg-white/[0.03] p-3" data-testid="backdrops">
+        <h2 className="font-pixel text-sm text-[#5eead4]">BATTLE BACKDROPS</h2>
+        {[...new Set(Object.values(BACKDROPS))].map((b) => (
+          <figure key={b.name} className="flex flex-col gap-2" data-testid={`backdrop-${b.name}`}>
+            <figcaption className="font-pixel text-[9px] text-[#ffd0dd]">
+              {b.name.toUpperCase()} · {GYMS.filter((g) => BACKDROPS[g.id] === b).map((g) => g.name).join(", ")}
+            </figcaption>
+            <BackdropPreview scene={b} />
+          </figure>
+        ))}
+      </section>
 
       <section className="flex flex-col gap-4 rounded-lg border-2 border-white/10 bg-white/[0.03] p-3">
         <h2 className="font-pixel text-sm text-[#5eead4]">EFFECTS + SCENERY</h2>
