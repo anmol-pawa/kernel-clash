@@ -544,6 +544,205 @@ export const COG_PLATFORM: SpriteSheet = {
   idle: [cogPlatform()],
 };
 
+/* ----------------------------------------------------------- Mutex Marsh */
+
+/** A railway semaphore signal: a striped arm on a post, with a lamp at the arm's tip. `down` swings the arm to "go" and lights it green. */
+function signalPost(k: PixelCanvas, x: number, base: number, h: number, down: boolean) {
+  k.rect(x, base - h, 2, h, "i");
+  k.rect(x, base - h, 1, h, "I");
+  k.rect(x - 1, base - 3, 4, 3, "i"); // footing
+  k.rect(x - 1, base - h - 1, 4, 1, "I"); // cap
+  for (let i = 0; i < 8; i++) {
+    const ay = base - h + 2 + (down ? Math.floor(i / 2) : 0);
+    k.rect(x + 2 + i, ay, 1, 2, i % 4 < 2 ? "a" : "W");
+  }
+  const ly = base - h + 2 + (down ? 4 : 0);
+  k.rect(x + 10, ly - 1, 2, 4, "i");
+  k.px(x + 10, ly, down ? "t" : "R");
+  k.px(x + 11, ly, down ? "t" : "R");
+  k.px(x + 10, ly + 1, down ? "T" : "r");
+}
+
+/** The marsh's tree line: a misty bank, bare snags, railway signals standing in the water and a thicket of cattails. */
+function marshHorizon(): string[] {
+  const W = 160;
+  const H = 80;
+  const k = new PixelCanvas(W, H);
+  const rnd = lcg(59);
+  // far bank in mist
+  for (let x = 0; x < W; x++) {
+    const h = 24 + Math.round(5 * Math.sin(x / 11) + 3 * Math.sin(x / 4.1 + 2) + 2 * Math.sin(x / 26));
+    for (let y = H - h; y < H; y++) k.px(x, y, y < H - h + 2 ? "F" : "f");
+  }
+  // bare snags rising from the bank
+  for (const sx of [12, 41, 78, 109, 148]) {
+    const snag = new PixelCanvas(W, H);
+    const top = 22 + Math.floor(rnd() * 14);
+    snag.line(sx, H, sx + 1, H - top, "n");
+    snag.line(sx + 1, H - top + 6, sx - 5, H - top - 1, "n");
+    snag.line(sx + 1, H - top + 12, sx + 6, H - top + 5, "n");
+    snag.line(sx - 2, H - top + 3, sx - 3, H - top - 5, "n");
+    k.stamp(snag.toGrid(), 0, 0);
+  }
+  // signals in the water: the middle one has cleared, the rest still say stop
+  [[26, 46, false], [88, 58, true], [132, 40, false]].forEach(([sx, sh, down]) => {
+    const s = new PixelCanvas(W, H);
+    signalPost(s, sx as number, H - 4, sh as number, down as boolean);
+    s.outline("o");
+    k.stamp(s.toGrid(), 0, 0);
+  });
+  // still water at the foot, with a few ripples
+  for (let x = 0; x < W; x++) for (let y = H - 5; y < H; y++) k.px(x, y, "w");
+  for (let i = 0; i < 16; i++) {
+    const rx = Math.floor(rnd() * (W - 6));
+    k.rect(rx, H - 4 + Math.floor(rnd() * 3), 3 + Math.floor(rnd() * 3), 1, "W");
+  }
+  // cattails and reeds along the near edge
+  const reeds = new PixelCanvas(W, H);
+  for (let x = 1; x < W; x += 3 + Math.floor(rnd() * 4)) {
+    const hgt = 10 + Math.floor(rnd() * 14);
+    const lean = (rnd() - 0.5) * 5;
+    reeds.line(x, H, x + lean, H - hgt, rnd() < 0.5 ? "g" : "G");
+    if (rnd() < 0.45) reeds.rect(Math.round(x + lean) - 0, H - hgt - 3, 2, 4, "c");
+  }
+  reeds.outline("o");
+  k.stamp(reeds.toGrid(), 0, 0);
+  return k.toGrid();
+}
+
+export const MARSH_HORIZON: SpriteSheet = {
+  name: "Mutex Marsh bank",
+  palette: {
+    o: "#0b1a1e",
+    f: "#1f3f46",
+    F: "#2c5359",
+    n: "#14292e",
+    i: "#2c3a44",
+    I: "#566a78",
+    a: "#c23b3b",
+    W: "#e8f0ee",
+    R: "#ff5a4f",
+    r: "#9a2a2a",
+    t: "#6ef0a0",
+    T: "#c8ffd8",
+    w: "#1a3a44",
+    g: "#2d6b45",
+    G: "#4f9a58",
+    c: "#6b4a2e",
+  },
+  idle: [marshHorizon()],
+};
+
+/** A tall clump of reeds with cattail heads. */
+function reedClump(): string[] {
+  const k = new PixelCanvas(26, 34);
+  const rnd = lcg(5);
+  for (const [x, h, lean] of [[5, 22, -3], [9, 30, -1], [13, 26, 1], [17, 32, 3], [21, 20, 4], [7, 16, -4]] as const) {
+    k.line(x, 33, x + lean, 33 - h, "g");
+    k.line(x + 1, 33, x + lean + 1, 33 - h, "G");
+    if (rnd() < 0.9) k.rect(x + lean, 33 - h - 3, 2, 5, "c");
+    k.px(x + lean, 33 - h - 3, "C");
+    k.px(x + lean, 33 - h - 5, "G");
+  }
+  k.line(3, 33, 14, 21, "G");
+  k.line(24, 33, 14, 24, "g");
+  k.rect(2, 32, 22, 2, "m");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const MARSH_REEDS: SpriteSheet = {
+  name: "Marsh reeds",
+  palette: { o: "#0b1a1e", g: "#2d6b45", G: "#5aa85c", c: "#6b4a2e", C: "#a67c4e", m: "#1f4a38" },
+  idle: [reedClump()],
+};
+
+/** A cluster of lily pads with a glowing bud. */
+function lilyPads(): string[] {
+  const k = new PixelCanvas(32, 12);
+  for (const [cx, cy, rx, ry, notch] of [[9, 6, 8, 3.6, 1], [23, 7, 7, 3.2, -1], [16, 4, 5, 2.4, 1]] as const) {
+    k.ellipse(cx, cy, rx, ry, ["g", "G", "h"], [-0.3, -1]);
+    k.line(cx, cy, cx + notch * rx, cy - 1, ".");
+  }
+  k.px(16, 3, "p");
+  k.px(15, 2, "P");
+  k.px(17, 2, "P");
+  k.px(16, 1, "P");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const LILY_PADS: SpriteSheet = {
+  name: "Lily pads",
+  palette: { o: "#0b1a1e", g: "#24603f", G: "#3f8f50", h: "#78c466", p: "#ffe27a", P: "#5eead4" },
+  idle: [lilyPads()],
+};
+
+/** A signal post standing in the shallows (the marsh's wait()/signal() lamp). */
+function signalProp(): string[] {
+  const k = new PixelCanvas(22, 44);
+  signalPost(k, 5, 43, 40, true);
+  k.rect(2, 41, 14, 3, "m");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const SIGNAL_POST: SpriteSheet = {
+  name: "Signal post",
+  palette: { o: "#0b1a1e", i: "#2c3a44", I: "#566a78", a: "#c23b3b", W: "#e8f0ee", R: "#ff5a4f", r: "#9a2a2a", t: "#6ef0a0", T: "#c8ffd8", m: "#1f4a38" },
+  idle: [signalProp()],
+};
+
+/** A mooring post wearing a big brass padlock: the marsh's mutex. */
+function lockPost(): string[] {
+  const k = new PixelCanvas(18, 30);
+  k.rect(6, 10, 6, 20, "b");
+  k.rect(6, 10, 2, 20, "B");
+  k.rect(4, 27, 10, 3, "m");
+  // shackle
+  k.ellipse(9, 7, 5, 6, ["s", "S"]);
+  k.ellipse(9, 8, 3, 4, [".", "."]);
+  for (let y = 4; y < 13; y++) for (let x = 6; x < 13; x++) if (Math.hypot(x + 0.5 - 9, y + 0.5 - 8) < 3.2) k.px(x, y, ".");
+  // lock body
+  k.rect(3, 11, 12, 9, "y");
+  k.rect(3, 11, 12, 2, "Y");
+  k.rect(3, 18, 12, 2, "d");
+  k.rect(8, 14, 2, 3, "k");
+  k.px(8, 14, "k");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const LOCK_POST: SpriteSheet = {
+  name: "Padlock post",
+  palette: { o: "#0b1a1e", b: "#3b2a22", B: "#5e4433", m: "#1f4a38", s: "#7e8a96", S: "#c4ced8", y: "#d9a441", Y: "#ffe08a", d: "#a8742a", k: "#2a1d2e" },
+  idle: [lockPost()],
+};
+
+/** A flat lily-pad platform on dark water, the Mutex Marsh version of the grass platform. */
+function padPlatform(): string[] {
+  const k = new PixelCanvas(74, 20);
+  k.ellipse(37, 13, 35, 6, ["w", "W", "x"], [-0.2, -1]); // water ring
+  k.ellipse(37, 9, 33, 7, ["g", "G", "h", "H"], [-0.3, -1]);
+  // the pad's notch, then veins radiating from the stem
+  k.line(37, 9, 68, 5, ".");
+  k.line(37, 9, 69, 7, ".");
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * 0.2 + (i / 8) * Math.PI * 1.45;
+    k.line(37, 9, 37 + Math.cos(a) * 24, 9 + Math.sin(a) * 4.8, "g");
+  }
+  k.rect(36, 8, 3, 2, "p");
+  k.px(36, 8, "P");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PAD_PLATFORM: SpriteSheet = {
+  name: "Lily pad platform",
+  palette: { o: "#0b1a1e", w: "#16323a", W: "#245058", x: "#3b7a80", g: "#24603f", G: "#3f8f50", h: "#5fb35c", H: "#9be07a", p: "#d9a441", P: "#ffe08a" },
+  idle: [padPlatform()],
+};
+
 /* ------------------------------------------------------------ Backdrops */
 
 /** A prop on the battle ground, placed in stage coordinates by its bottom centre. */
@@ -624,6 +823,28 @@ export const CLOCKTOWER: Backdrop = {
   ],
 };
 
+export const MUTEX_MARSH: Backdrop = {
+  name: "Mutex Marsh",
+  sky: [0x0c1c26, 0x112a33, 0x17383e, 0x214b48, 0x346052, 0x58795c, 0x93a070],
+  specks: { count: 24, color: 0x9bffd0, kind: "fireflies" },
+  horizon: MARSH_HORIZON,
+  ground: { base: 0x1d3f42, stripe: 0x244b4d, edge: 0x0f2427 },
+  platform: PAD_PLATFORM,
+  props: [
+    { sheet: SIGNAL_POST, x: 110, y: 262, scale: 3 },
+    { sheet: SIGNAL_POST, x: 940, y: 440, scale: 3, flip: true },
+    { sheet: LOCK_POST, x: 500, y: 290, scale: 2 },
+    { sheet: LOCK_POST, x: 40, y: 410, scale: 3, flip: true },
+    { sheet: MARSH_REEDS, x: 330, y: 300, scale: 2 },
+    { sheet: MARSH_REEDS, x: 880, y: 330, scale: 2, flip: true },
+    { sheet: MARSH_REEDS, x: 1070, y: 520, scale: 3 },
+    { sheet: MARSH_REEDS, x: 470, y: 540, scale: 3, flip: true },
+    ...([
+      [200, 300], [420, 360], [600, 420], [650, 350], [790, 390], [120, 560], [700, 520], [850, 500], [1000, 400], [-40, 330],
+    ] as const).map(([x, y], i) => ({ sheet: LILY_PADS, x, y, scale: y < 340 ? 2 : 3, flip: i % 2 === 1 })),
+  ],
+};
+
 /**
  * The battle backdrop for each gym, keyed by gym id. Gyms whose own scene
  * hasn't been drawn yet battle in kernel city.
@@ -632,7 +853,7 @@ export const BACKDROPS: Record<string, Backdrop> = {
   basics: KERNEL_CITY,
   processes: FORK_GROVE,
   scheduling: CLOCKTOWER,
-  sync: KERNEL_CITY,
+  sync: MUTEX_MARSH,
   deadlocks: KERNEL_CITY,
   memory: KERNEL_CITY,
   virtual: KERNEL_CITY,
