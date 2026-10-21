@@ -61,6 +61,11 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.4d The Mutex Marsh trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and the gated flow (check trainer-counter balance for Bytling, see run 34's note).
   - [x] 2.4e The Mutex Marsh battle backdrop (sky, horizon, platform, props) in `game/sprites/scenery.ts`.
 - [ ] 2.5 Deadlocks: Coffman conditions, resource-allocation graphs (cycle detection), prevention/avoidance/detection/recovery, and the **Banker's algorithm** (generated safe-sequence and request-granting problems, solver-checked).
+  - [x] 2.5a Deadlock simulators (`game/sim/deadlock.ts`: RAG cycle finder, Banker's safety and request algorithms, detection) and five Gridlock Gym lessons (Coffman conditions, resource-allocation graphs, prevention and avoidance, the Banker's algorithm, detection and recovery) with `rag` and `banker` pixel diagrams and tested quick checks.
+  - [ ] 2.5b Interactive tools: a tap-to-build Banker's safe-sequence widget and a RAG cycle spotter, as question kinds if useful.
+  - [ ] 2.5c Deadlock question pool and seeded generators (safe sequence, request granted or not, need matrix, detection, lock-order deadlock) checked against the simulators, wired into `POOLS.deadlocks`.
+  - [ ] 2.5d The Gridlock Gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
+  - [ ] 2.5e The Gridlock Gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.6 Memory management: contiguous allocation (first/best/worst fit), fragmentation, paging and **address translation** problems, page tables (multi-level, inverted), TLB and effective access time, segmentation.
 - [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
 - [ ] 2.8 Storage and file systems: file allocation (contiguous/linked/indexed), inodes and max-file-size calculations, directories, journaling, RAID levels, **disk scheduling** (FCFS, SSTF, SCAN, C-SCAN, LOOK) with head-movement problems.

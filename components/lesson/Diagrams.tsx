@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { RACE_THREADS, type DiagramId } from "@/content/lessons";
+import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -1179,6 +1180,120 @@ function Philosophers() {
   );
 }
 
+const RAG_EDGES = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"], ["R2", "P1"]] as const;
+
+/** A resource-allocation graph with a cycle (deadlock), beside the four Coffman conditions. */
+function Rag() {
+  const cycle = findCycle(RAG_EDGES);
+  const proc = (cx: number, cy: number, name: string, ramp: Ramp) => (
+    <g>
+      <Disc cx={cx} cy={cy} r={9} fill={INK} />
+      <Disc cx={cx} cy={cy} r={8} fill={ramp[1]} />
+      <Disc cx={cx} cy={cy - 1} r={6} fill={ramp[2]} />
+      <Text x={cx} y={cy + 2} size={5} fill={INK} anchor="middle">
+        {name}
+      </Text>
+    </g>
+  );
+  const res = (cx: number, cy: number, name: string) => (
+    <Block x={cx - 9} y={cy - 9} w={18} h={18} ramp={GOLD}>
+      <Text x={cx} y={cy - 1} size={4} fill={INK} anchor="middle">
+        {name}
+      </Text>
+      <rect x={cx - 3} y={cy + 3} width={2} height={2} fill={INK} />
+    </Block>
+  );
+  return (
+    <>
+      <Marsh seed={9} />
+      {/* P1 -> R1 and P2 -> R2 are requests; R1 -> P2 and R2 -> P1 are assignments */}
+      <Arrow x1={32} y1={24} x2={62} y2={24} color="#f87a8a" />
+      <Arrow x1={74} y1={36} x2={74} y2={64} color="#7cc24f" />
+      <Arrow x1={64} y1={76} x2={34} y2={76} color="#f87a8a" />
+      <Arrow x1={22} y1={64} x2={22} y2={36} color="#7cc24f" />
+      {proc(22, 24, "P1", TEAL)}
+      {res(74, 24, "R1")}
+      {proc(74, 76, "P2", PURPLE)}
+      {res(22, 76, "R2")}
+      <Text x={48} y={20} size={3} fill="#f87a8a" anchor="middle">
+        WANTS
+      </Text>
+      <Text x={48} y={72} size={3} fill="#f87a8a" anchor="middle">
+        WANTS
+      </Text>
+      <Text x={80} y={52} size={3} fill="#7cc24f">
+        HELD
+      </Text>
+      <Text x={17} y={52} size={3} fill="#7cc24f" anchor="end">
+        HELD
+      </Text>
+      <Text x={48} y={98} size={3} fill="#ffe27a" anchor="middle">
+        {`CYCLE ${cycle!.slice(0, -1).join(" ")}`}
+      </Text>
+      <Text x={48} y={105} size={3} fill="#ffe27a" anchor="middle">
+        ONE INSTANCE EACH: DEADLOCK
+      </Text>
+      <Text x={142} y={10} size={4} fill="#ffe27a" anchor="middle">
+        ALL FOUR NEEDED
+      </Text>
+      <Card x={106} y={15} w={72} h={17} lines={["MUTUAL EXCLUSION", "ONE USER AT A TIME"]} size={3} ramp={TEAL} ink="#f8f4e6" />
+      <Card x={106} y={36} w={72} h={17} lines={["HOLD AND WAIT", "KEEP ONE, WANT MORE"]} size={3} ramp={PURPLE} ink="#f8f4e6" />
+      <Card x={106} y={57} w={72} h={17} lines={["NO PREEMPTION", "ONLY THE HOLDER FREES"]} size={3} ramp={PINK} ink="#f8f4e6" />
+      <Card x={106} y={78} w={72} h={17} lines={["CIRCULAR WAIT", "P1 > P2 > ... > P1"]} size={3} ramp={RED} ink="#f8f4e6" />
+    </>
+  );
+}
+
+/** Silberschatz's Banker's example: allocation, max, need and the safe sequence. */
+function Banker() {
+  const s = BANKER_EXAMPLE;
+  const nd = need(s);
+  const r = safety(s);
+  const cols = [
+    ["ALLOC", s.allocation, 52],
+    ["MAX", s.max, 86],
+    ["NEED", nd, 120],
+  ] as const;
+  return (
+    <>
+      <Marsh seed={10} />
+      <Text x={4} y={9} size={3.5} fill="#cfc4ff">
+        A B C = 10 5 7 INSTANCES
+      </Text>
+      <Text x={176} y={9} size={3.5} fill="#7cf0c8" anchor="end">
+        {`AVAILABLE ${s.available.join(" ")}`}
+      </Text>
+      {cols.map(([h, , x]) => (
+        <Text key={h} x={x + 12} y={19} size={3.5} fill="#ffe27a" anchor="middle">
+          {h}
+        </Text>
+      ))}
+      {s.allocation.map((_, i) => (
+        <g key={i}>
+          <Card x={4} y={22 + i * 11} w={16} h={9} lines={[`P${i}`]} size={3} ramp={i % 2 ? PURPLE : TEAL} ink="#f8f4e6" />
+          {cols.map(([h, m, x]) => (
+            <Text key={h} x={x} y={29 + i * 11} size={3.5} fill={h === "NEED" ? "#f8f4e6" : "#cfc4ff"}>
+              {m[i].join("  ")}
+            </Text>
+          ))}
+        </g>
+      ))}
+      <Text x={90} y={86} size={3.5} fill="#f8f4e6" anchor="middle">
+        SAFE SEQUENCE: FINISHERS FREE THEIR ALLOCATION
+      </Text>
+      {r.sequence.map((p, k) => (
+        <g key={k}>
+          <Card x={14 + k * 29} y={90} w={18} h={9} lines={[`P${p}`]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+          {k < r.sequence.length - 1 && <Text x={34 + k * 29} y={97} size={4} fill="#ffe27a">{">"}</Text>}
+          <Text x={23 + k * 29} y={106} size={3} fill="#7cf0c8" anchor="middle">
+            {r.work[k].join(" ")}
+          </Text>
+        </g>
+      ))}
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -1206,6 +1321,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   semaphore: { title: "A counting semaphore: three threads in, two asleep on its queue", draw: Semaphore },
   monitor: { title: "A monitor with an entry queue and condition-variable queues", draw: Monitor },
   philosophers: { title: "Five dining philosophers, each holding one chopstick: deadlock", draw: Philosophers },
+  rag: { title: "A resource-allocation graph with a cycle, and the four Coffman conditions", draw: Rag },
+  banker: { title: "The Banker's algorithm: allocation, max, need and a safe sequence", draw: Banker },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

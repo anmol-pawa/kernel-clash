@@ -4,8 +4,9 @@ import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, SYNC_EXAMPLES, switches } from "@/components/lesson/Diagrams";
+import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { PETERSON, finalValues, lostUpdates, runSemaphore, trace } from "@/game/sim/sync";
-import { RACE_THREADS, RACE_VALUES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
+import { BANKER_CHECK_SEQS, DETECT_CHECK_REQUESTS, RACE_THREADS, RACE_VALUES, RAG_CHECK_EDGES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
@@ -13,7 +14,8 @@ const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
 const PROCESS_DIAGRAMS = ["pstates", "context", "fork", "threads", "ipc"];
 const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
 const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS];
+const DEADLOCK_DIAGRAMS = ["rag", "banker"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -318,6 +320,50 @@ describe("synchronization lessons", () => {
     expect(q.steps).toEqual(["wait(empty)", "wait(mutex)", "Add the item to the buffer", "signal(mutex)", "signal(full)"]);
     expect(grade(q, { kind: "order", order: [0, 1, 2, 3, 4] })).toBe(true);
     expect(grade(q, { kind: "order", order: [1, 0, 2, 3, 4] })).toBe(false);
+  });
+});
+
+describe("deadlock lessons", () => {
+  const mcq = (id: string) => {
+    const q = lessonById(id)!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    return q;
+  };
+
+  it("cover every Gridlock Gym topic in order; the graph diagram is on two pages", () => {
+    const ls = lessonsOf("deadlocks");
+    expect(ls).toHaveLength(GYMS.find((g) => g.id === "deadlocks")!.topics.length);
+    expect(ls.map((l) => l.id)).toEqual(["deadlocks-coffman", "deadlocks-rag", "deadlocks-prevention", "deadlocks-banker", "deadlocks-recovery"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual(["banker", "rag", "rag"]);
+    for (const l of ls) expect(l.check.move.type).toBe("sync");
+  });
+
+  it("graph check: P1 → R1 → P2 → R2 with R2 free has no cycle; the diagram's graph does", () => {
+    expect(findCycle(RAG_CHECK_EDGES)).toBeNull();
+    expect(mcq("deadlocks-rag").options[mcq("deadlocks-rag").answer]).toMatch(/^No/);
+    expect(findCycle([["P1", "R1"], ["R1", "P2"], ["P2", "R2"], ["R2", "P1"]])).not.toBeNull();
+  });
+
+  it("Banker's check: exactly one option is a safe sequence, and it is the textbook's", () => {
+    const q = mcq("deadlocks-banker");
+    const safe = BANKER_CHECK_SEQS.map((s) => isSafeSequence(BANKER_EXAMPLE, s));
+    expect(safe).toEqual([true, false, false, false]);
+    expect(q.answer).toBe(0);
+    expect(q.options[0]).toBe("<P1, P3, P4, P0, P2>");
+    expect(questionProblems(q)).toEqual([]);
+  });
+
+  it("recovery check: P2 asking for one more C deadlocks four processes", () => {
+    const q = lessonById("deadlocks-recovery")!.check;
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    expect(detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allocation, DETECT_CHECK_REQUESTS)).toEqual([1, 2, 3, 4]);
+    expect(grade(q, { kind: "numeric", value: "4" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "5" })).toBe(false);
+  });
+
+  it("Coffman and prevention checks name circular wait", () => {
+    expect(mcq("deadlocks-coffman").options[0]).toBe("Circular wait");
+    expect(mcq("deadlocks-prevention").options[0]).toBe("Circular wait");
   });
 });
 

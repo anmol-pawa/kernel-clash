@@ -1,5 +1,6 @@
 import type { Question } from "@/game/engine/question";
 import { roundRobin, sjf } from "@/game/sim/scheduling";
+import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadlock";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -9,7 +10,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker";
 
 export interface LessonPage {
   heading: string;
@@ -57,6 +58,14 @@ const RACE_CHECK_ANSWER = [0, 1, 1, 1, 0, 0];
 /** five processes wait() on a semaphore that starts at 2 */
 export const SEM_CHECK = runSemaphore(2, ["A", "B", "C", "D", "E"].map((who) => ({ op: "wait" as const, who })));
 const YMOVE = { name: "Recall", type: "sync", power: 30 } as const;
+const seqText = (seq: readonly number[]) => `<${seq.map((p) => `P${p}`).join(", ")}>`;
+/** the Banker's check: the textbook's safe sequence among three orders that fail */
+export const BANKER_CHECK_SEQS = [safety(BANKER_EXAMPLE).sequence, [0, 1, 2, 3, 4], [4, 3, 2, 1, 0], [2, 0, 4, 3, 1]];
+/** the recovery check: P2 asks for one more C in the detection example */
+export const DETECT_CHECK_REQUESTS = DETECT_EXAMPLE.requests.map((r, i) => (i === 2 ? [0, 0, 1] : r));
+export const DETECT_CHECK = detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allocation, DETECT_CHECK_REQUESTS);
+/** the graph check: P1 → R1, R1 → P2 and P2 → R2, where R2 is free */
+export const RAG_CHECK_EDGES = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"]] as const;
 const table = (js: { name: string; burst: number }[]) => ["Proc  Burst", ...js.map((j) => `${j.name.padEnd(6)}${j.burst}`)].join("\n");
 
 export const LESSONS: Lesson[] = [
@@ -821,6 +830,154 @@ export const LESSONS: Lesson[] = [
       prompt: "Put a producer's steps for adding one item to the bounded buffer in order.",
       steps: ["wait(empty)", "wait(mutex)", "Add the item to the buffer", "signal(mutex)", "signal(full)"],
       explain: "Wait for a free slot first, then lock the buffer, add the item, unlock, and signal that a slot is full. Locking before waiting for a slot can deadlock.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "deadlocks-coffman",
+    gym: "deadlocks",
+    title: "Coffman conditions",
+    pages: [
+      {
+        heading: "What a deadlock is",
+        body: [
+          "A deadlock is a set of processes in which every process waits for a resource held by another process in the set. None can run, so none will ever release anything.",
+          "Example: thread 1 locks mutex A then asks for B, while thread 2 locks B then asks for A. If each gets its first lock before the other asks for a second, both sleep forever.",
+        ],
+      },
+      {
+        heading: "Four conditions, all at once",
+        body: [
+          "A deadlock can happen only if all four Coffman conditions hold together: mutual exclusion (a resource is used by one process at a time), hold and wait (a process holds some resources while waiting for more), no preemption (a resource is released only by the process holding it) and circular wait (P0 waits for P1, P1 for P2, ... Pn for P0).",
+          "The four are necessary, not sufficient: having all of them doesn't guarantee a deadlock, but breaking any one makes a deadlock impossible. That is the idea behind prevention.",
+        ],
+        diagram: "rag",
+      },
+    ],
+    check: {
+      id: "lesson-coffman",
+      prompt: "P1 holds the printer and waits for the scanner. P2 holds the scanner and waits for the printer. Which Coffman condition does this pattern show best?",
+      options: ["Circular wait", "Mutual exclusion", "Preemption", "Starvation"],
+      answer: 0,
+      explain: "P1 waits for P2 and P2 waits for P1: a circular chain of waits. (Hold and wait and mutual exclusion are also true here, but the circle is what the pattern shows. Preemption would break the deadlock, not show it.)",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "deadlocks-rag",
+    gym: "deadlocks",
+    title: "Resource-allocation graphs",
+    pages: [
+      {
+        heading: "Drawing the system",
+        body: [
+          "A resource-allocation graph has a node for each process (a circle) and each resource type (a box, with a dot per instance). A request edge P → R means P waits for an instance of R. An assignment edge R → P means an instance of R is held by P.",
+          "A request edge turns into an assignment edge when the instance is granted, and back again when it is released.",
+        ],
+        diagram: "rag",
+      },
+      {
+        heading: "Cycles",
+        body: [
+          "If the graph has no cycle, nothing is deadlocked. If every resource has a single instance, a cycle means deadlock: it is necessary and sufficient.",
+          "If resources have several instances, a cycle is necessary but not sufficient: a process outside the cycle may hold a spare instance and release it, breaking the wait. So with several instances a cycle only means a deadlock is possible.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-rag",
+      prompt: "A graph has edges P1 → R1, R1 → P2 and P2 → R2. R1 and R2 have one instance each, and R2 is held by nobody. Is there a deadlock?",
+      options: ["No: there is no cycle, and P2 will get R2", "Yes: P1, P2 and R1 form a cycle", "Yes: P1 is starved", "Only if R2 has two instances"],
+      answer: 0,
+      explain: "Following the edges P1 → R1 → P2 → R2 ends at R2, which is free, so there is no cycle. P2 gets R2, finishes and releases R1, and then P1 gets it.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "deadlocks-prevention",
+    gym: "deadlocks",
+    title: "Prevention and avoidance",
+    pages: [
+      {
+        heading: "Prevention: break one condition",
+        body: [
+          "Mutual exclusion can't usually be broken (a mutex or a printer is non-sharable by nature), but read-only files can be shared. Hold and wait is broken by requesting every resource at the start, or by releasing what you hold before asking for more; it costs utilization and can cause starvation.",
+          "No preemption is broken by taking resources from a waiting process, which suits resources whose state can be saved, such as CPU registers and memory, but not locks. Circular wait is broken by numbering the resources and requiring requests in increasing order. This is the lock-ordering rule used in real code, and the easiest one to apply.",
+        ],
+      },
+      {
+        heading: "Avoidance: stay in safe states",
+        body: [
+          "Avoidance needs advance information, usually each process's maximum demand. The system grants a request only if the state afterwards is safe: there is some order in which every process can finish even if each asks for its full maximum.",
+          "A safe state is never deadlocked. An unsafe state isn't a deadlock yet, but it may lead to one, so avoidance keeps the system out of unsafe states. For single-instance resources a graph with claim edges does the job; with several instances the Banker's algorithm is used.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-prevention",
+      prompt: "Every thread must take locks in increasing order of lock number. Which Coffman condition does this rule break?",
+      options: ["Circular wait", "Hold and wait", "Mutual exclusion", "No preemption"],
+      answer: 0,
+      explain: "A cycle of waits would need some thread holding a higher-numbered lock while waiting for a lower-numbered one, which the rule forbids. Threads still hold locks while waiting, and the locks are still exclusive.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "deadlocks-banker",
+    gym: "deadlocks",
+    title: "The Banker's algorithm",
+    pages: [
+      {
+        heading: "The tables",
+        body: [
+          "For n processes and m resource types the banker keeps Available (free instances of each type), Max (the most each process may ask for), Allocation (what each holds now) and Need = Max − Allocation.",
+          "In Silberschatz's example, A, B and C have 10, 5 and 7 instances, Available is (3, 3, 2), and P0's Need is (7, 4, 3).",
+        ],
+        diagram: "banker",
+      },
+      {
+        heading: "Safety and requests",
+        body: [
+          "Safety algorithm: start with Work = Available. Find a process that isn't finished and whose Need ≤ Work; pretend it runs to the end and returns its Allocation (Work += Allocation). Repeat. If everyone can finish, the order is a safe sequence and the state is safe.",
+          "Request algorithm: if the request exceeds the process's Need, that is an error; if it exceeds Available, the process waits. Otherwise pretend to grant it, and run the safety algorithm. Grant the request only if the new state is safe. In the example P1's request (1, 0, 2) is granted, but P0's (0, 2, 0) afterwards would be unsafe.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-banker",
+      prompt: "Using the example tables above (Available = 3 3 2), which order of processes is a safe sequence?",
+      options: BANKER_CHECK_SEQS.map(seqText),
+      answer: 0,
+      explain: `Work starts at 3 3 2. P1 needs 1 2 2, so it can finish and Work becomes 5 3 2. Then P3 (needs 0 1 1) finishes, giving 7 4 3; P4 (4 3 1) gives 7 4 5; P0 (7 4 3) gives 7 5 5; and finally P2 (6 0 0) gives 10 5 7. The other orders start with a process whose Need doesn't fit in the free resources.`,
+      move: YMOVE,
+    },
+  },
+  {
+    id: "deadlocks-recovery",
+    gym: "deadlocks",
+    title: "Detection and recovery",
+    pages: [
+      {
+        heading: "Detect it",
+        body: [
+          "If a system neither prevents nor avoids deadlock, it needs a detection algorithm and a way to recover. With single-instance resources, keep a wait-for graph (the allocation graph with the resource nodes removed) and look for a cycle, which costs O(n²).",
+          "With several instances use a version of the Banker's algorithm that uses each process's current Request instead of its Need. A process that can't finish with the free resources is deadlocked. The cost is O(m × n²).",
+        ],
+      },
+      {
+        heading: "Recover",
+        body: [
+          "Terminate processes: abort all the deadlocked processes (certain, but expensive), or abort them one at a time until the cycle breaks, choosing by priority, run time so far, resources held and how many more it needs.",
+          "Or preempt resources: pick a victim, roll it back to a safe state and restart it, and make sure the same process isn't always the victim, or it starves. Real systems, such as Unix and Windows, mostly leave deadlock to the programmer, since it is rare and the detection is costly. The ostrich algorithm is ignoring the problem.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-recovery",
+      kind: "numeric",
+      prompt: "Five processes share A = 7, B = 2, C = 6 and nothing is free. Silberschatz's detection example is safe, but now P2 requests one more instance of C. How many processes are deadlocked?",
+      answer: DETECT_CHECK.length,
+      explain: `P0 requests nothing, so it finishes and returns (0, 1, 0). That satisfies nobody: P1 wants (2, 0, 2), P2 (0, 0, 1), P3 (1, 0, 0) and P4 (0, 0, 2), and none of that is free. So ${DETECT_CHECK.length} processes (P1 to P4) are deadlocked and P0 isn't.`,
       move: YMOVE,
     },
   },
