@@ -2,11 +2,13 @@
 import Link from "next/link";
 import { Fragment, useState, useSyncExternalStore } from "react";
 import { AnswerPanel, type Reveal } from "@/components/battle/AnswerPanel";
+import { BankerPlay } from "@/components/lesson/BankerBoard";
 import { InterleavePlay } from "@/components/lesson/Interleave";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { TypeBadge } from "@/components/ui/kit";
 import { GYMS } from "@/content/gyms";
 import { RACE_THREADS, RACE_VALUES, lessonsOf, type Lesson } from "@/content/lessons";
+import { BANKER_EXAMPLE } from "@/game/sim/deadlock";
 import { isEvolved, starterById } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { gymFlow } from "@/game/world/progress";
@@ -210,6 +212,8 @@ function LessonReader({
           <div className="overflow-hidden rounded-[6px] border-4 border-[#1f1a3a] shadow-[0_4px_0_#0006]">
             {p.play === "race" ? (
               <InterleavePlay threads={RACE_THREADS} init={{ counter: 5 }} watch="counter" targets={RACE_VALUES} />
+            ) : p.play === "banker" ? (
+              <BankerPlay resources={["A", "B", "C"]} state={BANKER_EXAMPLE} />
             ) : p.diagram ? (
               <Diagram id={p.diagram} />
             ) : (

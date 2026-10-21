@@ -369,3 +369,13 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: new `tests/deadlock.test.ts` (9 tests) covers cycles, the textbook need matrix, the safe sequence <P1,P3,P4,P0,P2>, P1's (1,0,2) granted, P4's (3,3,0) not available, P0's (0,2,0) unsafe, a request beyond need, and detection with and without P2's extra request. `tests/lessons.test.ts` checks the lessons' order, diagrams, and every quick check against the simulators.
 - Verified: lint, typecheck, `npm test` (425 tests), `build:pages` (222 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) opened the RAG, Banker's and recovery lessons. No console errors and no horizontal overflow. I reviewed the screenshots and fixed the "HELD BY" label that ran into a card. I didn't look at the quick-check pages in the screenshots.
 - Next: 2.5b tap-to-build Banker's safe sequence and a RAG cycle spotter.
+
+## 2026-10-21: 2.5b Banker's safe-sequence builder (run 42)
+- Main was green and no lock was held. I split the RAG cycle spotter off as 2.5b2 to keep this run small.
+- `game/sim/deadlock.ts`: `walkSequence` replays a (partial) order, giving Work before each pick and whether each pick's Need fit.
+- New `banker` question kind (`game/engine/question.ts`): resources, a `BankerState` and one safe sequence. `grade` accepts any safe sequence (via `isSafeSequence`); `questionProblems` checks process and resource counts, vectors, max ≥ allocation and that the stored answer is safe.
+- `components/lesson/BankerBoard.tsx`: `BankerBoard` (tappable process rows with Allocation and Need, a live Work vector, red ✗ for a pick that doesn't fit, a safe-sequence hint after a wrong answer) and `BankerPlay`. `AnswerPanel` gets `BankerPanel` (UNDO and CONFIRM ORDER).
+- The Banker's lesson has a new "Try it: find a safe sequence" play page, and its quick check is now a `banker` question (was MCQ).
+- Tests: question tests for the new kind, `walkSequence` tests (textbook Work trace, bad pick, agreement with `isSafeSequence` on all 120 permutations), lesson tests for the new check and play page.
+- Verified: lint, typecheck, `npm test` (432 tests), `build:pages` (222 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): play page (bad pick, solved) and the quick check answered wrong with the hint. No console errors, no horizontal overflow. I reviewed the screenshots.
+- Next: 2.5b2 RAG cycle spotter, then 2.5c.

@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { MenuChoice } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
 import { rampFor } from "@/components/lesson/Gantt";
+import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -28,7 +29,7 @@ const CONFIRM = "gb-box flex min-h-12 w-full items-center justify-center font-pi
  * The answer controls under the message box, one layout per question kind:
  * a 2×2 menu (MCQ), toggles plus CONFIRM (select all), a keypad (numeric),
  * tap-to-number steps (order), a tap-to-build Gantt chart (gantt) or
- * tap-to-schedule threads (interleave). Remount it per question (`key`) to reset it.
+ * tap-to-schedule threads (interleave) or tap-to-order processes (banker). Remount it per question (`key`) to reset it.
  */
 export function AnswerPanel(p: Props) {
   switch (kindOf(p.q)) {
@@ -42,6 +43,8 @@ export function AnswerPanel(p: Props) {
       return <GanttPanel {...p} q={p.q as GanttQ} />;
     case "interleave":
       return <InterleavePanel {...p} q={p.q as InterleaveQ} />;
+    case "banker":
+      return <BankerPanel {...p} q={p.q as BankerQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -369,6 +372,48 @@ function InterleavePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & {
             }}
           >
             {schedule.length === total ? `▶ CONFIRM (${q.goal.v} = ${now})` : `GOAL ${q.goal.v}=${q.goal.value} · ${schedule.length}/${total}`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Banker's algorithm: tap the processes in an order that lets each finish
+ * (its Need fits in Work, which grows by its Allocation). Any safe sequence is
+ * right; after a wrong one, a safe sequence is shown.
+ */
+function BankerPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: BankerQ }) {
+  const [seq, setSeq] = useState<number[]>([]);
+  const total = q.state.allocation.length;
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "banker" ? reveal.response.sequence : seq;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="banker">
+      <BankerBoard
+        resources={q.resources}
+        state={q.state}
+        sequence={shown}
+        onPick={locked || seq.length >= total ? undefined : (p) => (sfx.blip(), setSeq((s) => [...s, p]))}
+        hint={reveal && !reveal.correct ? q.answer : undefined}
+        tone={reveal ? (reveal.correct ? "right" : "wrong") : undefined}
+      />
+      {!reveal && (
+        <div className="grid grid-cols-[auto_1fr] gap-1.5">
+          <button type="button" disabled={locked || seq.length === 0} onClick={() => (sfx.blip(), setSeq((s) => s.slice(0, -1)))} className={`${KEY_BTN} px-3`} aria-label="Undo">
+            ⌫ UNDO
+          </button>
+          <button
+            type="button"
+            className={CONFIRM}
+            disabled={locked || seq.length !== total}
+            onClick={() => {
+              sfx.click();
+              onSubmit({ kind: "banker", sequence: seq });
+            }}
+          >
+            {seq.length === total ? "▶ CONFIRM ORDER" : `FINISH ORDER · ${seq.length}/${total}`}
           </button>
         </div>
       )}

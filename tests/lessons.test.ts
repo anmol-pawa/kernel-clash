@@ -4,9 +4,9 @@ import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, SYNC_EXAMPLES, switches } from "@/components/lesson/Diagrams";
-import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isSafeSequence } from "@/game/sim/deadlock";
+import { DETECT_EXAMPLE, detect, findCycle } from "@/game/sim/deadlock";
 import { PETERSON, finalValues, lostUpdates, runSemaphore, trace } from "@/game/sim/sync";
-import { BANKER_CHECK_SEQS, DETECT_CHECK_REQUESTS, RACE_THREADS, RACE_VALUES, RAG_CHECK_EDGES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
+import { DETECT_CHECK_REQUESTS, RACE_THREADS, RACE_VALUES, RAG_CHECK_EDGES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
@@ -344,13 +344,20 @@ describe("deadlock lessons", () => {
     expect(findCycle([["P1", "R1"], ["R1", "P2"], ["P2", "R2"], ["R2", "P1"]])).not.toBeNull();
   });
 
-  it("Banker's check: exactly one option is a safe sequence, and it is the textbook's", () => {
-    const q = mcq("deadlocks-banker");
-    const safe = BANKER_CHECK_SEQS.map((s) => isSafeSequence(BANKER_EXAMPLE, s));
-    expect(safe).toEqual([true, false, false, false]);
-    expect(q.answer).toBe(0);
-    expect(q.options[0]).toBe("<P1, P3, P4, P0, P2>");
+  it("Banker's check: tap a safe sequence; the textbook's passes, orders that start with P0 or P2 fail", () => {
+    const q = lessonById("deadlocks-banker")!.check;
+    if (q.kind !== "banker") throw new Error("expected banker");
     expect(questionProblems(q)).toEqual([]);
+    expect(q.answer).toEqual([1, 3, 4, 0, 2]);
+    expect(grade(q, { kind: "banker", sequence: [1, 3, 4, 0, 2] })).toBe(true);
+    expect(grade(q, { kind: "banker", sequence: [3, 1, 4, 0, 2] })).toBe(true); // other safe orders count
+    expect(grade(q, { kind: "banker", sequence: [0, 1, 2, 3, 4] })).toBe(false);
+    expect(grade(q, { kind: "banker", sequence: [2, 0, 4, 3, 1] })).toBe(false);
+    expect(grade(q, { kind: "banker", sequence: [1, 3, 4, 0] })).toBe(false);
+  });
+
+  it("the Banker's lesson has a free-play safe-sequence page", () => {
+    expect(lessonById("deadlocks-banker")!.pages.filter((p) => p.play === "banker")).toHaveLength(1);
   });
 
   it("recovery check: P2 asking for one more C deadlocks four processes", () => {

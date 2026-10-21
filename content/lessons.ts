@@ -18,7 +18,7 @@ export interface LessonPage {
   body: string[];
   diagram?: DiagramId;
   /** an interactive board shown in place of a diagram */
-  play?: "race";
+  play?: "race" | "banker";
 }
 
 export interface Lesson {
@@ -58,9 +58,6 @@ const RACE_CHECK_ANSWER = [0, 1, 1, 1, 0, 0];
 /** five processes wait() on a semaphore that starts at 2 */
 export const SEM_CHECK = runSemaphore(2, ["A", "B", "C", "D", "E"].map((who) => ({ op: "wait" as const, who })));
 const YMOVE = { name: "Recall", type: "sync", power: 30 } as const;
-const seqText = (seq: readonly number[]) => `<${seq.map((p) => `P${p}`).join(", ")}>`;
-/** the Banker's check: the textbook's safe sequence among three orders that fail */
-export const BANKER_CHECK_SEQS = [safety(BANKER_EXAMPLE).sequence, [0, 1, 2, 3, 4], [4, 3, 2, 1, 0], [2, 0, 4, 3, 1]];
 /** the recovery check: P2 asks for one more C in the detection example */
 export const DETECT_CHECK_REQUESTS = DETECT_EXAMPLE.requests.map((r, i) => (i === 2 ? [0, 0, 1] : r));
 export const DETECT_CHECK = detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allocation, DETECT_CHECK_REQUESTS);
@@ -936,6 +933,14 @@ export const LESSONS: Lesson[] = [
         diagram: "banker",
       },
       {
+        heading: "Try it: find a safe sequence",
+        body: [
+          "Tap the processes in the order they could finish. Work starts at Available; a process can go when its Need fits in Work, and it hands back its Allocation when it's done. Tap one too early and the board turns it red.",
+          "Many orders work. The book's circular scan happens to find <P1, P3, P4, P0, P2>.",
+        ],
+        play: "banker",
+      },
+      {
         heading: "Safety and requests",
         body: [
           "Safety algorithm: start with Work = Available. Find a process that isn't finished and whose Need ≤ Work; pretend it runs to the end and returns its Allocation (Work += Allocation). Repeat. If everyone can finish, the order is a safe sequence and the state is safe.",
@@ -945,10 +950,12 @@ export const LESSONS: Lesson[] = [
     ],
     check: {
       id: "lesson-banker",
-      prompt: "Using the example tables above (Available = 3 3 2), which order of processes is a safe sequence?",
-      options: BANKER_CHECK_SEQS.map(seqText),
-      answer: 0,
-      explain: `Work starts at 3 3 2. P1 needs 1 2 2, so it can finish and Work becomes 5 3 2. Then P3 (needs 0 1 1) finishes, giving 7 4 3; P4 (4 3 1) gives 7 4 5; P0 (7 4 3) gives 7 5 5; and finally P2 (6 0 0) gives 10 5 7. The other orders start with a process whose Need doesn't fit in the free resources.`,
+      kind: "banker",
+      prompt: "Using the example tables (Available = 3 3 2), tap the processes in an order that is a safe sequence.",
+      resources: ["A", "B", "C"],
+      state: BANKER_EXAMPLE,
+      answer: safety(BANKER_EXAMPLE).sequence,
+      explain: `Work starts at 3 3 2. P1 needs 1 2 2, so it can finish and Work becomes 5 3 2. Then P3 (needs 0 1 1) finishes, giving 7 4 3; P4 (4 3 1) gives 7 4 5; P0 (7 4 3) gives 7 5 5; and finally P2 (6 0 0) gives 10 5 7. Other safe orders exist, but an order that starts with P0 or P2 fails: their Need doesn't fit in the free resources.`,
       move: YMOVE,
     },
   },

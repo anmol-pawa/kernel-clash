@@ -148,3 +148,27 @@ export const DETECT_EXAMPLE = {
   allocation: [[0, 1, 0], [2, 0, 0], [3, 0, 3], [2, 1, 1], [0, 0, 2]],
   requests: [[0, 0, 0], [2, 0, 2], [0, 0, 0], [1, 0, 0], [0, 0, 2]],
 } as const;
+
+export interface SequenceWalk {
+  /** Work just before each pick (the first is Available) */
+  before: number[][];
+  /** whether each pick could really finish: its Need ≤ Work at that point */
+  ok: boolean[];
+  /** Work after the last pick; a pick that couldn't finish adds nothing */
+  work: number[];
+}
+
+/** Replay a (possibly partial) order of finishing processes, marking each pick that can't run. */
+export function walkSequence(s: BankerState, seq: readonly number[]): SequenceWalk {
+  const nd = need(s);
+  let work: number[] = [...s.available];
+  const before: number[][] = [];
+  const ok: boolean[] = [];
+  for (const i of seq) {
+    before.push(work);
+    const can = le(nd[i], work);
+    ok.push(can);
+    if (can) work = add(work, s.allocation[i]);
+  }
+  return { before, ok, work };
+}

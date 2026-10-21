@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isSafeSequence, need, request, safety } from "@/game/sim/deadlock";
+import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isSafeSequence, need, request, safety, walkSequence } from "@/game/sim/deadlock";
 
 describe("resource-allocation graph cycles", () => {
   it("finds a cycle and none in a chain", () => {
@@ -53,5 +53,23 @@ describe("detection (Silberschatz §8.6.2)", () => {
   it("P2 asking for one more C deadlocks P1–P4", () => {
     const r = requests.map((x, i) => (i === 2 ? [0, 0, 1] : x));
     expect(detect(available, allocation, r)).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("walkSequence", () => {
+  it("tracks Work along the textbook sequence", () => {
+    const w = walkSequence(BANKER_EXAMPLE, [1, 3, 4, 0, 2]);
+    expect(w.ok).toEqual([true, true, true, true, true]);
+    expect(w.before).toEqual([[3, 3, 2], [5, 3, 2], [7, 4, 3], [7, 4, 5], [7, 5, 5]]);
+    expect(w.work).toEqual([10, 5, 7]);
+  });
+  it("marks a pick whose Need doesn't fit and adds nothing for it", () => {
+    const w = walkSequence(BANKER_EXAMPLE, [0, 1]);
+    expect(w.ok).toEqual([false, true]);
+    expect(w.work).toEqual([5, 3, 2]);
+  });
+  it("agrees with isSafeSequence on every permutation of the example", () => {
+    const perms = (a: number[]): number[][] => (a.length < 2 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((p) => [x, ...p])));
+    for (const p of perms([0, 1, 2, 3, 4])) expect(walkSequence(BANKER_EXAMPLE, p).ok.every(Boolean), p.join()).toBe(isSafeSequence(BANKER_EXAMPLE, p));
   });
 });

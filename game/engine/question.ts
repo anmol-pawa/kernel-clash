@@ -8,11 +8,13 @@
  *   order    put shuffled steps back in order
  *   gantt    build a scheduler's Gantt chart one time unit per tap
  *   interleave  be the scheduler: tap which thread runs its next step
+ *   banker   tap the processes in a safe order (Banker's algorithm)
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
 import { ganttText, type Slice } from "@/game/sim/scheduling";
+import { isSafeSequence, type BankerState } from "@/game/sim/deadlock";
 import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
 
@@ -87,14 +89,27 @@ export interface InterleaveQ extends Base {
   answer: readonly number[];
 }
 
+export interface BankerQ extends Base {
+  kind: "banker";
+  /** resource-type names, one per column (e.g. A, B, C) */
+  resources: readonly string[];
+  /** Available, Allocation and Max; the player works out Need */
+  state: BankerState;
+  /** one safe sequence (process indexes), found by the safety algorithm */
+  answer: readonly number[];
+}
+
+/** Most processes a banker question may have (one tap each). */
+export const MAX_BANKER_PROCESSES = 6;
+
 /** Most steps an interleave question may have (one tap each). */
 export const MAX_INTERLEAVE_STEPS = 12;
 
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -107,7 +122,9 @@ export type Response =
   /** who runs in each time unit from 0 (null = idle) */
   | { kind: "gantt"; units: readonly (string | null)[] }
   /** the thread that took each step, in order */
-  | { kind: "interleave"; schedule: readonly number[] };
+  | { kind: "interleave"; schedule: readonly number[] }
+  /** the processes in the order the player listed them */
+  | { kind: "banker"; sequence: readonly number[] };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -183,6 +200,9 @@ export function grade(q: Question, r: Response): boolean {
       const iq = q as InterleaveQ;
       return interleaveResult(iq, r.schedule) === iq.goal.value;
     }
+    case "banker":
+      // any safe sequence is right, not just the one the safety algorithm found
+      return isSafeSequence((q as BankerQ).state, r.sequence);
   }
 }
 
@@ -206,6 +226,8 @@ export function answerText(q: Question): string {
       return ganttText(q.answer);
     case "interleave":
       return scheduleText(q.threads, q.answer);
+    case "banker":
+      return `<${q.answer.map((p) => `P${p}`).join(", ")}>`;
     default:
       return q.options[q.answer];
   }
@@ -222,6 +244,8 @@ export function correctionText(q: Question): string | null {
       return "Here is the right chart.";
     case "interleave":
       return "Here is one schedule that works.";
+    case "banker":
+      return "Here is one safe sequence.";
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -288,6 +312,18 @@ export function questionProblems(q: Question): string[] {
       if (steps > MAX_INTERLEAVE_STEPS) p.push("too many steps to tap");
       if (!(q.goal.v in q.init)) p.push("goal variable has no starting value");
       if (q.answer.length !== steps || interleaveResult(q, q.answer) !== q.goal.value) p.push("answer schedule doesn't reach the goal");
+      break;
+    }
+    case "banker": {
+      const n = q.state.allocation.length;
+      const m = q.resources.length;
+      if (n < 3 || n > MAX_BANKER_PROCESSES) p.push(`banker needs 3–${MAX_BANKER_PROCESSES} processes`);
+      if (m < 2 || m > 4) p.push("banker needs 2–4 resource types");
+      if (new Set(q.resources).size !== m) p.push("duplicate resource names");
+      const rows = [q.state.available, ...q.state.allocation, ...q.state.max];
+      if (q.state.max.length !== n || rows.some((r) => r.length !== m || r.some((x) => !Number.isInteger(x) || x < 0))) p.push("banker vectors must be whole numbers, one per resource");
+      else if (q.state.max.some((mx, i) => mx.some((x, j) => x < q.state.allocation[i][j]))) p.push("a process holds more than its max");
+      else if (!isSafeSequence(q.state, q.answer)) p.push("answer isn't a safe sequence");
       break;
     }
     default:

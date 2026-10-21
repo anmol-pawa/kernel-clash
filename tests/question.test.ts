@@ -3,7 +3,8 @@ import { DEMO_QUESTIONS } from "@/content/demo";
 import { fcfsAverage, forkPrints, GENERATORS } from "@/content/generators";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { PCB_CONTENTS, SAMPLE_QUESTIONS, SYSCALL_STEPS } from "@/content/questionSamples";
-import { answerText, chartOf, correctionText, grade, interleaveResult, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type GanttQ, type InterleaveQ, type NumericQ, type Question } from "@/game/engine/question";
+import { answerText, chartOf, correctionText, grade, interleaveResult, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type BankerQ, type GanttQ, type InterleaveQ, type NumericQ, type Question } from "@/game/engine/question";
+import { BANKER_EXAMPLE, safety } from "@/game/sim/deadlock";
 import { runForks } from "@/game/sim/fork";
 import { fcfs, ganttText } from "@/game/sim/scheduling";
 import { increment } from "@/game/sim/sync";
@@ -58,6 +59,29 @@ describe("grade", () => {
   it("a response of the wrong kind is wrong", () => {
     expect(grade(SYSCALL_STEPS, { kind: "mcq", choice: 0 })).toBe(false);
     expect(grade(DEMO_QUESTIONS[0], { kind: "numeric", value: "1" })).toBe(false);
+  });
+});
+
+describe("banker questions", () => {
+  const q: BankerQ = { kind: "banker", id: "b", prompt: "Tap a safe order", explain: "x", resources: ["A", "B", "C"], state: BANKER_EXAMPLE, answer: safety(BANKER_EXAMPLE).sequence, move };
+
+  it("is well-formed and accepts any safe sequence", () => {
+    expect(questionProblems(q)).toEqual([]);
+    expect(grade(q, { kind: "banker", sequence: [1, 3, 4, 0, 2] })).toBe(true);
+    expect(grade(q, { kind: "banker", sequence: [3, 1, 0, 4, 2] })).toBe(true);
+  });
+  it("rejects unsafe, short, repeated and wrong-kind answers", () => {
+    expect(grade(q, { kind: "banker", sequence: [0, 1, 2, 3, 4] })).toBe(false);
+    expect(grade(q, { kind: "banker", sequence: [1, 3, 4, 0] })).toBe(false);
+    expect(grade(q, { kind: "banker", sequence: [1, 1, 3, 4, 0] })).toBe(false);
+    expect(grade(q, { kind: "mcq", choice: 0 })).toBe(false);
+  });
+  it("reports bad data and says the answer in words", () => {
+    expect(questionProblems({ ...q, answer: [0, 1, 2, 3, 4] })).toContain("answer isn't a safe sequence");
+    expect(questionProblems({ ...q, resources: ["A", "A", "C"] })).toContain("duplicate resource names");
+    expect(questionProblems({ ...q, state: { ...BANKER_EXAMPLE, max: [[0, 0, 0], ...BANKER_EXAMPLE.max.slice(1)] } })).toContain("a process holds more than its max");
+    expect(answerText(q)).toBe("<P1, P3, P4, P0, P2>");
+    expect(correctionText(q)).toBe("Here is one safe sequence.");
   });
 });
 
