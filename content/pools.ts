@@ -4,6 +4,8 @@ import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
 import { PROCESS_GENERATORS } from "./processGenerators";
 import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
+import { SYNC_GENERATORS } from "./syncGenerators";
+import { increment } from "@/game/sim/sync";
 import { GYM_QUESTIONS } from "./gymQuestions";
 
 /**
@@ -439,10 +441,154 @@ export const SCHEDULING_EXTRA: Question[] = [
   },
 ];
 
+const syn = (name: string, power: number) => ({ name, type: "sync" as const, power });
+
+/** Synchronization (Silberschatz ch. 6–7), beyond the six boss questions. */
+export const SYNC_EXTRA: Question[] = [
+  {
+    id: "sync-spinlock",
+    prompt: "When is a spinlock (a lock that busy-waits) a better choice than a lock that puts the waiter to sleep?",
+    options: ["On a single-core CPU, whenever the lock is busy", "When the lock is held for a long time", "On a multicore CPU, when the lock is held for less time than two context switches", "Never: busy waiting always wastes the CPU"],
+    answer: 2,
+    explain: "Sleeping costs a context switch to block and another to wake. If the holder, running on another core, will release the lock sooner than that, spinning is cheaper. On one core a spinner just burns the holder's time slice.",
+    move: syn("Spin Coil", 32),
+  },
+  {
+    id: "sync-tas",
+    prompt: "What does the atomic test_and_set(&lock) instruction do?",
+    options: ["Sets lock to true and returns its old value", "Returns true if lock is free, without changing it", "Sets lock to false and returns nothing", "Blocks the caller until lock becomes false"],
+    answer: 0,
+    explain: "It returns the old value and sets lock to true in one indivisible step. `while (test_and_set(&lock));` loops until the old value was false, meaning this caller is the one that took the lock.",
+    move: syn("Test and Set", 32),
+  },
+  {
+    id: "sync-cas",
+    prompt: "What does compare_and_swap(&value, expected, new_value) do, atomically?",
+    options: ["Swaps value and expected", "Always writes new_value and returns expected", "Compares value with new_value and returns the larger", "Writes new_value only if value equals expected, and returns the original value"],
+    answer: 3,
+    explain: "CAS changes the variable only if it still holds the expected value, and always returns what was there. A lock spins on `while (compare_and_swap(&lock, 0, 1) != 0);`; lock-free counters retry the CAS until no other thread got in between.",
+    move: syn("Swap Strike", 34),
+  },
+  {
+    id: "sync-cv-while",
+    prompt: "Why does code usually wait on a condition variable inside a while loop, `while (!ready) x.wait();`, rather than an if?",
+    options: ["A while loop is faster than an if", "With signal-and-continue, the condition can change again before the woken thread runs", "wait() only works inside loops", "It stops the signalling thread from running"],
+    answer: 1,
+    explain: "Under signal-and-continue (Mesa semantics, as in pthreads and Java) the signaller keeps the monitor, and another thread may slip in and use up the condition before the woken thread runs. Spurious wake-ups are allowed too, so re-check after waking.",
+    move: syn("Recheck", 32),
+  },
+  {
+    id: "sync-inversion",
+    prompt: "A low-priority task holds a lock a high-priority task needs, and medium-priority tasks keep preempting the low one. What fixes this priority inversion?",
+    options: ["Give the medium tasks a higher priority", "Make the high-priority task busy-wait", "Priority inheritance: the lock holder runs at the waiter's priority until it releases the lock", "Disable the lock"],
+    answer: 2,
+    explain: "With priority inheritance the low task temporarily borrows the high priority, so the medium tasks can no longer preempt it. It finishes its critical section quickly and the high task gets the lock (the fix for the Mars Pathfinder resets).",
+    move: syn("Inherit", 34),
+  },
+  {
+    id: "sync-bb-swap",
+    prompt: "In the bounded-buffer producer, wait(mutex) is moved before wait(empty). The buffer is full when the producer runs. What happens?",
+    options: ["The producer sleeps holding mutex, so no consumer can take an item: deadlock", "The producer overwrites the oldest item", "Nothing changes; the order doesn't matter", "The consumer skips the mutex"],
+    answer: 0,
+    explain: "empty is 0, so the producer blocks on wait(empty) while holding mutex. Every consumer then blocks on wait(mutex) and can never signal(empty). Always wait on the counting semaphore before taking the mutex.",
+    move: syn("Full Buffer", 36),
+  },
+  {
+    id: "sync-rw-starve",
+    prompt: "In the first readers–writers problem (no reader waits unless a writer already holds the lock), who can starve?",
+    options: ["Readers", "Writers", "Neither", "Both, in turn"],
+    answer: 1,
+    explain: "As long as readers keep arriving, readcount never drops to zero and rw_mutex is never released, so a waiting writer can wait forever. The second readers–writers problem favours writers instead, and then readers can starve.",
+    move: syn("Read Lock", 32),
+  },
+  {
+    id: "sync-philosophers",
+    prompt: "Which rule prevents deadlock among the five dining philosophers?",
+    options: ["Each philosopher picks up the left chopstick, then the right", "Each philosopher waits one second between picking up chopsticks", "Odd philosophers pick up the left chopstick first, even ones the right", "Each philosopher holds a chopstick until the neighbour finishes"],
+    answer: 2,
+    explain: "If everyone takes the left first, all five can hold one chopstick and wait for the next: a circular wait. Making neighbours reach in opposite orders breaks the cycle. Allowing at most four at the table, or taking both chopsticks at once, also works.",
+    move: syn("Chopstick", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-sync-race-finals",
+    prompt: "counter is 5. The producer runs counter++ and the consumer runs counter--, with no lock. Which final values of counter are possible? Select all that apply.",
+    options: ["3", "4", "5", "6", "7"],
+    answers: [1, 2, 3],
+    explain: "One after the other gives 5. If the producer stores last after loading before the consumer's store, the consumer's −1 is lost: 6. The other way round, the producer's +1 is lost: 4. Each thread changes counter by 1 at most, so 3 and 7 can't happen.",
+    move: syn("Race Tally", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-sync-mutex",
+    prompt: "Which of these give mutual exclusion on a multicore machine? Select all that apply.",
+    options: ["A spinlock built on test_and_set", "A lock built on compare_and_swap", "Disabling interrupts on the current core", "Peterson's algorithm on a CPU that reorders memory accesses, with no memory barriers", "A binary semaphore initialised to 1"],
+    answers: [0, 1, 4],
+    explain: "Atomic hardware instructions and semaphores built on them work across cores. Disabling interrupts only stops preemption on one core; the others keep running. Without barriers, a reordering CPU can let both Peterson processes in.",
+    move: syn("Lockdown", 34),
+  },
+  {
+    kind: "numeric",
+    id: "num-sync-sem",
+    prompt: "A blocking semaphore S starts at 2. These calls happen in order. What is S's value at the end?",
+    code: "P1: wait(S)\nP2: wait(S)\nP3: wait(S)\nP4: wait(S)\nP1: signal(S)",
+    answer: -1,
+    explain: "2 → 1 → 0 → −1 (P3 blocks) → −2 (P4 blocks). P1's signal() makes it −1 and wakes P3, the longest waiter. A negative value counts the sleepers: P4 is still waiting.",
+    move: syn("Count Down", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-sync-interleavings",
+    prompt: "Two threads each run counter++, which is three machine steps (load, add, store). How many different interleavings of the six steps are there?",
+    answer: 20,
+    explain: "Each interleaving picks which 3 of the 6 time slots belong to the first thread; the order within a thread is fixed. That's C(6, 3) = 20.",
+    move: syn("Shuffle", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-sync-twice",
+    prompt: "x starts at 0. Two threads each run x++ twice, with no lock. What is the smallest value x can end at?",
+    answer: 2,
+    explain: "Every store writes at least 1, and each thread's second load comes after its own first store, so it loads at least 1 and stores at least 2. The last step is someone's second store, so x ends at 2 or more. 2 happens: T1 loads 0; T2 runs x++ (x = 1); T1 stores 1; T2 loads 1; T1 runs its second x++ (x = 2); T2 stores 2.",
+    move: syn("Lost Update", 36),
+  },
+  {
+    kind: "order",
+    id: "order-sync-consumer",
+    prompt: "Put the bounded-buffer consumer's steps in order.",
+    steps: ["wait(full)", "wait(mutex)", "Remove an item from the buffer", "signal(mutex)", "signal(empty)", "Consume the item"],
+    explain: "Wait for an item (full), then for the buffer's lock (mutex), take the item, release the lock, and signal that a slot is free (empty). Consume the item outside the critical section so the lock is held as briefly as possible.",
+    move: syn("Buffer Drain", 32),
+  },
+  {
+    kind: "order",
+    id: "order-sync-sections",
+    prompt: "Put the parts of a process's loop around a critical section in order.",
+    steps: ["Entry section: ask permission to enter", "Critical section: use the shared data", "Exit section: release permission", "Remainder section: everything else"],
+    explain: "Silberschatz's general structure: the entry section requests entry, the critical section touches the shared data, the exit section lets others in, and the remainder section runs until the loop comes round again.",
+    move: syn("Guard Gate", 30),
+  },
+  {
+    kind: "interleave",
+    id: "il-sync-lose-producer",
+    prompt: "counter is 5. The producer runs counter++ and the consumer runs counter--. You are the scheduler: pick an order of their steps that leaves counter at 4.",
+    threads: [
+      { name: "PRODUCER", code: increment("counter", "r1", 1) },
+      { name: "CONSUMER", code: increment("counter", "r2", -1) },
+    ],
+    init: { counter: 5 },
+    goal: { v: "counter", value: 4 },
+    answer: [0, 0, 1, 1, 0, 1],
+    explain: "To end at 4 the producer's update must be lost: the consumer loads 5 before the producer stores 6, then stores its 4 last, overwriting the 6.",
+    move: syn("Lost Update", 34),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
   scheduling: { authored: [...GYM_QUESTIONS.scheduling, ...SCHEDULING_EXTRA], generators: SCHEDULING_GENERATORS },
+  sync: { authored: [...GYM_QUESTIONS.sync, ...SYNC_EXTRA], generators: SYNC_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
