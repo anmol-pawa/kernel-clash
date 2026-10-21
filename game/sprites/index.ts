@@ -19,19 +19,20 @@ import { RAMSTER_ART } from "./ramster";
 import { SPINNAIL_ART } from "./spinnail";
 import { SYSCALLOW_ART } from "./syscallow";
 import { CLOCK_LAMP, CLOCK_SKYLINE, COBBLES, COG_PLATFORM, GROVE_BUSH, GROVE_ROOTS, GROVE_SHROOMS, GROVE_TREES, GROVE_TUFT, HOURGLASS, PLATFORM, PLAZA_COG, ROOT_PLATFORM, SKYLINE } from "./scenery";
+import { SEMAFROG_ART } from "./semafrog";
 import { THREADRAKE_ART } from "./threadrake";
 import { THRASHMOTH_ART } from "./thrashmoth";
 import { TORTICK_ART } from "./tortick";
 import { TRAPJAW_ART } from "./trapjaw";
 
 /** Every battle creature, in Kerneldex order. */
-export const CREATURES: CreatureArt[] = [BYTLING_ART, THREADRAKE_ART, RAMSTER_ART, GIGAHOARD_ART, SPINNAIL_ART, RAIDSNAIL_ART, GLITCHIT_ART, SYSCALLOW_ART, TRAPJAW_ART, FORKUPINE_ART, HYDRAFORK_ART, TORTICK_ART, CHRONOGOLEM_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART, THRASHMOTH_ART, DISKRAKEN_ART, KERNELORD_ART];
+export const CREATURES: CreatureArt[] = [BYTLING_ART, THREADRAKE_ART, RAMSTER_ART, GIGAHOARD_ART, SPINNAIL_ART, RAIDSNAIL_ART, GLITCHIT_ART, SYSCALLOW_ART, TRAPJAW_ART, FORKUPINE_ART, HYDRAFORK_ART, TORTICK_ART, CHRONOGOLEM_ART, SEMAFROG_ART, MUTEXA_ART, DEADLOCRAB_ART, HEAPOTAMUS_ART, THRASHMOTH_ART, DISKRAKEN_ART, KERNELORD_ART];
 
 /** Gym bosses (96×96), keyed by gym id. */
 export const BOSSES: Record<string, CreatureArt> = { basics: TRAPJAW_ART, processes: HYDRAFORK_ART, scheduling: CHRONOGOLEM_ART, sync: MUTEXA_ART, deadlocks: DEADLOCRAB_ART, memory: HEAPOTAMUS_ART, virtual: THRASHMOTH_ART, storage: DISKRAKEN_ART, interview: KERNELORD_ART };
 
 /** Gym trainer creatures (64×64), keyed by gym id: the gyms that have trainer battles. */
-export const TRAINERS: Record<string, CreatureArt> = { basics: SYSCALLOW_ART, processes: FORKUPINE_ART, scheduling: TORTICK_ART };
+export const TRAINERS: Record<string, CreatureArt> = { basics: SYSCALLOW_ART, processes: FORKUPINE_ART, scheduling: TORTICK_ART, sync: SEMAFROG_ART };
 
 /** Move effects and scenery sheets. */
 export const EFFECTS: SpriteSheet[] = [BIT_ORB, IMPACT];

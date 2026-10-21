@@ -27,10 +27,13 @@ export const TRAINER_TURNS = 4;
  * answers (HP 100/110 in the first gym, +5 per gym after). The trainer's
  * counter (10 + 1.5 × level) is under a third of a par partner's HP, or
  * under 60% when it's super effective, so one slip never decides the battle.
+ * Trainers stop growing after the third gym (Lv5/Lv6, HP 110/120): a
+ * super-effective counter against Bytling would otherwise outgrow its HP.
  */
 export function trainerFighter(gym: Gym, round: number): Fighter {
   if (!gym.trainer) throw new Error(`${gym.id} has no trainer`);
   const r = Math.min(Math.max(1, Math.floor(round)), TRAINER_BATTLES);
-  const hp = 90 + 10 * r + 5 * (gym.n - 1);
-  return { name: gym.trainer.name, level: 2 + gym.n + r - 1, hp, maxHp: hp, type: gym.type };
+  const n = Math.min(gym.n, 3);
+  const hp = 90 + 10 * r + 5 * (n - 1);
+  return { name: gym.trainer.name, level: 2 + n + r - 1, hp, maxHp: hp, type: gym.type };
 }

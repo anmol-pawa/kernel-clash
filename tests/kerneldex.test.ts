@@ -97,6 +97,16 @@ describe("Kerneldex status", () => {
     expect(status("tortick", { badges: ["basics", "processes", "scheduling"] })).toBe("caught");
   });
 
+  it("Semafrog guards the Mutex Marsh Gym just before Mutexa", () => {
+    const e = dexEntry("semafrog")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "sync", type: "sync", name: "Semafrog" });
+    expect(dexEntry("mutexa")!.no).toBe(e.no + 1);
+    expect(dexEntry("chronogolem")!.no).toBe(e.no - 1);
+    expect(status("semafrog", { badges: ["basics", "processes", "scheduling"] })).toBe("unknown");
+    expect(status("semafrog", { seen: ["semafrog"] })).toBe("seen");
+    expect(status("semafrog", { badges: ["basics", "processes", "scheduling", "sync"] })).toBe("caught");
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

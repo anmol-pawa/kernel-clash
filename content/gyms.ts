@@ -74,6 +74,7 @@ export const GYMS: Gym[] = [
     type: "sync",
     topics: ["Race conditions", "Peterson's algorithm", "Mutexes and semaphores", "Monitors", "Classic problems"],
     boss: { name: "Mutexa", blurb: "A lock-serpent coiled round the critical section. Only one may pass at a time." },
+    trainer: { name: "Semafrog", blurb: "A marsh frog with a railway signal on its head and three lamps on its belly, one per free permit. Every wait() puts a lamp out; at none the arm drops to STOP and the next caller has to sleep until someone signals.", retreats: "hops back into the reeds", holdsOn: "is still croaking" },
     badge: "Lock Badge",
     ramp: ["#6a1a52", "#a02a7c", "#e05aa8", "#ffaedb"],
   },
