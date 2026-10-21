@@ -1,14 +1,15 @@
 import type { Question } from "@/game/engine/question";
 import { roundRobin, sjf } from "@/game/sim/scheduling";
+import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
  * Concept lessons, read before a gym's battles (ROADMAP §2: lessons →
  * generated battles → boss). A lesson is a few short pages, some with an
  * illustrated diagram, and ends with one quick-check question of any kind.
- * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–5;
+ * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers";
 
 export interface LessonPage {
   heading: string;
@@ -43,6 +44,16 @@ export const RR_CHECK_JOBS = [
   { name: "P3", arrival: 0, burst: 1 },
 ];
 const RR_CHECK = roundRobin(RR_CHECK_JOBS, 2);
+/** Silberschatz §6.1: a producer's counter++ racing a consumer's counter-- from 5. */
+export const RACE_THREADS: SyncThread[] = [
+  { name: "PRODUCER", code: increment("counter", "r1", 1) },
+  { name: "CONSUMER", code: increment("counter", "r2", -1) },
+];
+const RACE_VALUES = finalValues({ counter: 5 }, RACE_THREADS, "counter");
+const RACE_OPTIONS = [3, 4, 5, 6, 7];
+/** five processes wait() on a semaphore that starts at 2 */
+export const SEM_CHECK = runSemaphore(2, ["A", "B", "C", "D", "E"].map((who) => ({ op: "wait" as const, who })));
+const YMOVE = { name: "Recall", type: "sync", power: 30 } as const;
 const table = (js: { name: string; burst: number }[]) => ["Proc  Burst", ...js.map((j) => `${j.name.padEnd(6)}${j.burst}`)].join("\n");
 
 export const LESSONS: Lesson[] = [
@@ -612,6 +623,192 @@ export const LESSONS: Lesson[] = [
       answer: 1,
       explain: "A process that uses up its quantum is CPU-bound and gets demoted. Short and I/O-bound processes give up the CPU before their quantum ends, so they stay in the high-priority queues and get quick response.",
       move: SMOVE,
+    },
+  },
+  {
+    id: "sync-race",
+    gym: "sync",
+    title: "Race conditions",
+    pages: [
+      {
+        heading: "counter++ is three steps",
+        body: [
+          "`counter++` looks like one step, but the machine does it as three: load counter into a register, add 1 to the register, store the register back. `counter--` is the same with a subtract.",
+          "A producer and a consumer share `counter`, which is 5. Each changes it once, so it should end at 5. If the scheduler switches between them halfway through, one update overwrites the other and counter ends at 4 or 6.",
+        ],
+        diagram: "race",
+      },
+      {
+        heading: "Race conditions",
+        body: [
+          "A race condition is when several threads use shared data at the same time and the result depends on the order their steps happen to run in. The bug shows up rarely, is hard to reproduce, and can vanish when you add a print or a debugger.",
+          "The kernel has races too. If two processes call `fork()` at the same moment, both could be given the same next free pid unless the kernel protects that variable.",
+        ],
+      },
+      {
+        heading: "The critical-section problem",
+        body: [
+          "The code that uses shared data is a critical section. A process asks to enter it in an entry section, leaves through an exit section, and the rest of its code is the remainder section.",
+          "A solution must give mutual exclusion (at most one process in its critical section at a time), progress (when none is inside, only the processes trying to enter decide who goes next, and they can't put it off forever) and bounded waiting (others can only go ahead of a waiting process a limited number of times).",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-race",
+      kind: "multi",
+      prompt: "counter is 5. A producer runs counter++ while a consumer runs counter-- (each is load, add, store). Which final values of counter are possible? Select all.",
+      options: RACE_OPTIONS.map(String),
+      answers: RACE_OPTIONS.flatMap((v, i) => (RACE_VALUES.includes(v) ? [i] : [])),
+      explain: "If one thread runs all three steps before the other starts, counter ends at 5. If both load 5 before either stores, the store that lands last wins: 6 if it is the producer's, 4 if it is the consumer's. 3 and 7 would need a change to happen twice.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "sync-peterson",
+    gym: "sync",
+    title: "Peterson's solution",
+    pages: [
+      {
+        heading: "Two flags and a turn",
+        body: [
+          "Peterson's solution handles two processes, P0 and P1. They share `flag[2]`, where `flag[i] = true` means Pi wants to enter, and `turn`, which says who goes first if both want in.",
+          "To enter, Pi raises its flag, then gives the turn to the other (`turn = j`), and waits while the other wants in and it is the other's turn. On the way out it lowers its flag.",
+        ],
+        diagram: "peterson",
+      },
+      {
+        heading: "Why it works",
+        body: [
+          "If both want in, both flags are up and `turn` decides. It holds whichever value was written last, so the process that wrote it last is the one that waits. Only one gets through: mutual exclusion.",
+          "If the other process doesn't want in, its flag is down and Pi goes straight in (progress). If both want in, Pi waits for at most one entry by the other (bounded waiting).",
+        ],
+      },
+      {
+        heading: "Hardware help",
+        body: [
+          "Modern processors and compilers can reorder reads and writes that don't depend on each other, which can let both processes in, so Peterson's solution isn't guaranteed to work on modern hardware.",
+          "Real systems use hardware support instead: memory barriers, and atomic instructions such as `test_and_set()` and `compare_and_swap()`, which read and change a word in one step that can't be interrupted.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-peterson",
+      prompt: "In Peterson's solution both processes want to enter. P0 sets turn = 1, and then P1 sets turn = 0. Which process enters its critical section first?",
+      options: ["P0", "P1", "Both at once", "Neither: they wait forever"],
+      answer: 0,
+      explain: "P1 wrote turn last, so turn = 0. P1 waits while flag[0] is up and turn is 0; P0's loop condition (turn == 1) is false, so P0 enters. When P0 lowers its flag, P1 goes in.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "sync-semaphores",
+    gym: "sync",
+    title: "Mutex locks and semaphores",
+    pages: [
+      {
+        heading: "Mutex locks",
+        body: [
+          "A mutex lock protects a critical section: call `acquire()` before it and `release()` after. A thread that calls acquire() while the lock is held has to wait.",
+          "If it waits by looping, the lock is a spinlock (busy waiting). Spinning wastes CPU time but avoids a context switch, so spinlocks suit short critical sections on multicore systems.",
+        ],
+      },
+      {
+        heading: "Semaphores",
+        body: [
+          "A semaphore S is an integer used only through two atomic operations, `wait()` (P) and `signal()` (V). In the blocking version, wait() takes 1 off S and, if S is now negative, puts the caller to sleep on S's queue. signal() adds 1 and, if anyone is waiting, wakes one of them.",
+          "A counting semaphore starts at the number of free resources. When it is negative, its size is the number of waiting processes. A binary semaphore (0 or 1) works like a mutex.",
+        ],
+        diagram: "semaphore",
+      },
+      {
+        heading: "Mutex or semaphore?",
+        body: [
+          "A mutex has an owner: the thread that locked it must unlock it. A semaphore has no owner, so one thread can signal() a semaphore another thread waits on.",
+          "That makes semaphores good for ordering. Start `synch` at 0. P1 runs S1 then `signal(synch)`; P2 runs `wait(synch)` then S2. S2 can only run after S1.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-semaphores",
+      kind: "numeric",
+      prompt: "Semaphore S starts at 2. Five processes call wait(S) one after another and nobody calls signal(S). How many of them are blocked?",
+      answer: SEM_CHECK.blocked.length,
+      explain: `Each wait() takes 1 off S: 1, 0, −1, −2, −3. The first two find S still ≥ 0 and go on; the other ${SEM_CHECK.blocked.length} block. S ends at ${SEM_CHECK.value}, and its size is the number waiting.`,
+      move: YMOVE,
+    },
+  },
+  {
+    id: "sync-monitors",
+    gym: "sync",
+    title: "Monitors",
+    pages: [
+      {
+        heading: "Monitors",
+        body: [
+          "Semaphores are easy to misuse. Swap a wait() and a signal() and two processes can be in the critical section together; leave one out and processes can block forever.",
+          "A monitor is a language construct that bundles shared data with the procedures that use it, and only one thread can be active inside it at a time. Java's `synchronized` methods work this way.",
+        ],
+        diagram: "monitor",
+      },
+      {
+        heading: "Condition variables",
+        body: [
+          "Inside a monitor a thread can wait for a condition: `x.wait()` suspends it and lets another thread in, and `x.signal()` resumes exactly one thread waiting on x. If none is waiting, signal() does nothing, unlike a semaphore's signal(), which always changes its value.",
+          "When P signals Q, one of them must wait: signal-and-wait (P waits for Q to leave) or signal-and-continue (Q waits for P to leave). Java and Pthreads use signal-and-continue, so a woken thread re-checks its condition in a `while` loop.",
+        ],
+      },
+      {
+        heading: "Liveness",
+        body: [
+          "Deadlock: every process in a set waits for something only another process in the set can do. Starvation: a process waits forever while others keep going.",
+          "Priority inversion: a low-priority task holds a lock a high-priority task needs, and medium-priority tasks keep preempting it. Priority inheritance fixes it by running the lock holder at the waiter's priority until it releases the lock. The Mars Pathfinder lander hit this bug in 1997.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-monitors",
+      prompt: "A thread calls x.signal() on a monitor condition variable when no thread is waiting on x. What happens?",
+      options: ["Nothing: the signal has no effect", "x's count goes up by 1, like a semaphore", "The calling thread blocks", "The next x.wait() returns at once"],
+      answer: 0,
+      explain: "A condition variable has no value to remember a signal in. With no waiter, x.signal() has no effect, and a later x.wait() still blocks. A semaphore's signal() would add 1 and be remembered.",
+      move: YMOVE,
+    },
+  },
+  {
+    id: "sync-classic",
+    gym: "sync",
+    title: "Classic problems",
+    pages: [
+      {
+        heading: "The bounded buffer",
+        body: [
+          "Producers and consumers share a buffer of n slots, guarded by three semaphores: `mutex` = 1 protects the buffer, `empty` = n counts free slots, and `full` = 0 counts filled ones.",
+          "The producer runs wait(empty), wait(mutex), adds its item, signal(mutex), signal(full). The consumer does the reverse: wait(full), wait(mutex), takes an item, signal(mutex), signal(empty). If the producer's two waits are swapped, it can sleep on a full buffer while holding mutex, so no consumer can get in: deadlock.",
+        ],
+      },
+      {
+        heading: "Readers and writers",
+        body: [
+          "Any number of readers may read shared data at once, but a writer needs it to itself.",
+          "In the first readers–writers problem, no reader waits unless a writer already has the data, so writers can starve. The second gives a waiting writer priority, so readers can starve. Reader–writer locks offer both a read mode and a write mode.",
+        ],
+      },
+      {
+        heading: "Dining philosophers",
+        body: [
+          "Five philosophers sit round a table with one chopstick between each pair. To eat, a philosopher needs both neighbouring chopsticks. If all five pick up their left chopstick at once, nobody can get a right one: deadlock.",
+          "Fixes: let at most four sit at the table, pick up both chopsticks only when both are free, or have odd philosophers pick up the left first and even ones the right first. A deadlock-free solution can still starve someone.",
+        ],
+        diagram: "philosophers",
+      },
+    ],
+    check: {
+      id: "lesson-classic",
+      kind: "order",
+      prompt: "Put a producer's steps for adding one item to the bounded buffer in order.",
+      steps: ["wait(empty)", "wait(mutex)", "Add the item to the buffer", "signal(mutex)", "signal(full)"],
+      explain: "Wait for a free slot first, then lock the buffer, add the item, unlock, and signal that a slot is full. Locking before waiting for a slot can deadlock.",
+      move: YMOVE,
     },
   },
 ];

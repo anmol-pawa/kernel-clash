@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { DiagramId } from "@/content/lessons";
+import { RACE_THREADS, type DiagramId } from "@/content/lessons";
+import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
 
@@ -865,6 +866,319 @@ function Mlfq() {
   );
 }
 
+/* ---- synchronization: the Mutex Marsh ---- */
+
+const PINK: Ramp = ["#6a1a52", "#a02a7c", "#e05aa8"];
+
+/** The simulator runs behind the sync diagrams, exported so tests can check them. */
+export const SYNC_EXAMPLES = {
+  /** Silberschatz §6.1's interleaving T0–T5: counter ends at 4, not 5 */
+  race: runSchedule({ counter: 5 }, RACE_THREADS, [0, 0, 1, 1, 0, 1]),
+  /** a counting semaphore of 3, five wait()s: three get in, two queue */
+  semaphore: runSemaphore(3, ["T1", "T2", "T3", "T4", "T5"].map((who) => ({ op: "wait" as const, who }))),
+};
+
+/** The marsh at night: deep plum water with reed-tip specks. */
+function Marsh({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#24142c" />
+      {Array.from({ length: 34 }, (_, i) => (
+        <rect key={i} x={(i * 43 + seed * 17) % W} y={(i * 31 + seed * 3) % H} width={1} height={i % 3 ? 1 : 2} fill="#4a2a52" />
+      ))}
+    </>
+  );
+}
+
+/** A small thread chip (like the process token) in a ramp. */
+function Chip({ x, y, label, ramp = GREEN, w = 14 }: { x: number; y: number; label: string; ramp?: Ramp; w?: number }) {
+  return <Card x={x} y={y} w={w} h={9} lines={[label]} size={3} ramp={ramp} ink="#f8f4e6" />;
+}
+
+/** Two thread lanes and the shared counter between them, one row per machine step. */
+function Race() {
+  const { steps } = SYNC_EXAMPLES.race;
+  const lanes = [
+    { x: 2, ramp: TEAL },
+    { x: 116, ramp: PURPLE },
+  ];
+  return (
+    <>
+      <Marsh />
+      {RACE_THREADS.map((t, i) => (
+        <Text key={t.name} x={lanes[i].x + 31} y={7} size={4} fill="#ffe27a" anchor="middle">
+          {`${t.name} ${t.code[1].op === "add" && t.code[1].k < 0 ? "c--" : "c++"}`}
+        </Text>
+      ))}
+      <Text x={90} y={7} size={4} fill="#f8f4e6" anchor="middle">
+        COUNTER
+      </Text>
+      {steps.map((s, r) => {
+        const y = 11 + r * 13;
+        const lane = lanes[s.thread];
+        const stored = s.instr.op === "store";
+        return (
+          <g key={r}>
+            <Card x={lane.x} y={y} w={62} h={11} lines={[`T${r} ${instrText(s.instr).replace("counter", "cnt")}  {${s.value}}`]} size={3} ramp={lane.ramp} ink="#f8f4e6" />
+            <Card x={76} y={y + 1} w={28} h={9} lines={[String(s.shared.counter)]} size={3.5} ramp={stored ? GOLD : STONE} ink={stored ? INK : "#f8f4e6"} />
+            {stored && <Arrow x1={s.thread ? 115 : 65} y1={y + 5} x2={s.thread ? 105 : 75} y2={y + 5} color="#ffe27a" />}
+          </g>
+        );
+      })}
+      <Text x={90} y={98} size={3.5} fill="#f87a8a" anchor="middle">
+        {`EXPECTED 5 · GOT ${SYNC_EXAMPLES.race.shared.counter}`}
+      </Text>
+      <Text x={90} y={107} size={3} fill="#cfc4ff" anchor="middle">
+        THE PRODUCER&apos;S STORE WAS OVERWRITTEN
+      </Text>
+    </>
+  );
+}
+
+/** Peterson's entry/exit code for P0 and P1, and the shared flags and turn when both want in. */
+function Peterson() {
+  const code = (i: number) => {
+    const j = 1 - i;
+    return [
+      [`flag[${i}] = true;`, "#f8f4e6"],
+      [`turn = ${j};`, "#f8f4e6"],
+      [`while (flag[${j}] &&`, "#cfc4ff"],
+      [`turn == ${j});`, "#cfc4ff"],
+      ["CRITICAL SECTION", "#ffe27a"],
+      [`flag[${i}] = false;`, "#f8f4e6"],
+    ] as const;
+  };
+  return (
+    <>
+      <Marsh seed={2} />
+      {[0, 1].map((i) => {
+        const x = 4 + i * 90;
+        return (
+          <g key={i}>
+            <Block x={x} y={3} w={82} h={56} ramp={i ? PURPLE : TEAL}>
+              <Text x={x + 41} y={10} size={4} fill="#ffe27a" anchor="middle">
+                {`P${i}`}
+              </Text>
+              {code(i).map(([l, c], k) => (
+                <Text key={k} x={x + (k === 3 ? 23 : 5)} y={18 + k * 7} size={3} fill={c}>
+                  {l}
+                </Text>
+              ))}
+            </Block>
+          </g>
+        );
+      })}
+      {/* the shared variables, as they stand when both want in and P1 wrote turn last */}
+      <Text x={90} y={67} size={3.5} fill="#f8f4e6" anchor="middle">
+        SHARED · BOTH WANT IN
+      </Text>
+      <Card x={14} y={71} w={42} h={13} lines={["flag[0] = T"]} size={3} ramp={GOLD} />
+      <Card x={69} y={71} w={42} h={13} lines={["flag[1] = T"]} size={3} ramp={GOLD} />
+      <Card x={124} y={71} w={42} h={13} lines={["turn = 0"]} size={3} ramp={PINK} ink="#f8f4e6" />
+      <Text x={90} y={95} size={3.5} fill="#7cf0c8" anchor="middle">
+        P1 WROTE turn LAST, SO P1 WAITS
+      </Text>
+      <Text x={90} y={104} size={3.5} fill="#ffe27a" anchor="middle">
+        P0 ENTERS
+      </Text>
+    </>
+  );
+}
+
+/** A counting semaphore as a gate: three threads inside the resource room, two queued outside. */
+function Semaphore() {
+  const { value, blocked } = SYNC_EXAMPLES.semaphore;
+  const inside = ["T1", "T2", "T3", "T4", "T5"].filter((t) => !blocked.includes(t));
+  return (
+    <>
+      <Marsh seed={4} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">
+        S STARTS AT 3 · FIVE wait()s
+      </Text>
+      {/* the queue of blocked threads, left */}
+      <Block x={4} y={16} w={50} h={54} ramp={STONE}>
+        <Text x={29} y={23} size={3.5} fill="#f8f4e6" anchor="middle">
+          S QUEUE
+        </Text>
+      </Block>
+      {blocked.map((t, i) => (
+        <Chip key={t} x={10 + i * 20} y={30} label={t} ramp={PURPLE} />
+      ))}
+      <Text x={29} y={52} size={3} fill="#cfc4ff" anchor="middle">
+        ASLEEP, NOT
+      </Text>
+      <Text x={29} y={58} size={3} fill="#cfc4ff" anchor="middle">
+        SPINNING
+      </Text>
+      {/* the gate and its counter */}
+      <rect x={60} y={14} width={8} height={58} fill={INK} />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <rect key={i} x={61} y={16 + i * 9} width={6} height={7} fill={PINK[i % 2 ? 0 : 1]} />
+      ))}
+      <Card x={73} y={18} w={30} h={20} lines={["S =", String(value)]} size={4} ramp={GOLD} />
+      {/* wait(): in while S stays ≥ 0, otherwise asleep on the queue */}
+      <Arrow x1={72} y1={51} x2={107} y2={51} color="#7cf0c8" />
+      <Text x={88} y={48} size={3} fill="#7cf0c8" anchor="middle">
+        S &gt;= 0: IN
+      </Text>
+      <Arrow x1={104} y1={63} x2={55} y2={63} color="#cfc4ff" />
+      <Text x={88} y={70} size={3} fill="#cfc4ff" anchor="middle">
+        S &lt; 0: SLEEP
+      </Text>
+      {/* the resource room, right */}
+      <Block x={108} y={16} w={68} h={54} ramp={GREEN}>
+        <Text x={142} y={23} size={3.5} fill="#f8f4e6" anchor="middle">
+          3 RESOURCES
+        </Text>
+      </Block>
+      {inside.map((t, i) => (
+        <Chip key={t} x={113 + i * 20} y={32} label={t} ramp={TEAL} />
+      ))}
+      <Arrow x1={142} y1={50} x2={142} y2={66} color="#ffe27a" />
+      <Text x={146} y={60} size={3} fill="#ffe27a">
+        signal()
+      </Text>
+      <Text x={90} y={84} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`S < 0: ${-value} ARE WAITING`}
+      </Text>
+      <Text x={90} y={94} size={3} fill="#cfc4ff" anchor="middle">
+        signal() ADDS 1 AND WAKES ONE WAITER
+      </Text>
+      <Text x={90} y={104} size={3} fill="#9ad8e0" anchor="middle">
+        A MUTEX IS A LOCK WITH AN OWNER
+      </Text>
+    </>
+  );
+}
+
+/** A monitor: an entry queue, one active thread inside, and condition-variable queues. */
+function Monitor() {
+  return (
+    <>
+      <Marsh seed={6} />
+      {/* entry queue */}
+      <Text x={20} y={30} size={3} fill="#f8f4e6" anchor="middle">
+        ENTRY
+      </Text>
+      <Text x={20} y={35} size={3} fill="#f8f4e6" anchor="middle">
+        QUEUE
+      </Text>
+      {["T4", "T5", "T6"].map((t, i) => (
+        <Chip key={t} x={13} y={40 + i * 11} label={t} ramp={STONE} />
+      ))}
+      <Arrow x1={30} y1={56} x2={46} y2={56} />
+      {/* the monitor */}
+      <Block x={46} y={18} w={84} h={80} ramp={PINK}>
+        <Text x={88} y={26} size={4} fill="#ffe27a" anchor="middle">
+          MONITOR
+        </Text>
+      </Block>
+      <Card x={52} y={30} w={72} h={12} lines={["SHARED DATA"]} size={3.5} ramp={GOLD} />
+      <Card x={52} y={45} w={72} h={22} lines={["insert()", "remove()"]} size={3.5} ramp={CREAM} />
+      <Chip x={74} y={72} label="T1" ramp={GREEN} w={28} />
+      <Text x={88} y={92} size={3} fill="#f8f4e6" anchor="middle">
+        ONE ACTIVE INSIDE
+      </Text>
+      {/* condition queues */}
+      {[
+        ["x", ["T2"], 20],
+        ["y", ["T3"], 58],
+      ].map(([name, ts, y]) => (
+        <g key={name as string}>
+          <Text x={156} y={(y as number) - 3} size={3.5} fill="#cfc4ff" anchor="middle">
+            {`COND ${name}`}
+          </Text>
+          <Block x={136} y={y as number} w={40} h={16} ramp={PURPLE} />
+          {(ts as string[]).map((t, i) => (
+            <Chip key={t} x={142 + i * 16} y={(y as number) + 4} label={t} ramp={STONE} />
+          ))}
+        </g>
+      ))}
+      <Text x={156} y={46} size={3} fill="#7cf0c8" anchor="middle">
+        x.wait()
+      </Text>
+      <Text x={156} y={84} size={3} fill="#7cf0c8" anchor="middle">
+        x.signal()
+      </Text>
+      <Text x={156} y={90} size={3} fill="#7cf0c8" anchor="middle">
+        WAKES ONE
+      </Text>
+      <Text x={90} y={108} size={3.5} fill="#ffe27a" anchor="middle">
+        NOBODY WAITING: SIGNAL DOES NOTHING
+      </Text>
+    </>
+  );
+}
+
+/** A filled pixel disc of radius r centred on (cx, cy). */
+function Disc({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fill: string }) {
+  return (
+    <g>
+      {Array.from({ length: 2 * r + 1 }, (_, k) => {
+        const dy = k - r;
+        const half = Math.round(Math.sqrt(r * r - dy * dy));
+        return <rect key={k} x={cx - half} y={cy + dy} width={half * 2} height={1} fill={fill} />;
+      })}
+    </g>
+  );
+}
+
+/** Five philosophers round a table, each holding the left chopstick: a deadlock. */
+function Philosophers() {
+  const cx = 52;
+  const cy = 56;
+  const at = (k: number, r: number) => {
+    const a = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+    return [Math.round(cx + r * Math.cos(a)), Math.round(cy + r * Math.sin(a))] as const;
+  };
+  return (
+    <>
+      <Marsh seed={8} />
+      <Disc cx={cx} cy={cy} r={31} fill={INK} />
+      <Disc cx={cx} cy={cy} r={30} fill="#6a3a1a" />
+      <Disc cx={cx} cy={cy - 1} r={27} fill="#8a5a2a" />
+      {/* the rice bowl */}
+      <Disc cx={cx} cy={cy + 1} r={8} fill={INK} />
+      <Disc cx={cx} cy={cy + 1} r={7} fill="#c8c0b0" />
+      <Disc cx={cx} cy={cy - 1} r={5} fill="#ffffff" />
+      {[0, 1, 2, 3, 4].map((k) => {
+        const [px, py] = at(k, 42);
+        // philosopher k's left chopstick sits between k and k+1 (clockwise); it is drawn next to its holder
+        const [sx, sy] = at(k + 0.24, 34);
+        return (
+          <g key={k}>
+            <Block x={px - 7} y={py - 6} w={14} h={12} ramp={k % 2 ? PURPLE : TEAL}>
+              <rect x={px - 4} y={py - 2} width={2} height={2} fill={INK} />
+              <rect x={px + 2} y={py - 2} width={2} height={2} fill={INK} />
+              <rect x={px - 2} y={py + 2} width={4} height={1} fill={INK} />
+            </Block>
+            <Text x={px} y={py + 11} size={3} fill="#f8f4e6" anchor="middle">
+              {`P${k}`}
+            </Text>
+            <rect x={sx - 1.5} y={sy - 5.5} width={3} height={11} fill={INK} />
+            <rect x={sx - 0.5} y={sy - 4.5} width={1} height={9} fill={GOLD[2]} />
+          </g>
+        );
+      })}
+      <Text x={52} y={109} size={3} fill="#f87a8a" anchor="middle">
+        ALL HOLD LEFT · NONE CAN EAT
+      </Text>
+      <Text x={141} y={10} size={4} fill="#ffe27a" anchor="middle">
+        FIXES
+      </Text>
+      <Card x={106} y={15} w={70} h={18} lines={["AT MOST FOUR", "AT THE TABLE"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+      <Card x={106} y={37} w={70} h={18} lines={["BOTH STICKS", "OR NONE"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+      <Card x={106} y={59} w={70} h={18} lines={["ODD: LEFT FIRST", "EVEN: RIGHT FIRST"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+      <Text x={141} y={88} size={3} fill="#cfc4ff" anchor="middle">
+        NO DEADLOCK, BUT
+      </Text>
+      <Text x={141} y={94} size={3} fill="#cfc4ff" anchor="middle">
+        ONE CAN STILL STARVE
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -887,6 +1201,11 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   priority: { title: "Priority scheduling, and aging stopping starvation", draw: Priority },
   rr: { title: "Round Robin with a small and a huge quantum", draw: RoundRobin },
   mlfq: { title: "A three-queue MLFQ and its Gantt chart", draw: Mlfq },
+  race: { title: "A producer's counter++ and a consumer's counter-- interleaved: an update is lost", draw: Race },
+  peterson: { title: "Peterson's solution: two flags and a turn", draw: Peterson },
+  semaphore: { title: "A counting semaphore: three threads in, two asleep on its queue", draw: Semaphore },
+  monitor: { title: "A monitor with an entry queue and condition-variable queues", draw: Monitor },
+  philosophers: { title: "Five dining philosophers, each holding one chopstick: deadlock", draw: Philosophers },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

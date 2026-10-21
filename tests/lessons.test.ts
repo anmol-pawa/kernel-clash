@@ -3,15 +3,17 @@ import { GYMS } from "@/content/gyms";
 import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
-import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, switches } from "@/components/lesson/Diagrams";
-import { RR_CHECK_JOBS, SJF_CHECK_JOBS } from "@/content/lessons";
+import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, SYNC_EXAMPLES, switches } from "@/components/lesson/Diagrams";
+import { PETERSON, finalValues, runSemaphore, trace } from "@/game/sim/sync";
+import { RACE_THREADS, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
 const PROCESS_DIAGRAMS = ["pstates", "context", "fork", "threads", "ipc"];
 const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS];
+const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -246,6 +248,67 @@ describe("CPU-scheduling lessons", () => {
     const s = mlfq([{ name: "A", arrival: 0, burst: 30 }, { name: "B", arrival: 10, burst: 4 }, { name: "C", arrival: 12, burst: 20 }], [8, 16, Infinity]);
     expect(s.waiting[1]).toBe(0);
     expect(s.waiting[0]).toBe(Math.max(...s.waiting));
+  });
+});
+
+describe("synchronization lessons", () => {
+  it("cover every Mutex Marsh topic in order, with each diagram used once", () => {
+    const sync = lessonsOf("sync");
+    const gym = GYMS.find((g) => g.id === "sync")!;
+    expect(sync).toHaveLength(gym.topics.length);
+    expect(sync.map((l) => l.id)).toEqual(["sync-race", "sync-peterson", "sync-semaphores", "sync-monitors", "sync-classic"]);
+    expect(sync.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual([...SYNC_DIAGRAMS].sort());
+    for (const l of sync) expect(l.check.move.type).toBe("sync");
+  });
+
+  it("race diagram: Silberschatz's T0–T5 interleaving loses the producer's update (5 → 4)", () => {
+    expect(SYNC_EXAMPLES.race.steps.map((s) => s.value)).toEqual([5, 6, 5, 4, 6, 4]);
+    expect(SYNC_EXAMPLES.race.shared.counter).toBe(4);
+  });
+
+  it("race check: counter++ against counter-- from 5 can end at 4, 5 or 6", () => {
+    const q = lessonById("sync-race")!.check;
+    if (q.kind !== "multi") throw new Error("expected select-all");
+    expect(finalValues({ counter: 5 }, RACE_THREADS, "counter")).toEqual([4, 5, 6]);
+    expect(q.answers.map((i) => q.options[i])).toEqual(["4", "5", "6"]);
+    expect(grade(q, { kind: "multi", choices: [1, 2, 3] })).toBe(true);
+    expect(grade(q, { kind: "multi", choices: [2] })).toBe(false);
+  });
+
+  it("Peterson check: P1 wrote turn last, so P0 enters (checked on the protocol model)", () => {
+    const q = lessonById("sync-peterson")!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    // flag[0], flag[1], turn = 1 (P0), turn = 0 (P1), then both try to pass the loop
+    const s = trace(PETERSON, [0, 1, 0, 1, 0, 1]).at(-1)!;
+    expect(s.pc[0]).toBe(PETERSON.cs);
+    expect(s.pc[1]).not.toBe(PETERSON.cs);
+    expect(q.options[q.answer]).toBe("P0");
+  });
+
+  it("semaphore check: S = 2 and five wait()s block three (S ends at −3)", () => {
+    const q = lessonById("sync-semaphores")!.check;
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    expect(SEM_CHECK.value).toBe(-3);
+    expect(q.answer).toBe(3);
+    expect(grade(q, { kind: "numeric", value: "3" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "2" })).toBe(false);
+    // the diagram: S = 3 and five wait()s leave two queued
+    expect(SYNC_EXAMPLES.semaphore).toEqual(runSemaphore(3, ["T1", "T2", "T3", "T4", "T5"].map((who) => ({ op: "wait" as const, who }))));
+    expect(SYNC_EXAMPLES.semaphore.blocked).toEqual(["T4", "T5"]);
+  });
+
+  it("monitor check: a signal with no waiter has no effect (Silberschatz §6.7.2)", () => {
+    const q = lessonById("sync-monitors")!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/^Nothing/);
+  });
+
+  it("bounded-buffer check: wait(empty) → wait(mutex) → add → signal(mutex) → signal(full) (Silberschatz Fig. 7.1)", () => {
+    const q = lessonById("sync-classic")!.check as OrderQ;
+    expect(q.kind).toBe("order");
+    expect(q.steps).toEqual(["wait(empty)", "wait(mutex)", "Add the item to the buffer", "signal(mutex)", "signal(full)"]);
+    expect(grade(q, { kind: "order", order: [0, 1, 2, 3, 4] })).toBe(true);
+    expect(grade(q, { kind: "order", order: [1, 0, 2, 3, 4] })).toBe(false);
   });
 });
 

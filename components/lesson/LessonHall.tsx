@@ -130,14 +130,21 @@ export function LessonHall({ gymId }: { gymId: string }) {
         })}
       </ol>
       <GymFlowStrip flow={flow} className="justify-center" />
-      <Link
-        href={flow.bossReady ? `/gym/${gym.id}` : `/gym/${gym.id}/trainer`}
-        onClick={() => sfx.click()}
-        className={`${BAR_BUTTON} flex-none !bg-[#ffe27a]`}
-        data-testid="hall-boss"
-      >
-        {flow.bossReady ? `${flow.state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} ${gym.boss.name.toUpperCase()}` : `▶ TRAINER ${gym.trainer!.name.toUpperCase()} ${flow.trainers.won + 1}/${flow.trainers.total}`}
-      </Link>
+      {flow.state === "locked" ? (
+        // lessons can be read ahead, but battles wait for the previous badge
+        <p className={`${BAR_BUTTON} flex-none !bg-[#e8e4f4] text-center !text-[#6e6a8e]`} data-testid="hall-boss">
+          EARN THE {GYMS[GYMS.indexOf(gym) - 1].badge.toUpperCase()} FIRST
+        </p>
+      ) : (
+        <Link
+          href={flow.bossReady ? `/gym/${gym.id}` : `/gym/${gym.id}/trainer`}
+          onClick={() => sfx.click()}
+          className={`${BAR_BUTTON} flex-none !bg-[#ffe27a]`}
+          data-testid="hall-boss"
+        >
+          {flow.bossReady ? `${flow.state === "cleared" ? "▶ REMATCH" : "▶ CHALLENGE"} ${gym.boss.name.toUpperCase()}` : `▶ TRAINER ${gym.trainer!.name.toUpperCase()} ${flow.trainers.won + 1}/${flow.trainers.total}`}
+        </Link>
+      )}
     </main>
   );
 }
