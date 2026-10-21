@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { Fragment, useState, useSyncExternalStore } from "react";
 import { AnswerPanel, type Reveal } from "@/components/battle/AnswerPanel";
+import { InterleavePlay } from "@/components/lesson/Interleave";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { TypeBadge } from "@/components/ui/kit";
 import { GYMS } from "@/content/gyms";
-import { lessonsOf, type Lesson } from "@/content/lessons";
+import { RACE_THREADS, RACE_VALUES, lessonsOf, type Lesson } from "@/content/lessons";
 import { isEvolved, starterById } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { gymFlow } from "@/game/world/progress";
-import { answerText, grade, kindOf, type Response } from "@/game/engine/question";
+import { correctionText, grade, type Response } from "@/game/engine/question";
 import { BOSSES, partnerArt } from "@/game/sprites/index";
 import { PLATFORM } from "@/game/sprites/scenery";
 import { saveLessonDone, useSave } from "@/lib/save";
@@ -207,7 +208,9 @@ function LessonReader({
       {!checking ? (
         <>
           <div className="overflow-hidden rounded-[6px] border-4 border-[#1f1a3a] shadow-[0_4px_0_#0006]">
-            {p.diagram ? (
+            {p.play === "race" ? (
+              <InterleavePlay threads={RACE_THREADS} init={{ counter: 5 }} watch="counter" targets={RACE_VALUES} />
+            ) : p.diagram ? (
               <Diagram id={p.diagram} />
             ) : (
               <div className="relative flex h-44 items-end justify-center bg-[linear-gradient(#1b1446_0_20%,#251a5c_20%_40%,#33226e_40%_60%,#4a2c7e_60%_80%,#6b3a86_80%)]">
@@ -219,7 +222,7 @@ function LessonReader({
           </div>
           <article className="msg-box flex flex-col gap-2 px-4 py-3" data-testid="lesson-page">
             <div className="flex items-center gap-2">
-              {p.diagram && <PixelSprite sprite={narrator} scale={1} className="h-auto w-10 shrink-0" />}
+              {(p.diagram || p.play) && <PixelSprite sprite={narrator} scale={1} className="h-auto w-10 shrink-0" />}
               <h2 className="font-pixel text-[10px] leading-4 text-[#8a3a3a]">{p.heading.toUpperCase()}</h2>
             </div>
             {p.body.map((t, i) => (
@@ -243,7 +246,7 @@ function LessonReader({
           {reveal && (
             <div className={`msg-box px-4 py-3 text-[15px] leading-[1.35]`} data-testid="check-result" data-correct={reveal.correct}>
               <p className={`font-pixel text-[10px] leading-5 ${reveal.correct ? "text-[#2f8a3a]" : "text-[#c83a4a]"}`}>{reveal.correct ? "✓ LESSON COMPLETE!" : "✗ NOT QUITE"}</p>
-              {!reveal.correct && kindOf(lesson.check) !== "mcq" && <p>{kindOf(lesson.check) === "order" ? "Here is the right order." : kindOf(lesson.check) === "gantt" ? "Here is the right chart." : `The answer: ${answerText(lesson.check)}.`}</p>}
+              {!reveal.correct && correctionText(lesson.check) && <p>{correctionText(lesson.check)}</p>}
               <p>{lesson.check.explain}</p>
               {lesson.check.gantt && <GanttChart gantt={lesson.check.gantt} className="mt-2 max-w-md border-2 border-[#1a1430]" />}
             </div>

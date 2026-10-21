@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { MenuChoice } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
 import { rampFor } from "@/components/lesson/Gantt";
-import { chartOf, kindOf, scrambled, unitsOf, type GanttQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
+import { InterleaveBoard } from "@/components/lesson/Interleave";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -26,7 +27,8 @@ const CONFIRM = "gb-box flex min-h-12 w-full items-center justify-center font-pi
 /**
  * The answer controls under the message box, one layout per question kind:
  * a 2×2 menu (MCQ), toggles plus CONFIRM (select all), a keypad (numeric),
- * tap-to-number steps (order) or a tap-to-build Gantt chart (gantt). Remount it per question (`key`) to reset it.
+ * tap-to-number steps (order), a tap-to-build Gantt chart (gantt) or
+ * tap-to-schedule threads (interleave). Remount it per question (`key`) to reset it.
  */
 export function AnswerPanel(p: Props) {
   switch (kindOf(p.q)) {
@@ -38,6 +40,8 @@ export function AnswerPanel(p: Props) {
       return <OrderPanel {...p} q={p.q as OrderQ} />;
     case "gantt":
       return <GanttPanel {...p} q={p.q as GanttQ} />;
+    case "interleave":
+      return <InterleavePanel {...p} q={p.q as InterleaveQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -324,6 +328,49 @@ function GanttPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: G
         >
           {units.length === total ? "▶ CONFIRM CHART" : `TAP TO FILL t = ${units.length}/${total}`}
         </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Be the scheduler: tap which thread runs its next step until every thread
+ * has finished, then confirm. Any interleaving that leaves the goal variable
+ * at the goal value is right; after a wrong one, one that works is shown.
+ */
+function InterleavePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: InterleaveQ }) {
+  const [schedule, setSchedule] = useState<number[]>([]);
+  const total = q.threads.reduce((n, t) => n + t.code.length, 0);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "interleave" ? reveal.response.schedule : schedule;
+  const now = schedule.length === total ? interleaveResult(q, schedule) : null;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="interleave">
+      <InterleaveBoard
+        threads={q.threads}
+        init={q.init}
+        schedule={shown}
+        onStep={locked || schedule.length >= total ? undefined : (t) => (sfx.blip(), setSchedule((s) => [...s, t]))}
+        hint={reveal && !reveal.correct ? q.answer : undefined}
+        tone={reveal ? (reveal.correct ? "right" : "wrong") : undefined}
+      />
+      {!reveal && (
+        <div className="grid grid-cols-[auto_1fr] gap-1.5">
+          <button type="button" disabled={locked || schedule.length === 0} onClick={() => (sfx.blip(), setSchedule((s) => s.slice(0, -1)))} className={`${KEY_BTN} px-3`} aria-label="Undo">
+            ⌫ UNDO
+          </button>
+          <button
+            type="button"
+            className={CONFIRM}
+            disabled={locked || schedule.length !== total}
+            onClick={() => {
+              sfx.click();
+              onSubmit({ kind: "interleave", schedule });
+            }}
+          >
+            {schedule.length === total ? `▶ CONFIRM (${q.goal.v} = ${now})` : `GOAL ${q.goal.v}=${q.goal.value} · ${schedule.length}/${total}`}
+          </button>
+        </div>
       )}
     </div>
   );

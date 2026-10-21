@@ -91,6 +91,16 @@ svg[shape-rendering="crispEdges"] {
   animation: blink 1s steps(1) infinite;
 }
 
+/* a value that just changed: a quick bump */
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.pop {
+  animation: pop 0.25s steps(4);
+}
+
 /* No 300ms tap delay or double-tap zoom on controls. */
 button,
 a,

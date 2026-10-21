@@ -4,7 +4,7 @@ import { pixel } from "@/app/fonts";
 import { HpBox, MessageBox, MoveInfo } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
 import { initialState, reducer, type Fighter } from "@/game/engine/battle";
-import { answerText, grade, kindOf, type Question, type Response } from "@/game/engine/question";
+import { correctionText, grade, type Question, type Response } from "@/game/engine/question";
 import { effectiveness, effectMessage, superReason, type MoveType } from "@/game/engine/types";
 import { levelFor, xpForLevel, xpProgress, xpYield } from "@/game/engine/xp";
 import type { CreatureStage } from "@/game/render/stage";
@@ -183,8 +183,9 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
       if (eff) await say(eff).then(() => wait(600));
     }
     // the menu shows an MCQ's right answer; other kinds state it
-    if (!correct && kindOf(q) !== "mcq") {
-      await say(kindOf(q) === "order" ? "Here is the right order." : kindOf(q) === "gantt" ? "Here is the right chart." : `The answer: ${answerText(q)}.`);
+    const correction = correct ? null : correctionText(q);
+    if (correction) {
+      await say(correction);
       await pause();
     }
     setExplaining(true);

@@ -98,6 +98,34 @@ export function finalValues(init: Record<string, number>, threads: readonly Sync
   return [...seen].sort((a, b) => a - b);
 }
 
+/**
+ * Whose updates a schedule lost: thread t's store to v is lost when another
+ * thread loaded v before that store and stored its own value after it, so the
+ * later store overwrites t's change without ever having seen it.
+ */
+export function lostUpdates(init: Record<string, number>, threads: readonly SyncThread[], schedule: readonly number[]): number[] {
+  const { steps } = runSchedule(init, threads, schedule);
+  // step index of the load each thread's register came from
+  const loadedAt = threads.map(() => ({}) as Record<string, number>);
+  const stores: { at: number; thread: number; to: string }[] = [];
+  const lost = new Set<number>();
+  steps.forEach(({ thread: u, instr }, i) => {
+    if (instr.op === "load") loadedAt[u][instr.reg] = i;
+    else if (instr.op === "store") {
+      const from = loadedAt[u][instr.reg];
+      for (const s of stores) if (s.thread !== u && s.to === instr.to && s.at > from) lost.add(s.thread);
+      stores.push({ at: i, thread: u, to: instr.to });
+    }
+  });
+  return [...lost].sort((a, b) => a - b);
+}
+
+/** One interleaving as text, e.g. "P: r1 = counter → C: r2 = counter → …". */
+export const scheduleText = (threads: readonly SyncThread[], schedule: readonly number[]): string => {
+  const pcs = threads.map(() => 0);
+  return schedule.map((t) => `${threads[t].name}: ${instrText(threads[t].code[pcs[t]++])}`).join(" → ");
+};
+
 /* ---- two-process entry protocols ---- */
 
 /** Shared flags and turn, plus each process's program counter. */

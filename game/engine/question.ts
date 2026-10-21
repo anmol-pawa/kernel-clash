@@ -7,11 +7,13 @@
  *   numeric  type a number (within a tolerance, fractions like 17/3 allowed)
  *   order    put shuffled steps back in order
  *   gantt    build a scheduler's Gantt chart one time unit per tap
+ *   interleave  be the scheduler: tap which thread runs its next step
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
 import { ganttText, type Slice } from "@/game/sim/scheduling";
+import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
 
 export interface Move {
@@ -73,11 +75,26 @@ export interface GanttQ extends Base {
   answer: readonly Slice[];
 }
 
+export interface InterleaveQ extends Base {
+  kind: "interleave";
+  /** each thread's machine steps (load / add / store) */
+  threads: readonly SyncThread[];
+  /** the shared variables' starting values */
+  init: Readonly<Record<string, number>>;
+  /** the shared variable to watch and the value it must end at */
+  goal: { v: string; value: number };
+  /** one schedule (a thread index per step) that reaches the goal, found by the simulator */
+  answer: readonly number[];
+}
+
+/** Most steps an interleave question may have (one tap each). */
+export const MAX_INTERLEAVE_STEPS = 12;
+
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -88,7 +105,23 @@ export type Response =
   /** step indexes (into `steps`) in the order the player put them */
   | { kind: "order"; order: readonly number[] }
   /** who runs in each time unit from 0 (null = idle) */
-  | { kind: "gantt"; units: readonly (string | null)[] };
+  | { kind: "gantt"; units: readonly (string | null)[] }
+  /** the thread that took each step, in order */
+  | { kind: "interleave"; schedule: readonly number[] };
+
+/**
+ * Where an interleaving leaves the goal variable, or null if the schedule
+ * isn't a complete, valid run (a thread stepped past its end, or one didn't finish).
+ */
+export function interleaveResult(q: InterleaveQ, schedule: readonly number[]): number | null {
+  if (schedule.some((t) => !Number.isInteger(t) || t < 0 || t >= q.threads.length)) return null;
+  try {
+    const run = runSchedule(q.init, q.threads, schedule);
+    return run.done ? run.shared[q.goal.v] : null;
+  } catch {
+    return null;
+  }
+}
 
 /** A chart as one entry per time unit: [P1, P1, P2, null, …]. */
 export function unitsOf(chart: readonly Slice[]): (string | null)[] {
@@ -145,6 +178,11 @@ export function grade(q: Question, r: Response): boolean {
       const want = unitsOf((q as GanttQ).answer);
       return r.units.length === want.length && r.units.every((u, i) => u === want[i]);
     }
+    case "interleave": {
+      // any interleaving that reaches the goal is right, not just the stored one
+      const iq = q as InterleaveQ;
+      return interleaveResult(iq, r.schedule) === iq.goal.value;
+    }
   }
 }
 
@@ -166,8 +204,26 @@ export function answerText(q: Question): string {
       return q.steps.map((s, i) => `${i + 1}. ${s}`).join(" ");
     case "gantt":
       return ganttText(q.answer);
+    case "interleave":
+      return scheduleText(q.threads, q.answer);
     default:
       return q.options[q.answer];
+  }
+}
+
+/** What to say after a wrong answer (MCQs need nothing: the menu marks the right option). */
+export function correctionText(q: Question): string | null {
+  switch (kindOf(q)) {
+    case "mcq":
+      return null;
+    case "order":
+      return "Here is the right order.";
+    case "gantt":
+      return "Here is the right chart.";
+    case "interleave":
+      return "Here is one schedule that works.";
+    default:
+      return `The answer: ${answerText(q)}.`;
   }
 }
 
@@ -222,6 +278,16 @@ export function questionProblems(q: Question): string[] {
       if (a.some((b) => b.name !== null && !q.jobs.includes(b.name))) p.push("chart names a job not in jobs");
       if (q.jobs.some((j) => !a.some((b) => b.name === j))) p.push("a job never runs");
       if (a.length && a[a.length - 1].end > MAX_GANTT_UNITS) p.push("chart too long to build by tapping");
+      break;
+    }
+    case "interleave": {
+      const steps = q.threads.reduce((n, t) => n + t.code.length, 0);
+      if (q.threads.length < 2 || q.threads.length > 3) p.push("interleave needs 2–3 threads");
+      if (new Set(q.threads.map((t) => t.name)).size !== q.threads.length) p.push("duplicate thread names");
+      if (q.threads.some((t) => t.code.length === 0)) p.push("a thread has no steps");
+      if (steps > MAX_INTERLEAVE_STEPS) p.push("too many steps to tap");
+      if (!(q.goal.v in q.init)) p.push("goal variable has no starting value");
+      if (q.answer.length !== steps || interleaveResult(q, q.answer) !== q.goal.value) p.push("answer schedule doesn't reach the goal");
       break;
     }
     default:

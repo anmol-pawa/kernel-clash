@@ -16,6 +16,8 @@ export interface LessonPage {
   /** paragraphs; `backticks` render as code */
   body: string[];
   diagram?: DiagramId;
+  /** an interactive board shown in place of a diagram */
+  play?: "race";
 }
 
 export interface Lesson {
@@ -49,8 +51,9 @@ export const RACE_THREADS: SyncThread[] = [
   { name: "PRODUCER", code: increment("counter", "r1", 1) },
   { name: "CONSUMER", code: increment("counter", "r2", -1) },
 ];
-const RACE_VALUES = finalValues({ counter: 5 }, RACE_THREADS, "counter");
-const RACE_OPTIONS = [3, 4, 5, 6, 7];
+export const RACE_VALUES = finalValues({ counter: 5 }, RACE_THREADS, "counter");
+/** The race check's schedule: the producer loads first and stores last, so the consumer's update is lost. */
+const RACE_CHECK_ANSWER = [0, 1, 1, 1, 0, 0];
 /** five processes wait() on a semaphore that starts at 2 */
 export const SEM_CHECK = runSemaphore(2, ["A", "B", "C", "D", "E"].map((who) => ({ op: "wait" as const, who })));
 const YMOVE = { name: "Recall", type: "sync", power: 30 } as const;
@@ -639,6 +642,14 @@ export const LESSONS: Lesson[] = [
         diagram: "race",
       },
       {
+        heading: "You are the scheduler",
+        body: [
+          "Tap ▶ STEP under a thread to run its next step. Its register changes on a load or an add; `counter` only changes when a thread stores.",
+          "Find all three endings: 5 (one thread finishes before the other starts), 4 and 6. Whenever both load before either stores, the store that lands last overwrites the other: a lost update.",
+        ],
+        play: "race",
+      },
+      {
         heading: "Race conditions",
         body: [
           "A race condition is when several threads use shared data at the same time and the result depends on the order their steps happen to run in. The bug shows up rarely, is hard to reproduce, and can vanish when you add a print or a debugger.",
@@ -655,11 +666,13 @@ export const LESSONS: Lesson[] = [
     ],
     check: {
       id: "lesson-race",
-      kind: "multi",
-      prompt: "counter is 5. A producer runs counter++ while a consumer runs counter-- (each is load, add, store). Which final values of counter are possible? Select all.",
-      options: RACE_OPTIONS.map(String),
-      answers: RACE_OPTIONS.flatMap((v, i) => (RACE_VALUES.includes(v) ? [i] : [])),
-      explain: "If one thread runs all three steps before the other starts, counter ends at 5. If both load 5 before either stores, the store that lands last wins: 6 if it is the producer's, 4 if it is the consumer's. 3 and 7 would need a change to happen twice.",
+      kind: "interleave",
+      prompt: "counter is 5. The producer runs counter++ and the consumer runs counter--. You are the scheduler: pick an order of their steps that leaves counter at 6.",
+      threads: RACE_THREADS,
+      init: { counter: 5 },
+      goal: { v: "counter", value: 6 },
+      answer: RACE_CHECK_ANSWER,
+      explain: "To end at 6 the consumer's update must be lost: the producer loads 5 before the consumer stores 4, then stores its 6 last, overwriting the 4. Running one thread after the other always gives 5.",
       move: YMOVE,
     },
   },

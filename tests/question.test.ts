@@ -3,9 +3,10 @@ import { DEMO_QUESTIONS } from "@/content/demo";
 import { fcfsAverage, forkPrints, GENERATORS } from "@/content/generators";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { PCB_CONTENTS, SAMPLE_QUESTIONS, SYSCALL_STEPS } from "@/content/questionSamples";
-import { answerText, chartOf, grade, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type GanttQ, type NumericQ, type Question } from "@/game/engine/question";
+import { answerText, chartOf, correctionText, grade, interleaveResult, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type GanttQ, type InterleaveQ, type NumericQ, type Question } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { fcfs, ganttText } from "@/game/sim/scheduling";
+import { increment } from "@/game/sim/sync";
 import { rng } from "@/lib/rng";
 
 const move = { name: "Test", type: "process" as const, power: 30 };
@@ -57,6 +58,43 @@ describe("grade", () => {
   it("a response of the wrong kind is wrong", () => {
     expect(grade(SYSCALL_STEPS, { kind: "mcq", choice: 0 })).toBe(false);
     expect(grade(DEMO_QUESTIONS[0], { kind: "numeric", value: "1" })).toBe(false);
+  });
+});
+
+describe("interleave questions", () => {
+  // Silberschatz §6.1: the producer's counter++ against the consumer's counter-- from 5
+  const threads = [
+    { name: "P", code: increment("counter", "r1", 1) },
+    { name: "C", code: increment("counter", "r2", -1) },
+  ];
+  const q: InterleaveQ = { kind: "interleave", id: "i", prompt: "Make counter 4", explain: "x", threads, init: { counter: 5 }, goal: { v: "counter", value: 4 }, answer: [0, 0, 1, 1, 0, 1], move };
+
+  it("accepts any complete interleaving that reaches the goal, not just the stored one", () => {
+    expect(questionProblems(q)).toEqual([]);
+    expect(grade(q, { kind: "interleave", schedule: [0, 0, 1, 1, 0, 1] })).toBe(true);
+    // both load 5, the producer stores 6, then the consumer's 4 lands last
+    expect(grade(q, { kind: "interleave", schedule: [1, 0, 0, 0, 1, 1] })).toBe(true);
+    expect(grade(q, { kind: "interleave", schedule: [0, 1, 1, 0, 0, 1] })).toBe(true);
+  });
+  it("rejects serial runs, the other lost update, and incomplete or invalid schedules", () => {
+    expect(grade(q, { kind: "interleave", schedule: [0, 0, 0, 1, 1, 1] })).toBe(false); // 5
+    expect(grade(q, { kind: "interleave", schedule: [1, 0, 0, 1, 1, 0] })).toBe(false); // 6
+    expect(interleaveResult(q, [0, 0, 1, 1, 0])).toBeNull();
+    expect(interleaveResult(q, [0, 0, 0, 0, 1, 1])).toBeNull();
+    expect(interleaveResult(q, [0, 0, 2, 1, 1, 1])).toBeNull();
+    expect(grade(q, { kind: "mcq", choice: 0 })).toBe(false);
+  });
+  it("states one working schedule after a wrong answer", () => {
+    expect(answerText(q)).toBe("P: r1 = counter → P: r1 = r1 + 1 → C: r2 = counter → C: r2 = r2 - 1 → P: counter = r1 → C: counter = r2");
+    expect(correctionText(q)).toBe("Here is one schedule that works.");
+  });
+  it("flags malformed questions", () => {
+    expect(questionProblems({ ...q, answer: [0, 0, 0, 1, 1, 1] })).toContain("answer schedule doesn't reach the goal");
+    expect(questionProblems({ ...q, threads: [threads[0]] })).toContain("interleave needs 2–3 threads");
+    expect(questionProblems({ ...q, threads: [threads[0], { ...threads[1], name: "P" }] })).toContain("duplicate thread names");
+    expect(questionProblems({ ...q, goal: { v: "x", value: 4 } })).toContain("goal variable has no starting value");
+    const long = [{ name: "A", code: [...increment("counter", "r1"), ...increment("counter", "r1"), ...increment("counter", "r1")] }, { name: "B", code: [...increment("counter", "r2"), ...increment("counter", "r2")] }];
+    expect(questionProblems({ ...q, threads: long, answer: [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], goal: { v: "counter", value: 10 } })).toContain("too many steps to tap");
   });
 });
 
@@ -221,6 +259,8 @@ describe("generators", () => {
           expect(grade(q, { kind: "order", order: q.steps.map((_, i) => i) }), q.id).toBe(true);
         } else if (q.kind === "gantt") {
           expect(grade(q, { kind: "gantt", units: unitsOf(q.answer) }), q.id).toBe(true);
+        } else if (q.kind === "interleave") {
+          expect(grade(q, { kind: "interleave", schedule: q.answer }), q.id).toBe(true);
         }
       }
     }

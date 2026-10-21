@@ -4,8 +4,8 @@ import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, SYNC_EXAMPLES, switches } from "@/components/lesson/Diagrams";
-import { PETERSON, finalValues, runSemaphore, trace } from "@/game/sim/sync";
-import { RACE_THREADS, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
+import { PETERSON, finalValues, lostUpdates, runSemaphore, trace } from "@/game/sim/sync";
+import { RACE_THREADS, RACE_VALUES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
@@ -266,13 +266,22 @@ describe("synchronization lessons", () => {
     expect(SYNC_EXAMPLES.race.shared.counter).toBe(4);
   });
 
-  it("race check: counter++ against counter-- from 5 can end at 4, 5 or 6", () => {
+  it("race check: schedule counter++ against counter-- from 5 so it ends at 6", () => {
     const q = lessonById("sync-race")!.check;
-    if (q.kind !== "multi") throw new Error("expected select-all");
+    if (q.kind !== "interleave") throw new Error("expected interleave");
     expect(finalValues({ counter: 5 }, RACE_THREADS, "counter")).toEqual([4, 5, 6]);
-    expect(q.answers.map((i) => q.options[i])).toEqual(["4", "5", "6"]);
-    expect(grade(q, { kind: "multi", choices: [1, 2, 3] })).toBe(true);
-    expect(grade(q, { kind: "multi", choices: [2] })).toBe(false);
+    expect(RACE_VALUES).toEqual([4, 5, 6]);
+    expect(questionProblems(q)).toEqual([]);
+    expect(q.threads).toBe(RACE_THREADS);
+    expect(grade(q, { kind: "interleave", schedule: q.answer })).toBe(true);
+    // the consumer's 4 is overwritten by the producer's 6
+    expect(lostUpdates({ counter: 5 }, RACE_THREADS, q.answer)).toEqual([1]);
+    expect(grade(q, { kind: "interleave", schedule: [0, 0, 0, 1, 1, 1] })).toBe(false);
+    expect(grade(q, { kind: "interleave", schedule: [0, 0, 1, 1, 0, 1] })).toBe(false);
+  });
+
+  it("race lesson has a free-play scheduler page", () => {
+    expect(lessonById("sync-race")!.pages.filter((p) => p.play === "race")).toHaveLength(1);
   });
 
   it("Peterson check: P1 wrote turn last, so P0 enters (checked on the protocol model)", () => {
