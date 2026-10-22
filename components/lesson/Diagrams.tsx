@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { RACE_THREADS, type DiagramId } from "@/content/lessons";
 import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
+import { FIT_EXAMPLE, PAGING_EXAMPLE, SEGMENT_EXAMPLE, allocate, eat, translate, translateSegment, type Fit } from "@/game/sim/memory";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -1294,6 +1295,188 @@ function Banker() {
   );
 }
 
+/** The harbor's night-blue backdrop for the memory diagrams. */
+function Harbor({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#10264a" />
+      {Array.from({ length: 30 }, (_, i) => (
+        <rect key={i} x={(i * 47 + seed * 13) % W} y={(i * 29 + seed * 5) % H} width={1} height={i % 3 ? 1 : 2} fill="#2a4a80" />
+      ))}
+    </>
+  );
+}
+
+/** First, best and worst fit each placing a 212 KB request into the same five holes. */
+function Alloc() {
+  const { holes } = FIT_EXAMPLE;
+  const scale = 0.09;
+  const rows: [string, Fit][] = [
+    ["FIRST FIT: THE FIRST HOLE THAT FITS", "first"],
+    ["BEST FIT: THE SMALLEST HOLE THAT FITS", "best"],
+    ["WORST FIT: THE LARGEST HOLE", "worst"],
+  ];
+  return (
+    <>
+      <Harbor seed={1} />
+      <Text x={4} y={9} size={4} fill="#cfe4ff">
+        HOLES (KB) AND A 212 KB REQUEST
+      </Text>
+      {rows.map(([label, fit], r) => {
+        const pick = allocate(holes, [212], fit).placements[0].hole;
+        let x = 4;
+        return (
+          <g key={fit}>
+            <Text x={4} y={21 + r * 30} size={3.5} fill="#ffe27a">
+              {label}
+            </Text>
+            {holes.map((h, i) => {
+              const w = Math.max(14, Math.round(h * scale));
+              const cx = x;
+              x += w + 2;
+              return <Card key={i} x={cx} y={24 + r * 30} w={w} h={14} lines={[String(h)]} size={3.5} ramp={i === pick ? GOLD : BLUE} ink={i === pick ? INK : "#f8f4e6"} />;
+            })}
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/** Pages of a process mapped through a page table into scattered frames. */
+function Paging() {
+  const { pageSize, table } = PAGING_EXAMPLE;
+  const t = translate(13, pageSize, table);
+  const frames = Array.from({ length: 8 }, (_, f) => table.indexOf(f));
+  return (
+    <>
+      <Harbor seed={2} />
+      <Text x={4} y={9} size={3.5} fill="#ffe27a">
+        PAGES
+      </Text>
+      <Text x={44} y={9} size={3.5} fill="#ffe27a">
+        PAGE TABLE
+      </Text>
+      <Text x={176} y={9} size={3.5} fill="#ffe27a" anchor="end">
+        FRAMES
+      </Text>
+      {table.map((f, p) => (
+        <g key={p}>
+          <Card x={4} y={13 + p * 11} w={22} h={9} lines={[`PAGE ${p}`]} size={3} ramp={TEAL} ink="#f8f4e6" />
+          <Arrow x1={27} y1={17.5 + p * 11} x2={43} y2={17.5 + p * 11} />
+          <Card x={44} y={13 + p * 11} w={30} h={9} lines={[`FRAME ${f}`]} size={3} ramp={PURPLE} ink="#f8f4e6" />
+        </g>
+      ))}
+      {frames.map((p, f) => (
+        <Card key={f} x={130} y={13 + f * 11} w={46} h={9} lines={[p < 0 ? `F${f} FREE` : `F${f} = PAGE ${p}`]} size={3} ramp={p < 0 ? STONE : TEAL} ink="#f8f4e6" />
+      ))}
+      <Text x={4} y={66} size={3.5} fill="#cfe4ff">
+        LOGICAL ADDRESS = PAGE NO + OFFSET
+      </Text>
+      <Text x={4} y={74} size={3.5} fill="#cfe4ff">
+        {`${pageSize}-BYTE PAGES: 13 = PAGE ${t.page}, OFFSET ${t.offset}`}
+      </Text>
+      <Text x={4} y={82} size={3.5} fill="#7cf0c8">
+        {`FRAME ${t.frame} X ${pageSize} + ${t.offset} = ${t.physical}`}
+      </Text>
+      <Text x={4} y={96} size={3.5} fill="#f8f4e6">
+        PAGES CAN SIT ANYWHERE: NO
+      </Text>
+      <Text x={4} y={103} size={3.5} fill="#f8f4e6">
+        EXTERNAL FRAGMENTATION
+      </Text>
+    </>
+  );
+}
+
+/** The CPU asks the TLB first; a miss costs an extra walk of the page table in memory. */
+function Tlb() {
+  return (
+    <>
+      <Harbor seed={3} />
+      <Card x={4} y={18} w={34} h={14} lines={["CPU", "PAGE P"]} size={3.5} ramp={TEAL} ink="#f8f4e6" />
+      <Arrow x1={39} y1={25} x2={58} y2={25} />
+      <Card x={59} y={18} w={40} h={14} lines={["TLB", "P > FRAME?"]} size={3} ramp={GOLD} />
+      <Arrow x1={100} y1={25} x2={121} y2={25} color="#7cf0c8" />
+      <Text x={110} y={22} size={3.5} fill="#7cf0c8" anchor="middle">
+        HIT
+      </Text>
+      <Card x={122} y={18} w={54} h={14} lines={["MEMORY", "1 ACCESS"]} size={3.5} ramp={BLUE} ink="#f8f4e6" />
+      <Arrow x1={79} y1={33} x2={79} y2={52} color="#f87a8a" />
+      <Text x={83} y={45} size={3.5} fill="#f87a8a">
+        MISS
+      </Text>
+      <Card x={46} y={53} w={70} h={14} lines={["PAGE TABLE IN MEMORY", "+1 ACCESS"]} size={3} ramp={RED} ink="#f8f4e6" />
+      <Text x={4} y={80} size={3.5} fill="#cfe4ff">
+        EAT = H X (T + M) + (1 - H) X (T + 2M)
+      </Text>
+      <Text x={4} y={89} size={3.5} fill="#f8f4e6">
+        {`M = 100 NS, H = 80%: EAT = ${Math.round(eat(0.8, 100))} NS`}
+      </Text>
+      <Text x={4} y={98} size={3.5} fill="#f8f4e6">
+        {`H = 99%: EAT = ${Math.round(eat(0.99, 100))} NS`}
+      </Text>
+      <Text x={4} y={107} size={3.5} fill="#7cf0c8">
+        THE TLB CACHES RECENT TRANSLATIONS
+      </Text>
+    </>
+  );
+}
+
+/** A segment table of base and limit pairs, and three translations including a trap. */
+function Segments() {
+  const reqs: [number, number][] = [[2, 53], [3, 852], [0, 1222]];
+  return (
+    <>
+      <Harbor seed={4} />
+      <Text x={4} y={9} size={3.5} fill="#ffe27a">
+        SEG
+      </Text>
+      <Text x={24} y={9} size={3.5} fill="#ffe27a">
+        LIMIT
+      </Text>
+      <Text x={52} y={9} size={3.5} fill="#ffe27a">
+        BASE
+      </Text>
+      {SEGMENT_EXAMPLE.map((s, i) => (
+        <g key={i}>
+          <Card x={4} y={12 + i * 11} w={14} h={9} lines={[String(i)]} size={3.5} ramp={TEAL} ink="#f8f4e6" />
+          <Card x={20} y={12 + i * 11} w={26} h={9} lines={[String(s.limit)]} size={3.5} ramp={PURPLE} ink="#f8f4e6" />
+          <Card x={48} y={12 + i * 11} w={26} h={9} lines={[String(s.base)]} size={3.5} ramp={BLUE} ink="#f8f4e6" />
+        </g>
+      ))}
+      <Text x={86} y={9} size={3.5} fill="#ffe27a">
+        (SEGMENT, OFFSET)
+      </Text>
+      {reqs.map(([seg, off], i) => {
+        const r = translateSegment(seg, off, SEGMENT_EXAMPLE);
+        return (
+          <g key={i}>
+            <Text x={86} y={20 + i * 14} size={3.5} fill="#f8f4e6">
+              {`(${seg}, ${off})`}
+            </Text>
+            <Text x={86} y={26 + i * 14} size={3.5} fill={r.physical === null ? "#f87a8a" : "#7cf0c8"}>
+              {r.physical === null ? `OFFSET > LIMIT: TRAP` : `${SEGMENT_EXAMPLE[seg].base} + ${off} = ${r.physical}`}
+            </Text>
+          </g>
+        );
+      })}
+      <Text x={4} y={76} size={3.5} fill="#cfe4ff">
+        OFFSET MUST BE BELOW THE LIMIT,
+      </Text>
+      <Text x={4} y={84} size={3.5} fill="#cfe4ff">
+        THEN PHYSICAL = BASE + OFFSET
+      </Text>
+      <Text x={4} y={98} size={3.5} fill="#f8f4e6">
+        SEGMENTS FOLLOW THE PROGRAM:
+      </Text>
+      <Text x={4} y={106} size={3.5} fill="#f8f4e6">
+        CODE, HEAP, STACK, LIBRARIES
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -1323,6 +1506,10 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   philosophers: { title: "Five dining philosophers, each holding one chopstick: deadlock", draw: Philosophers },
   rag: { title: "A resource-allocation graph with a cycle, and the four Coffman conditions", draw: Rag },
   banker: { title: "The Banker's algorithm: allocation, max, need and a safe sequence", draw: Banker },
+  alloc: { title: "First, best and worst fit placing a 212 KB request into five holes", draw: Alloc },
+  paging: { title: "Pages mapped through a page table into scattered frames", draw: Paging },
+  tlb: { title: "The TLB, a hit and a miss, and the effective access time", draw: Tlb },
+  segments: { title: "A segment table with base and limit, and a trap", draw: Segments },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

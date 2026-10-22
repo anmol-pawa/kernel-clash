@@ -1,6 +1,7 @@
 import type { Question } from "@/game/engine/question";
 import { roundRobin, sjf } from "@/game/sim/scheduling";
 import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadlock";
+import { FIT_EXAMPLE, PAGING_EXAMPLE, SEGMENT_EXAMPLE, allocate, eat, internalFragmentation, pagesNeeded, translate, translateSegment } from "@/game/sim/memory";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -10,7 +11,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "alloc" | "paging" | "tlb" | "segments";
 
 export interface LessonPage {
   heading: string;
@@ -57,6 +58,7 @@ export const RACE_VALUES = finalValues({ counter: 5 }, RACE_THREADS, "counter");
 const RACE_CHECK_ANSWER = [0, 1, 1, 1, 0, 0];
 /** five processes wait() on a semaphore that starts at 2 */
 export const SEM_CHECK = runSemaphore(2, ["A", "B", "C", "D", "E"].map((who) => ({ op: "wait" as const, who })));
+const MEMMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 const YMOVE = { name: "Recall", type: "sync", power: 30 } as const;
 /** the recovery check: P2 asks for one more C in the detection example */
 export const DETECT_CHECK_REQUESTS = DETECT_EXAMPLE.requests.map((r, i) => (i === 2 ? [0, 0, 1] : r));
@@ -993,6 +995,158 @@ export const LESSONS: Lesson[] = [
       answer: DETECT_CHECK.length,
       explain: `P0 requests nothing, so it finishes and returns (0, 1, 0). That satisfies nobody: P1 wants (2, 0, 2), P2 (0, 0, 1), P3 (1, 0, 0) and P4 (0, 0, 2), and none of that is free. So ${DETECT_CHECK.length} processes (P1 to P4) are deadlocked and P0 isn't.`,
       move: YMOVE,
+    },
+  },
+  {
+    id: "memory-contiguous",
+    gym: "memory",
+    title: "Contiguous allocation",
+    pages: [
+      {
+        heading: "One block per process",
+        body: [
+          "In contiguous allocation each process gets one unbroken block of memory. A base register holds where the block starts and a limit register holds its length; the hardware checks every address against the limit, so a process can't touch its neighbours.",
+          "As processes come and go, free memory breaks into holes of different sizes. The OS must pick a hole for each new request.",
+        ],
+      },
+      {
+        heading: "First, best, worst",
+        body: [
+          "First fit takes the first hole that is big enough (fast). Best fit takes the smallest hole that is big enough (leaves the smallest leftover, but must search the whole list). Worst fit takes the largest hole (leaves the biggest leftover, in the hope it is still useful).",
+          "Silberschatz's exercise: holes of 100, 500, 200, 300 and 600 KB and requests of 212, 417, 112 and 426 KB. Best fit places all four, while first fit and worst fit leave the 426 KB request waiting. In the diagram, the gold hole is the one chosen for 212 KB.",
+        ],
+        diagram: "alloc",
+      },
+    ],
+    check: {
+      id: "lesson-contiguous",
+      kind: "numeric",
+      prompt: "Holes of 100, 500, 200, 300 and 600 KB (in address order). Requests of 212, 417, 112 and 426 KB arrive in that order and are placed by first fit. How big (in KB) is the request that has to wait?",
+      answer: FIT_EXAMPLE.requests[allocate(FIT_EXAMPLE.holes, FIT_EXAMPLE.requests, "first").placements.findIndex((x) => x.hole === null)],
+      unit: "KB",
+      explain: "First fit puts 212 in the 500 hole (288 left), 417 in the 600 hole (183 left) and 112 in the 288 left of the first. The 426 KB request then finds no hole big enough (the largest left is 300), so it waits. Best fit would have placed all four.",
+      move: MEMMOVE,
+    },
+  },
+  {
+    id: "memory-fragmentation",
+    gym: "memory",
+    title: "Fragmentation",
+    pages: [
+      {
+        heading: "Two kinds of waste",
+        body: [
+          "External fragmentation: there is enough free memory in total, but it is split into holes too small to use. First fit and best fit both suffer from it; statistically about a third of memory can be lost (the 50-percent rule).",
+          "Internal fragmentation: memory handed out in fixed-size units wastes the unused tail of the last unit. A process of 72,766 bytes in 2,048-byte pages needs 36 pages. The last page holds only 1,086 bytes, so 962 bytes are wasted.",
+        ],
+      },
+      {
+        heading: "Curing it",
+        body: [
+          "Compaction slides all the processes together to merge the holes into one. It works only if addresses can be relocated at run time (a base register), and it costs a lot of copying.",
+          "Paging avoids external fragmentation altogether, because any free frame will do. It pays with a little internal fragmentation, on average half a page per process, so small pages waste less but need a bigger page table.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-fragmentation",
+      kind: "numeric",
+      prompt: "A process is 72,766 bytes and the page size is 2,048 bytes. How many bytes are wasted by internal fragmentation?",
+      answer: internalFragmentation(72766, 2048),
+      unit: "bytes",
+      explain: `The process needs ${pagesNeeded(72766, 2048)} pages (35 full ones and a 1,086-byte tail). The last page wastes 2,048 − 1,086 = ${internalFragmentation(72766, 2048)} bytes.`,
+      move: MEMMOVE,
+    },
+  },
+  {
+    id: "memory-paging",
+    gym: "memory",
+    title: "Paging and address translation",
+    pages: [
+      {
+        heading: "Pages and frames",
+        body: [
+          "Paging cuts a process's logical address space into fixed-size pages and physical memory into frames of the same size. A page table maps each page to the frame that holds it, so the pages can sit anywhere.",
+          "A logical address splits into a page number p (the index into the page table) and an offset d (the position inside the page). The physical address is `frame × page size + d`. With a power-of-two page size, the offset is just the low bits.",
+        ],
+        diagram: "paging",
+      },
+      {
+        heading: "Big address spaces",
+        body: [
+          "A 32-bit address with 4 KB pages has a 12-bit offset and a 20-bit page number, so a flat page table has 2^20 entries: 4 MB with 4-byte entries, for every process.",
+          "Two-level paging pages the page table itself: 10 bits index an outer table, 10 bits index an inner table (one page of 1,024 four-byte entries) and 12 bits are the offset. Inner tables for unused regions are never built. An inverted page table instead has one entry per frame, searched by hashing the process id and page number.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-paging",
+      kind: "numeric",
+      prompt: "Pages are 4 bytes and the page table is page 0 → frame 5, page 1 → frame 6, page 2 → frame 1, page 3 → frame 2. What physical address does logical address 13 map to?",
+      answer: translate(13, PAGING_EXAMPLE.pageSize, PAGING_EXAMPLE.table).physical!,
+      explain: "13 = 3 × 4 + 1, so page 3, offset 1. Page 3 is in frame 2, and 2 × 4 + 1 = 9.",
+      move: MEMMOVE,
+    },
+  },
+  {
+    id: "memory-tlb",
+    gym: "memory",
+    title: "The TLB and effective access time",
+    pages: [
+      {
+        heading: "Why a cache",
+        body: [
+          "With the page table in memory, every access costs two memory accesses: one to read the page-table entry and one for the data. The translation look-aside buffer (TLB) is a small, fast cache of recent page-to-frame translations.",
+          "On a hit the frame number comes straight from the TLB. On a miss the page table is walked and the entry is loaded into the TLB. On a context switch the TLB is flushed, unless its entries carry an address-space id (ASID).",
+        ],
+        diagram: "tlb",
+      },
+      {
+        heading: "Effective access time",
+        body: [
+          "With hit ratio h, memory time m and TLB lookup time t: `EAT = h × (t + m) + (1 − h) × (t + 2m)`.",
+          "Silberschatz's example: m = 100 ns and h = 80% gives 120 ns (a 20% slowdown); h = 99% gives 101 ns. Locality of reference is why real hit ratios are so high.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-tlb",
+      kind: "numeric",
+      prompt: "A TLB lookup takes 20 ns, a memory access 100 ns, and the hit ratio is 95%. What is the effective access time in ns?",
+      answer: eat(0.95, 100, 20),
+      unit: "ns",
+      explain: "A hit costs 20 + 100 = 120 ns and a miss costs 20 + 200 = 220 ns. EAT = 0.95 × 120 + 0.05 × 220 = 114 + 11 = 125 ns.",
+      move: MEMMOVE,
+    },
+  },
+  {
+    id: "memory-segments",
+    gym: "memory",
+    title: "Segmentation",
+    pages: [
+      {
+        heading: "The programmer's view",
+        body: [
+          "Segmentation splits a program into variable-size pieces that match how it is written: the code, the heap, the stack, each library. A logical address is a pair (segment number, offset).",
+          "The segment table holds a base and a limit for each segment. If the offset is below the limit, the physical address is `base + offset`; otherwise the hardware traps to the OS. Segments allow sharing and protection per piece, but being variable-sized they cause external fragmentation.",
+        ],
+        diagram: "segments",
+      },
+      {
+        heading: "Paging against segmentation",
+        body: [
+          "Pages are fixed-size and invisible to the programmer; segments are variable-size and visible. Paging has internal but no external fragmentation, and segmentation the reverse.",
+          "Many systems combine them: the Intel IA-32 turned a logical address into a linear address with segmentation, then paged it. Modern 64-bit Linux uses almost flat segments and relies on paging.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-segments",
+      kind: "numeric",
+      prompt: "A segment table has segment 3 with base 3200 and limit 1100. What physical address does (segment 3, offset 852) map to?",
+      answer: translateSegment(3, 852, SEGMENT_EXAMPLE).physical!,
+      explain: "The offset 852 is below the limit 1100, so the access is legal: 3200 + 852 = 4052. An offset of 1100 or more would trap.",
+      move: MEMMOVE,
     },
   },
 ];

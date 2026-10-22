@@ -16,7 +16,8 @@ const PROCESS_DIAGRAMS = ["pstates", "context", "fork", "threads", "ipc"];
 const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
 const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers"];
 const DEADLOCK_DIAGRAMS = ["rag", "banker"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS];
+const MEMORY_DIAGRAMS = ["alloc", "paging", "tlb", "segments"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -377,6 +378,36 @@ describe("deadlock lessons", () => {
   it("Coffman and prevention checks name circular wait", () => {
     expect(mcq("deadlocks-coffman").options[0]).toBe("Circular wait");
     expect(mcq("deadlocks-prevention").options[0]).toBe("Circular wait");
+  });
+});
+
+describe("memory lessons", () => {
+  const numeric = (id: string) => {
+    const q = lessonById(id)!.check;
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    return q;
+  };
+  const right = (id: string, v: string) => grade(numeric(id), { kind: "numeric", value: v });
+
+  it("cover every Heap Harbor topic in order, each diagram once", () => {
+    const ls = lessonsOf("memory");
+    expect(ls).toHaveLength(GYMS.find((g) => g.id === "memory")!.topics.length);
+    expect(ls.map((l) => l.id)).toEqual(["memory-contiguous", "memory-fragmentation", "memory-paging", "memory-tlb", "memory-segments"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual(["alloc", "paging", "segments", "tlb"]);
+    for (const l of ls) expect(l.check.move.type).toBe("memory");
+  });
+
+  it("checks match the textbook: 426 KB waits, 962 bytes wasted, 13 → 9, EAT 125 ns, (3, 852) → 4052", () => {
+    expect(right("memory-contiguous", "426")).toBe(true);
+    expect(right("memory-contiguous", "417")).toBe(false);
+    expect(right("memory-fragmentation", "962")).toBe(true);
+    expect(right("memory-fragmentation", "1086")).toBe(false);
+    expect(right("memory-paging", "9")).toBe(true);
+    expect(right("memory-paging", "13")).toBe(false);
+    expect(right("memory-tlb", "125")).toBe(true);
+    expect(right("memory-tlb", "120")).toBe(false);
+    expect(right("memory-segments", "4052")).toBe(true);
+    expect(right("memory-segments", "852")).toBe(false);
   });
 });
 

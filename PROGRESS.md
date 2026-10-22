@@ -411,3 +411,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: Gridlock Gym backdrop distinct from the other four, prop and platform clearance (the standoff-cars prop was moved once the test caught an overlap).
 - Verified: lint, typecheck, `npm test` (472 tests), `build:pages` (230 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): a Cyclowl trainer battle (numeric and banker questions). No console errors, no horizontal overflow. I reviewed the screenshots.
 - Next: 2.6 memory management (split into sub-tasks first).
+
+## 2026-10-22: 2.6a Memory simulators and Heap Harbor lessons (run 47)
+- Main was green and no lock was held. Work was committed to the session branch `claude/peaceful-bohr-l9e4zt` (the harness designates it), level with `main` at the start; it needs merging to `main` for the Pages deploy.
+- `game/sim/memory.ts`: `allocate` (first/best/worst fit), `externalFragmentation`, `internalFragmentation`, `translate` (one-level paging), `pageBits`/`pageTableBytes`/`outerBits`/`splitTwoLevel` (two-level), `eat`/`hitRatioFor` and `translateSegment`.
+- Five Heap Harbor lessons (contiguous allocation, fragmentation, paging and address translation, TLB and EAT, segmentation) with new `alloc`, `paging`, `tlb` and `segments` pixel diagrams; every quick check's answer comes from the simulator.
+- Tests (`tests/memory.test.ts`, 17, plus lesson tests): Silberschatz's Exercise 9.3 fits (first/best/worst), the 72,766-byte/2,048-byte-page waste of 962, the 4-byte-page example (13 → 9), the 10+10+12 split, EAT 120/101 ns, and the segment example (4353, 4052, trap).
+- Verified: lint, typecheck, `npm test` (491 tests), `build:pages` (236 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): all five lessons, every page and quick check. No console errors, no horizontal overflow. I reviewed screenshots and widened the 100 KB hole and TLB cards after spotting cramped text.
+- Next: 2.6b interactive address-translation widget.

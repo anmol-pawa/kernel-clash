@@ -68,6 +68,11 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.5d The Gridlock Gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [x] 2.5e The Gridlock Gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.6 Memory management: contiguous allocation (first/best/worst fit), fragmentation, paging and **address translation** problems, page tables (multi-level, inverted), TLB and effective access time, segmentation.
+  - [x] 2.6a Memory simulators (`game/sim/memory.ts`: first/best/worst fit, fragmentation, paging and two-level translation, EAT, segmentation) and five Heap Harbor lessons with `alloc`, `paging`, `tlb` and `segments` pixel diagrams and tested quick checks.
+  - [ ] 2.6b Interactive address-translation widget (tap the page-table entry, then build the physical address; a `translate` question kind or reuse of numeric) used in the paging lesson.
+  - [ ] 2.6c Memory question pool and seeded generators (fit placement, fragmentation, translation, page-table size, two-level split, EAT, segment trap), solver-checked, wired into `POOLS.memory`.
+  - [ ] 2.6d The Heap Harbor trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
+  - [ ] 2.6e The Heap Harbor battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
 - [ ] 2.8 Storage and file systems: file allocation (contiguous/linked/indexed), inodes and max-file-size calculations, directories, journaling, RAID levels, **disk scheduling** (FCFS, SSTF, SCAN, C-SCAN, LOOK) with head-movement problems.
 - [ ] 2.9 Interview gauntlet: the top OS interview questions (process vs thread, virtual memory, thrashing, mutex vs semaphore, deadlock handling, paging vs segmentation, how `malloc` works, what happens on a page fault, Linux specifics like `epoll` and copy-on-write) as a timed mock interview with a scorecard.
