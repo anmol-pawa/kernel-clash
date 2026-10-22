@@ -122,6 +122,7 @@ export const GYMS: Gym[] = [
     type: "storage",
     topics: ["File allocation", "Inodes", "Journaling", "RAID levels", "Disk scheduling"],
     boss: { name: "Diskraken", blurb: "Its tentacles sweep the platters: SCAN to the end, then all the way back." },
+    trainer: { name: "Seekmole", blurb: "A near-blind mole that wears a spinning disk platter on its belly. A red read-head arm sweeps in and out across the tracks and the mole twitches its snout after it: seek, settle, read. Ask for the farthest cylinder first and it still takes the long way round.", retreats: "burrows back into the mound", holdsOn: "is still seeking" },
     badge: "Inode Badge",
     ramp: ["#2c4a14", "#4a7a1e", "#7cb83a", "#c4ec7a"],
   },

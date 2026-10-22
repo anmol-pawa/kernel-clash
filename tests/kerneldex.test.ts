@@ -130,6 +130,13 @@ describe("Kerneldex status", () => {
     expect(dexEntry("heapotamus")!.no).toBe(e.no - 1);
   });
 
+  it("Seekmole guards the Platter Peak Gym just before Diskraken", () => {
+    const e = dexEntry("seekmole")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "storage", type: "storage", name: "Seekmole" });
+    expect(dexEntry("diskraken")!.no).toBe(e.no + 1);
+    expect(dexEntry("thrashmoth")!.no).toBe(e.no - 1);
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

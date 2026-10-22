@@ -530,3 +530,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/trackQuestion.test.ts`): Figure 11.4 SSTF from 53 serves 65, 67, 37; invalid questions rejected; 150 generated questions checked against independent plain-rule next-request code, all six policies seen.
 - Verified: lint, typecheck, `npm test` (636 tests). `next build` compiles and prerenders but the final step is stopped by Next 16.4.0's security-upgrade nudge (`SecurityFatalError`, also on a clean tree); I did not upgrade Next. `scripts/gen-sw.mjs` run by hand (258 files precached) for the Playwright check.
 - Next: 2.8d the Diskraken-gym trainer creature, dex entry, trainer battles and gated flow.
+
+## 2026-10-22: 2.8d Seekmole, the Platter Peak Gym trainer (run 63)
+- Main was green and no lock was held.
+- `game/sprites/seekmole.ts`: a near-blind mole (64×64, front + back, 4-frame idle, attack, hurt) with a slate disk platter on its belly/back; a red read-head arm seeks in and out across the tracks in the idle loop, the attack flings the platter spinning overhead, hurt flinches. Registered in `CREATURES` (before Diskraken, so its dex entry precedes the boss) and `TRAINERS.storage`; `trainer` on the storage gym with its blurb and retreat lines.
+- `trainerFighter`: the late HP bonus is now +10 from gym 7 on and flat (+10×(n−6) made gym 8 trainers beat a slipping Bytling in the balance test). Seekmole is Lv5/Lv6, HP 120/130.
+- Tests: Seekmole's fighter stats, dex order (after Thrashmoth, before Diskraken), `TRAINERS.storage`, trainer lines, saved trainer wins; the existing art-bar and balance suites cover the new sprite and gym.
+- Verified: lint, typecheck, `npm test` (645 tests). `next build` compiles and prerenders but the last step again stops on Next 16.4.0's security-upgrade nudge (exit 1, I did not upgrade Next); `scripts/gen-sw.mjs` run by hand (264 files precached). Playwright on the static build at 1280×800 and iPhone 14: `/dev/sprites` shows Seekmole's frames, and `/gym/storage/trainer` runs with Seekmole on its platform, no console errors, no horizontal overflow. CI and deploy confirmation skipped (Actions quota).
+- Next: 2.8e the Platter Peak battle backdrop.

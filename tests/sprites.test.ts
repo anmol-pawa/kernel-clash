@@ -106,6 +106,7 @@ describe("gym trainers", () => {
     expect(TRAINERS.deadlocks.id).toBe("cyclowl");
     expect(TRAINERS.memory.id).toBe("pagolin");
     expect(TRAINERS.virtual.id).toBe("swaploth");
+    expect(TRAINERS.storage.id).toBe("seekmole");
   });
 });
 
