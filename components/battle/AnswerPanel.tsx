@@ -56,13 +56,22 @@ export function AnswerPanel(p: Props) {
 function McqPanel({ q, disabled, reveal, onSubmit }: Props) {
   if (q.kind !== undefined && q.kind !== "mcq") return null;
   const picked = reveal?.response.kind === "mcq" ? reveal.response.choice : null;
-  return (
-    <div className="grid grid-cols-2 gap-1.5 sm:gap-2" data-testid="menu">
+  const menu = (
+    <div className={q.code ? "grid min-w-0 flex-1 grid-cols-1 content-start gap-1" : "grid grid-cols-2 gap-1.5 sm:gap-2"} data-testid="menu">
       {q.options.map((o, i) => (
         <MenuChoice key={i} tag={"ABCD"[i]} onClick={() => onSubmit({ kind: "mcq", choice: i })} disabled={disabled} state={picked === null ? undefined : i === q.answer ? "right" : i === picked ? "wrong" : undefined}>
           {o}
         </MenuChoice>
       ))}
+    </div>
+  );
+  if (!q.code) return menu;
+  return (
+    <div className="flex gap-2" data-kind="mcq-code">
+      <pre className="gb-box min-w-0 shrink self-start overflow-x-auto px-2 py-1.5 font-mono text-[11px] leading-[1.35] sm:text-[13px]" data-testid="code">
+        {q.code}
+      </pre>
+      {menu}
     </div>
   );
 }

@@ -4,7 +4,9 @@ import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
 import { PROCESS_GENERATORS } from "./processGenerators";
 import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
+import { DEADLOCK_GENERATORS } from "./deadlockGenerators";
 import { SYNC_GENERATORS } from "./syncGenerators";
+import { safety, type BankerState } from "@/game/sim/deadlock";
 import { increment } from "@/game/sim/sync";
 import { GYM_QUESTIONS } from "./gymQuestions";
 
@@ -584,11 +586,129 @@ export const SYNC_EXTRA: Question[] = [
   },
 ];
 
+const dl = (name: string, power: number) => ({ name, type: "sync" as const, power });
+
+/** A small safe state for the authored Banker's question. */
+export const DEADLOCK_BANKER: BankerState = {
+  available: [1, 1, 2],
+  allocation: [[1, 1, 0], [2, 0, 1], [0, 1, 1]],
+  max: [[3, 2, 1], [3, 1, 2], [1, 2, 2]],
+};
+
+/** Deadlocks (Silberschatz ch. 8), beyond the six boss questions. */
+export const DEADLOCK_EXTRA: Question[] = [
+  {
+    id: "dl-hold-wait",
+    prompt: "A process holds a printer and waits for a scanner that another process holds. Which Coffman condition is this?",
+    options: ["Mutual exclusion", "Hold and wait", "No preemption", "Circular wait"],
+    answer: 1,
+    explain: "Hold and wait: a process holds at least one resource while waiting to acquire more that others hold. Requesting everything at once (or releasing before asking) prevents it.",
+    move: dl("Claw Clamp", 30),
+  },
+  {
+    id: "dl-starvation",
+    prompt: "A low-priority process never gets the CPU because higher-priority processes keep arriving, yet no one is waiting in a cycle. This is…",
+    options: ["Deadlock", "Starvation", "A race condition", "Thrashing"],
+    answer: 1,
+    explain: "Starvation (indefinite blocking) has no circular wait: the process could run if the scheduler let it. Aging is the usual cure. In a deadlock, no process in the cycle can ever proceed.",
+    move: dl("Starve Snap", 30),
+  },
+  {
+    id: "dl-waitfor",
+    prompt: "A wait-for graph is made from a resource-allocation graph by…",
+    options: ["Adding an edge between every pair of processes", "Removing the resource nodes and joining each waiting process to the process holding what it wants", "Reversing every request edge", "Removing every process that isn't waiting"],
+    answer: 1,
+    explain: "If Pi waits for a resource Rj that Pk holds, draw Pi → Pk. With single-instance resources, a cycle in the wait-for graph means deadlock, and it is cheaper to search than the full graph.",
+    move: dl("Cycle Snap", 32),
+  },
+  {
+    id: "dl-advance-max",
+    prompt: "Which deadlock technique needs every process to declare its maximum resource needs in advance?",
+    options: ["Deadlock avoidance (the Banker's algorithm)", "Deadlock detection", "Ignoring deadlock (the ostrich approach)", "Recovery by aborting processes"],
+    answer: 0,
+    explain: "Avoidance must know each process's Max to decide whether granting a request keeps the state safe. Detection needs only the current requests and allocations.",
+    move: dl("Vault Guard", 32),
+  },
+  {
+    id: "dl-victim",
+    prompt: "A recovery scheme always picks the same cheap process as the victim to roll back. What can go wrong?",
+    options: ["That process may starve, so the number of rollbacks belongs in the victim's cost", "The deadlock cannot be broken at all", "Every other process deadlocks too", "The system must reboot"],
+    answer: 0,
+    explain: "Choosing the same victim again and again starves it. Include how often a process has been rolled back in the cost factor, so no one is picked forever.",
+    move: dl("Rollback", 36),
+  },
+  {
+    kind: "multi",
+    id: "multi-dl-prevention",
+    prompt: "Which of these prevent deadlock by breaking one of the four Coffman conditions? Select all that apply.",
+    options: ["Request every resource before the process starts running", "Number the resources and always request them in increasing order", "Let the OS take a resource from a waiting process", "Run the Banker's algorithm before each request"],
+    answers: [0, 1, 2],
+    explain: "The first breaks hold and wait, the second circular wait, the third no preemption. The Banker's algorithm is avoidance: it breaks no condition, it keeps the system in safe states.",
+    move: dl("Rank Order", 34),
+  },
+  {
+    kind: "numeric",
+    id: "num-dl-need",
+    prompt: "In Silberschatz's Banker's example (Max for P0 is 7 5 3 and P0 holds 0 1 0), what is P0's Need for resource A?",
+    answer: 7,
+    explain: "Need = Max − Allocation. For A: 7 − 0 = 7. P0's full Need is (7, 4, 3).",
+    move: dl("Vault Guard", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-dl-units",
+    prompt: "Three processes each need at most 2 units of one shared resource, and ask one unit at a time. What is the smallest number of units that guarantees no deadlock?",
+    answer: 4,
+    explain: "The worst case is every process holding 1 unit and asking for another: with 3 units all three wait forever. With n(m − 1) + 1 = 3 × 1 + 1 = 4 units, one process can always get its second unit, finish, and free enough for the rest.",
+    move: dl("Safe Passage", 34),
+  },
+  {
+    kind: "order",
+    id: "order-dl-safety",
+    prompt: "Put the steps of the Banker's safety algorithm in order.",
+    steps: [
+      "Set Work = Available and Finish[i] = false for every process",
+      "Find a process with Finish[i] = false and Need[i] ≤ Work",
+      "Set Work = Work + Allocation[i] and Finish[i] = true",
+      "Repeat until no such process is left",
+      "The state is safe if every Finish[i] is true",
+    ],
+    explain: "The algorithm pretends processes finish one by one: any process whose Need fits in Work can finish and return its Allocation. If all of them can, that order is a safe sequence.",
+    move: dl("Safe Passage", 34),
+  },
+  {
+    kind: "banker",
+    id: "banker-dl-small",
+    prompt: "Available = 1 1 2. Tap the processes in an order that is a safe sequence.",
+    resources: ["A", "B", "C"],
+    state: DEADLOCK_BANKER,
+    answer: safety(DEADLOCK_BANKER).sequence,
+    explain: "Need = Max − Allocation: P0 (2 1 1), P1 (1 1 1), P2 (1 1 1). Work starts at 1 1 2. P0 needs 2 of A, so it cannot go first. P1 fits and returns its allocation (Work 3 1 3), then P2 fits (3 2 4), then P0 (4 3 4). P1, P2, P0 is a safe sequence; P2, P1, P0 works too.",
+    move: dl("Safe Passage", 34),
+  },
+  {
+    kind: "cycle",
+    id: "cycle-dl-free",
+    prompt: "Every resource has one instance. Is there a deadlock? Tap the nodes of the cycle, or NO DEADLOCK.",
+    nodes: [
+      { id: "P1", x: 14, y: 14 },
+      { id: "P2", x: 50, y: 14 },
+      { id: "R1", x: 14, y: 46 },
+      { id: "R2", x: 50, y: 46 },
+    ],
+    edges: [["P1", "R1"], ["R1", "P2"], ["P2", "R2"]],
+    answer: [],
+    explain: "P1 waits for R1, held by P2, which waits for R2. R2 is free, so P2 gets it, finishes and releases R1; then P1 runs. The arrows form a chain, not a cycle: no deadlock.",
+    move: dl("Cycle Snap", 32),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
   scheduling: { authored: [...GYM_QUESTIONS.scheduling, ...SCHEDULING_EXTRA], generators: SCHEDULING_GENERATORS },
   sync: { authored: [...GYM_QUESTIONS.sync, ...SYNC_EXTRA], generators: SYNC_GENERATORS },
+  deadlocks: { authored: [...GYM_QUESTIONS.deadlocks, ...DEADLOCK_EXTRA], generators: DEADLOCK_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */

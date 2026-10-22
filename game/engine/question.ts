@@ -43,6 +43,8 @@ export interface McqQ extends Base {
   options: readonly string[];
   /** index into `options` */
   answer: number;
+  /** monospaced block shown beside the options (a table or code the question is about) */
+  code?: string;
 }
 
 export interface MultiQ extends Base {

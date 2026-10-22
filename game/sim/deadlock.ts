@@ -183,3 +183,32 @@ export function walkSequence(s: BankerState, seq: readonly number[]): SequenceWa
   }
   return { before, ok, work };
 }
+
+/**
+ * Can threads deadlock on mutexes? Each thread locks the mutexes in its list in
+ * order (blocking while another thread holds one), then finishes and releases
+ * them all. Explores every interleaving; true if some reachable state has
+ * unfinished threads that are all blocked.
+ */
+export function canDeadlock(orders: readonly (readonly string[])[]): boolean {
+  const seen = new Set<string>();
+  const visit = (pc: readonly number[]): boolean => {
+    const key = pc.join(",");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    const done = (t: number) => pc[t] > orders[t].length;
+    if (pc.every((_, t) => done(t))) return false;
+    const held = new Set<string>();
+    pc.forEach((p, t) => orders[t].slice(0, Math.min(p, orders[t].length)).forEach((l) => !done(t) && held.add(l)));
+    let moved = false;
+    for (let t = 0; t < pc.length; t++) {
+      if (done(t)) continue;
+      // the next lock must be free (a thread never wants a lock it already holds)
+      if (pc[t] < orders[t].length && held.has(orders[t][pc[t]])) continue;
+      moved = true;
+      if (visit(pc.map((p, i) => (i === t ? p + 1 : p)))) return true;
+    }
+    return !moved;
+  };
+  return visit(orders.map(() => 0));
+}
