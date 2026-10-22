@@ -501,3 +501,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/backdrops.test.ts`): Swapwood is distinct from every other backdrop (horizon, platform, sky), uses fireflies and at least four prop sheets; the generic per-backdrop checks (160-wide tiling horizon, props clear of platforms) cover it.
 - Verified: lint, typecheck, `npm test`, `build:pages` (252 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), Swaploth trainer battle: reviewed screenshots, no console errors, no horizontal overflow.
 - Next: 2.8 storage and file systems (split into sub-tasks first).
+
+## 2026-10-22: 2.8a Storage simulators (run 59)
+- Main was green and no lock was held. Split 2.8 into 2.8a–e in `ROADMAP.md` (simulators, lessons, question pool + tap kind, trainer creature, backdrop).
+- `game/sim/storage.ts`: disk-head scheduling (FCFS, SSTF, SCAN, C-SCAN, LOOK, C-LOOK; either direction; optional return-jump counting), Unix inode max blocks/bytes, block reads for contiguous/linked/indexed allocation, linked-allocation data bytes, RAID usable disks and guaranteed failures.
+- Tests (`tests/storage.test.ts`, 16): Silberschatz Figure 11.4 queue from head 53: FCFS 640, SSTF 236 (order 65 67 37 14 98 122 124 183), SCAN down 236, SCAN up 331, C-SCAN 382 (183 without the jump), LOOK 208/299, C-LOOK 322 (153 without); inode and RAID arithmetic; edge cases.
+- Verified: lint, typecheck, `npm test` (612 tests), `build:pages` (252 files precached). No visual change, so no Playwright run.
+- Next: 2.8b the five Disk Docks lessons.

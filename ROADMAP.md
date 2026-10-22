@@ -82,6 +82,12 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.7d The virtual-memory gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [x] 2.7e The virtual-memory gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.8 Storage and file systems: file allocation (contiguous/linked/indexed), inodes and max-file-size calculations, directories, journaling, RAID levels, **disk scheduling** (FCFS, SSTF, SCAN, C-SCAN, LOOK) with head-movement problems.
+  - [x] 2.8a Storage simulators (`game/sim/storage.ts`: FCFS/SSTF/SCAN/C-SCAN/LOOK/C-LOOK head movement, inode max file size, file-allocation block counts, RAID capacity/fault tolerance) tested against Silberschatz's worked examples.
+  - [ ] 2.8b Five Disk Docks lessons (file allocation, inodes, directories and journaling, RAID, disk scheduling) with pixel diagrams and tested quick checks.
+  - [ ] 2.8c1 Storage question pool and seeded generators (head movement per algorithm, max file size, RAID capacity, linked-allocation reads) wired into `POOLS`.
+  - [ ] 2.8c2 A tap-the-next-track question kind for disk scheduling and one generator using it.
+  - [ ] 2.8d The storage gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
+  - [ ] 2.8e The storage gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.9 Interview gauntlet: the top OS interview questions (process vs thread, virtual memory, thrashing, mutex vs semaphore, deadlock handling, paging vs segmentation, how `malloc` works, what happens on a page fault, Linux specifics like `epoll` and copy-on-write) as a timed mock interview with a scorecard.
 
 ## 3. Polish
