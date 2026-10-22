@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Fragment, useState, useSyncExternalStore } from "react";
 import { AnswerPanel, type Reveal } from "@/components/battle/AnswerPanel";
 import { BankerPlay } from "@/components/lesson/BankerBoard";
+import { RAG_PLAY, RagPlay } from "@/components/lesson/RagBoard";
 import { InterleavePlay } from "@/components/lesson/Interleave";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { TypeBadge } from "@/components/ui/kit";
@@ -214,6 +215,8 @@ function LessonReader({
               <InterleavePlay threads={RACE_THREADS} init={{ counter: 5 }} watch="counter" targets={RACE_VALUES} />
             ) : p.play === "banker" ? (
               <BankerPlay resources={["A", "B", "C"]} state={BANKER_EXAMPLE} />
+            ) : p.play === "rag" ? (
+              <RagPlay nodes={RAG_PLAY.nodes} edges={RAG_PLAY.edges} />
             ) : p.diagram ? (
               <Diagram id={p.diagram} />
             ) : (

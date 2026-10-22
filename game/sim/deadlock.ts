@@ -45,6 +45,17 @@ export function findCycle(edges: readonly Edge[]): string[] | null {
   return null;
 }
 
+/**
+ * True if `nodes` are exactly the nodes of one cycle in the graph: the
+ * subgraph they induce has a cycle that visits every one of them.
+ */
+export function isCycleNodes(edges: readonly Edge[], nodes: readonly string[]): boolean {
+  const set = new Set(nodes);
+  if (set.size !== nodes.length || set.size === 0) return false;
+  const c = findCycle(edges.filter(([a, b]) => set.has(a) && set.has(b)));
+  return c !== null && new Set(c).size === set.size;
+}
+
 export interface BankerState {
   /** free instances of each resource type */
   available: Vec;

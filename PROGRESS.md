@@ -379,3 +379,12 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: question tests for the new kind, `walkSequence` tests (textbook Work trace, bad pick, agreement with `isSafeSequence` on all 120 permutations), lesson tests for the new check and play page.
 - Verified: lint, typecheck, `npm test` (432 tests), `build:pages` (222 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): play page (bad pick, solved) and the quick check answered wrong with the hint. No console errors, no horizontal overflow. I reviewed the screenshots.
 - Next: 2.5b2 RAG cycle spotter, then 2.5c.
+
+## 2026-10-22: 2.5b2 RAG cycle spotter (run 43)
+- Main was green and no lock was held.
+- `game/sim/deadlock.ts`: `isCycleNodes` (the marked nodes are exactly the nodes of one cycle in the graph they induce).
+- New `cycle` question kind (`game/engine/question.ts`): nodes with positions, P/R edges and an answer cycle (or none). `grade` accepts any valid cycle, and no marks is right only when the graph has no cycle; `questionProblems` checks node ids, edges join a process and a resource, and that the answer matches the graph.
+- `components/lesson/RagBoard.tsx`: an SVG resource-allocation graph with tappable nodes (circles for processes, squares for resources, red request and green assignment arrows), `RagPlay` for lessons, and `CyclePanel` in `AnswerPanel` (NO DEADLOCK and CONFIRM CYCLE, the real cycle lit gold after a wrong answer). The RAG lesson has a new "Try it: spot the cycle" page with a graph whose P3 waits on the cycle without being in it.
+- Tests: `isCycleNodes`, cycle question grading, bad data and wording, and the lesson's play page.
+- Verified: lint, typecheck, `npm test` (438 tests), `build:pages` (222 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) played the page (a wrong pick, then solved). No console errors, no horizontal overflow. I reviewed the screenshots. I didn't screenshot `CyclePanel` inside a battle (no cycle questions are in a pool until 2.5c).
+- Next: 2.5c deadlock question pool and generators, which will use the `cycle` kind.

@@ -18,7 +18,7 @@ export interface LessonPage {
   body: string[];
   diagram?: DiagramId;
   /** an interactive board shown in place of a diagram */
-  play?: "race" | "banker";
+  play?: "race" | "banker" | "rag";
 }
 
 export interface Lesson {
@@ -872,6 +872,13 @@ export const LESSONS: Lesson[] = [
           "A request edge turns into an assignment edge when the instance is granted, and back again when it is released.",
         ],
         diagram: "rag",
+      },
+      {
+        heading: "Try it: spot the cycle",
+        body: [
+          "Follow the arrows: red ones are requests, green ones are assignments. Tap the nodes that form a cycle. P3 waits for R1 too, but it isn't in the cycle, so it is blocked by the deadlock without being part of it.",
+        ],
+        play: "rag",
       },
       {
         heading: "Cycles",

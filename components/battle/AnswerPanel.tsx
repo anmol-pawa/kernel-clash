@@ -4,8 +4,9 @@ import { MenuChoice } from "@/components/ui/kit";
 import { sfx } from "@/game/audio/synth";
 import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
+import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -45,6 +46,8 @@ export function AnswerPanel(p: Props) {
       return <InterleavePanel {...p} q={p.q as InterleaveQ} />;
     case "banker":
       return <BankerPanel {...p} q={p.q as BankerQ} />;
+    case "cycle":
+      return <CyclePanel {...p} q={p.q as CycleQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -414,6 +417,56 @@ function BankerPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: 
             }}
           >
             {seq.length === total ? "▶ CONFIRM ORDER" : `FINISH ORDER · ${seq.length}/${total}`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Resource-allocation graph: tap the nodes of the deadlock cycle, or say there
+ * isn't one. Any cycle is right; after a wrong answer the real one lights up.
+ */
+function CyclePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: CycleQ }) {
+  const [marked, setMarked] = useState<string[]>([]);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "cycle" ? reveal.response.nodes : marked;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="cycle">
+      <RagBoard
+        nodes={q.nodes}
+        edges={q.edges}
+        marked={shown}
+        onToggle={locked ? undefined : (id) => (sfx.blip(), setMarked((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id])))}
+        hint={reveal && !reveal.correct ? q.answer : undefined}
+        tone={reveal ? (reveal.correct ? "right" : "wrong") : undefined}
+      />
+      {!reveal && (
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            className={CONFIRM}
+            disabled={locked}
+            data-testid="cycle-none"
+            onClick={() => {
+              sfx.click();
+              onSubmit({ kind: "cycle", nodes: [] });
+            }}
+          >
+            NO DEADLOCK
+          </button>
+          <button
+            type="button"
+            className={CONFIRM}
+            disabled={locked || marked.length < 2}
+            data-testid="cycle-confirm"
+            onClick={() => {
+              sfx.click();
+              onSubmit({ kind: "cycle", nodes: marked });
+            }}
+          >
+            ▶ CONFIRM CYCLE
           </button>
         </div>
       )}

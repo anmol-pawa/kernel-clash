@@ -9,12 +9,13 @@
  *   gantt    build a scheduler's Gantt chart one time unit per tap
  *   interleave  be the scheduler: tap which thread runs its next step
  *   banker   tap the processes in a safe order (Banker's algorithm)
+ *   cycle    tap the nodes of a deadlock cycle in a resource-allocation graph
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
 import { ganttText, type Slice } from "@/game/sim/scheduling";
-import { isSafeSequence, type BankerState } from "@/game/sim/deadlock";
+import { findCycle, isCycleNodes, isSafeSequence, type BankerState, type Edge } from "@/game/sim/deadlock";
 import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
 
@@ -99,6 +100,24 @@ export interface BankerQ extends Base {
   answer: readonly number[];
 }
 
+export interface CycleNode {
+  /** "P1", "R2": the first letter says process (P) or resource (R) */
+  id: string;
+  /** position in a 100 × 60 drawing */
+  x: number;
+  y: number;
+}
+
+export interface CycleQ extends Base {
+  kind: "cycle";
+  /** a resource-allocation graph with one instance per resource */
+  nodes: readonly CycleNode[];
+  /** P → R is a request, R → P an assignment */
+  edges: readonly Edge[];
+  /** the nodes of one cycle, or empty when the graph has none (no deadlock) */
+  answer: readonly string[];
+}
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -108,8 +127,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -124,7 +143,9 @@ export type Response =
   /** the thread that took each step, in order */
   | { kind: "interleave"; schedule: readonly number[] }
   /** the processes in the order the player listed them */
-  | { kind: "banker"; sequence: readonly number[] };
+  | { kind: "banker"; sequence: readonly number[] }
+  /** the nodes the player marked as the cycle (none = "no deadlock") */
+  | { kind: "cycle"; nodes: readonly string[] };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -203,6 +224,11 @@ export function grade(q: Question, r: Response): boolean {
     case "banker":
       // any safe sequence is right, not just the one the safety algorithm found
       return isSafeSequence((q as BankerQ).state, r.sequence);
+    case "cycle": {
+      // any cycle is right, not just the stored one; no marks means "no deadlock"
+      const cq = q as CycleQ;
+      return r.nodes.length === 0 ? findCycle(cq.edges) === null : isCycleNodes(cq.edges, r.nodes);
+    }
   }
 }
 
@@ -228,6 +254,8 @@ export function answerText(q: Question): string {
       return scheduleText(q.threads, q.answer);
     case "banker":
       return `<${q.answer.map((p) => `P${p}`).join(", ")}>`;
+    case "cycle":
+      return q.answer.length ? `the cycle ${q.answer.join(" → ")} → ${q.answer[0]}` : "no cycle, so no deadlock";
     default:
       return q.options[q.answer];
   }
@@ -246,6 +274,8 @@ export function correctionText(q: Question): string | null {
       return "Here is one schedule that works.";
     case "banker":
       return "Here is one safe sequence.";
+    case "cycle":
+      return "Here is the cycle.";
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -324,6 +354,15 @@ export function questionProblems(q: Question): string[] {
       if (q.state.max.length !== n || rows.some((r) => r.length !== m || r.some((x) => !Number.isInteger(x) || x < 0))) p.push("banker vectors must be whole numbers, one per resource");
       else if (q.state.max.some((mx, i) => mx.some((x, j) => x < q.state.allocation[i][j]))) p.push("a process holds more than its max");
       else if (!isSafeSequence(q.state, q.answer)) p.push("answer isn't a safe sequence");
+      break;
+    }
+    case "cycle": {
+      const ids = q.nodes.map((n) => n.id);
+      if (q.nodes.length < 3 || q.nodes.length > 8) p.push("cycle needs 3–8 nodes");
+      if (new Set(ids).size !== ids.length) p.push("duplicate node ids");
+      if (q.nodes.some((n) => !/^[PR]\d+$/.test(n.id))) p.push("node ids must look like P1 or R2");
+      if (q.edges.some(([a, b]) => !ids.includes(a) || !ids.includes(b) || a[0] === b[0])) p.push("edges must join a process and a resource");
+      else if (q.answer.length ? !isCycleNodes(q.edges, q.answer) : findCycle(q.edges) !== null) p.push("answer doesn't match the graph's cycle");
       break;
     }
     default:

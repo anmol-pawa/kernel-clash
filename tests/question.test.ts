@@ -3,7 +3,8 @@ import { DEMO_QUESTIONS } from "@/content/demo";
 import { fcfsAverage, forkPrints, GENERATORS } from "@/content/generators";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
 import { PCB_CONTENTS, SAMPLE_QUESTIONS, SYSCALL_STEPS } from "@/content/questionSamples";
-import { answerText, chartOf, correctionText, grade, interleaveResult, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type BankerQ, type GanttQ, type InterleaveQ, type NumericQ, type Question } from "@/game/engine/question";
+import { answerText, chartOf, correctionText, grade, interleaveResult, kindOf, parseNumber, questionProblems, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type NumericQ, type Question } from "@/game/engine/question";
+import { RAG_PLAY } from "@/components/lesson/RagBoard";
 import { BANKER_EXAMPLE, safety } from "@/game/sim/deadlock";
 import { runForks } from "@/game/sim/fork";
 import { fcfs, ganttText } from "@/game/sim/scheduling";
@@ -329,5 +330,35 @@ describe("practice battle questions", () => {
     expect(new Set(qs.map((q) => q.id)).size).toBe(qs.length);
     expect(practiceQuestions(21)).toEqual(qs);
     expect(practiceQuestions(300).map((q) => q.id)).not.toEqual(qs.map((q) => q.id));
+  });
+});
+
+describe("cycle questions", () => {
+  const nodes = RAG_PLAY.nodes;
+  const edges = RAG_PLAY.edges;
+  const q: CycleQ = { kind: "cycle", id: "c", prompt: "Tap the cycle", explain: "x", nodes, edges, answer: ["P1", "R1", "P2", "R2"], move };
+  const none: CycleQ = { ...q, id: "n", edges: edges.slice(0, 3), answer: [] };
+
+  it("is well-formed and accepts any ordering of the cycle's nodes", () => {
+    expect(questionProblems(q)).toEqual([]);
+    expect(questionProblems(none)).toEqual([]);
+    expect(grade(q, { kind: "cycle", nodes: ["R2", "P2", "P1", "R1"] })).toBe(true);
+  });
+  it("rejects partial, extra and empty marks; empty is right only without a cycle", () => {
+    expect(grade(q, { kind: "cycle", nodes: ["P1", "R1", "P2"] })).toBe(false);
+    expect(grade(q, { kind: "cycle", nodes: ["P1", "R1", "P2", "R2", "P3"] })).toBe(false);
+    expect(grade(q, { kind: "cycle", nodes: [] })).toBe(false);
+    expect(grade(none, { kind: "cycle", nodes: [] })).toBe(true);
+    expect(grade(none, { kind: "cycle", nodes: ["P1", "R1"] })).toBe(false);
+    expect(grade(q, { kind: "mcq", choice: 0 })).toBe(false);
+  });
+  it("reports bad data and says the answer in words", () => {
+    expect(questionProblems({ ...q, answer: ["P1", "R1"] })).toContain("answer doesn't match the graph's cycle");
+    expect(questionProblems({ ...none, answer: ["P1", "R1"] })).toContain("answer doesn't match the graph's cycle");
+    expect(questionProblems({ ...q, answer: [] })).toContain("answer doesn't match the graph's cycle");
+    expect(questionProblems({ ...q, edges: [["P1", "P2"] as const] })).toContain("edges must join a process and a resource");
+    expect(answerText(q)).toBe("the cycle P1 → R1 → P2 → R2 → P1");
+    expect(answerText(none)).toBe("no cycle, so no deadlock");
+    expect(correctionText(q)).toBe("Here is the cycle.");
   });
 });

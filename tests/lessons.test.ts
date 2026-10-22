@@ -4,7 +4,8 @@ import { LESSONS, LESSON_IDS, lessonById, lessonsOf } from "@/content/lessons";
 import { grade, questionProblems, type OrderQ } from "@/game/engine/question";
 import { runForks } from "@/game/sim/fork";
 import { DIAGRAM_IDS, SCHEDULING_EXAMPLES, SYNC_EXAMPLES, switches } from "@/components/lesson/Diagrams";
-import { DETECT_EXAMPLE, detect, findCycle } from "@/game/sim/deadlock";
+import { RAG_PLAY } from "@/components/lesson/RagBoard";
+import { DETECT_EXAMPLE, detect, findCycle, isCycleNodes } from "@/game/sim/deadlock";
 import { PETERSON, finalValues, lostUpdates, runSemaphore, trace } from "@/game/sim/sync";
 import { DETECT_CHECK_REQUESTS, RACE_THREADS, RACE_VALUES, RAG_CHECK_EDGES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
@@ -354,6 +355,11 @@ describe("deadlock lessons", () => {
     expect(grade(q, { kind: "banker", sequence: [0, 1, 2, 3, 4] })).toBe(false);
     expect(grade(q, { kind: "banker", sequence: [2, 0, 4, 3, 1] })).toBe(false);
     expect(grade(q, { kind: "banker", sequence: [1, 3, 4, 0] })).toBe(false);
+  });
+
+  it("the RAG lesson has a free-play cycle page whose graph has a four-node cycle", () => {
+    expect(lessonById("deadlocks-rag")!.pages.filter((p) => p.play === "rag")).toHaveLength(1);
+    expect(isCycleNodes(RAG_PLAY.edges, ["P1", "R1", "P2", "R2"])).toBe(true);
   });
 
   it("the Banker's lesson has a free-play safe-sequence page", () => {

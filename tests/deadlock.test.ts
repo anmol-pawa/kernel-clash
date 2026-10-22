@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isSafeSequence, need, request, safety, walkSequence } from "@/game/sim/deadlock";
+import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, findCycle, isCycleNodes, isSafeSequence, need, request, safety, walkSequence } from "@/game/sim/deadlock";
 
 describe("resource-allocation graph cycles", () => {
   it("finds a cycle and none in a chain", () => {
@@ -71,5 +71,18 @@ describe("walkSequence", () => {
   it("agrees with isSafeSequence on every permutation of the example", () => {
     const perms = (a: number[]): number[][] => (a.length < 2 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((p) => [x, ...p])));
     for (const p of perms([0, 1, 2, 3, 4])) expect(walkSequence(BANKER_EXAMPLE, p).ok.every(Boolean), p.join()).toBe(isSafeSequence(BANKER_EXAMPLE, p));
+  });
+});
+
+describe("isCycleNodes", () => {
+  const edges = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"], ["R2", "P1"], ["P3", "R1"], ["R3", "P3"]] as const;
+  it("accepts exactly the nodes of a cycle", () => {
+    expect(isCycleNodes(edges, ["R2", "P1", "R1", "P2"])).toBe(true);
+  });
+  it("rejects a subset, a superset and duplicates", () => {
+    expect(isCycleNodes(edges, ["P1", "R1", "P2"])).toBe(false);
+    expect(isCycleNodes(edges, ["P1", "R1", "P2", "R2", "P3"])).toBe(false);
+    expect(isCycleNodes(edges, ["P1", "P1"])).toBe(false);
+    expect(isCycleNodes(edges, [])).toBe(false);
   });
 });
