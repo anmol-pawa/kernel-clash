@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TranslateQ } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -48,6 +48,8 @@ export function AnswerPanel(p: Props) {
       return <BankerPanel {...p} q={p.q as BankerQ} />;
     case "cycle":
       return <CyclePanel {...p} q={p.q as CycleQ} />;
+    case "translate":
+      return <TranslatePanel {...p} q={p.q as TranslateQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -478,6 +480,57 @@ function CyclePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: C
             ▶ CONFIRM CYCLE
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Page table: split the logical address, tap the entry (page) it maps through.
+ * After a wrong answer the right row lights up with its frame.
+ */
+function TranslatePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: TranslateQ }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "translate" ? reveal.response.page : picked;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="translate">
+      <div className="gb-box px-2 py-2 font-pixel text-[10px] leading-4 !text-[var(--box-ink)]" data-testid="translate-info">
+        LOGICAL {q.logical} · PAGE SIZE {q.pageSize}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {q.table.map((frame, page) => {
+          const right = !!reveal && page === q.answer;
+          const wrong = !!reveal && !reveal.correct && page === shown;
+          return (
+            <button
+              key={page}
+              type="button"
+              disabled={locked}
+              data-testid={`translate-row-${page}`}
+              aria-pressed={shown === page}
+              onClick={() => (sfx.blip(), setPicked(page))}
+              className={`gb-box flex min-h-11 items-center justify-between px-2 font-pixel text-[10px] !text-[var(--box-ink)] ${shown === page ? "outline outline-2 outline-offset-1" : ""} ${right ? "!bg-[#bfe8a8]" : wrong ? "!bg-[#f0b0a8]" : ""}`}
+            >
+              <span>PAGE {page}</span>
+              <span>{frame === null ? "INVALID" : `FRAME ${frame}`}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || picked === null}
+          data-testid="translate-confirm"
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "translate", page: picked! });
+          }}
+        >
+          ▶ CONFIRM ENTRY
+        </button>
       )}
     </div>
   );

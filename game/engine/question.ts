@@ -10,12 +10,14 @@
  *   interleave  be the scheduler: tap which thread runs its next step
  *   banker   tap the processes in a safe order (Banker's algorithm)
  *   cycle    tap the nodes of a deadlock cycle in a resource-allocation graph
+ *   translate  tap the page-table entry a logical address maps through
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
  */
 import { ganttText, type Slice } from "@/game/sim/scheduling";
 import { findCycle, isCycleNodes, isSafeSequence, type BankerState, type Edge } from "@/game/sim/deadlock";
+import { translate } from "@/game/sim/memory";
 import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
 
@@ -120,6 +122,18 @@ export interface CycleQ extends Base {
   answer: readonly string[];
 }
 
+export interface TranslateQ extends Base {
+  kind: "translate";
+  /** bytes per page (a power of two) */
+  pageSize: number;
+  /** the logical address to translate */
+  logical: number;
+  /** frame per page, null = invalid (not mapped) */
+  table: readonly (number | null)[];
+  /** the page number whose entry the hardware reads */
+  answer: number;
+}
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -129,8 +143,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -147,7 +161,9 @@ export type Response =
   /** the processes in the order the player listed them */
   | { kind: "banker"; sequence: readonly number[] }
   /** the nodes the player marked as the cycle (none = "no deadlock") */
-  | { kind: "cycle"; nodes: readonly string[] };
+  | { kind: "cycle"; nodes: readonly string[] }
+  /** the page-table entry (page number) the player tapped */
+  | { kind: "translate"; page: number };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -231,6 +247,8 @@ export function grade(q: Question, r: Response): boolean {
       const cq = q as CycleQ;
       return r.nodes.length === 0 ? findCycle(cq.edges) === null : isCycleNodes(cq.edges, r.nodes);
     }
+    case "translate":
+      return r.page === (q as TranslateQ).answer;
   }
 }
 
@@ -258,6 +276,10 @@ export function answerText(q: Question): string {
       return `<${q.answer.map((p) => `P${p}`).join(", ")}>`;
     case "cycle":
       return q.answer.length ? `the cycle ${q.answer.join(" → ")} → ${q.answer[0]}` : "no cycle, so no deadlock";
+    case "translate": {
+      const t = translate(q.logical, q.pageSize, q.table);
+      return t.physical === null ? `page ${t.page}, which is invalid, so the MMU traps` : `page ${t.page}, frame ${t.frame}: physical ${t.physical}`;
+    }
     default:
       return q.options[q.answer];
   }
@@ -278,6 +300,8 @@ export function correctionText(q: Question): string | null {
       return "Here is one safe sequence.";
     case "cycle":
       return "Here is the cycle.";
+    case "translate":
+      return `The entry is ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -367,6 +391,13 @@ export function questionProblems(q: Question): string[] {
       else if (q.answer.length ? !isCycleNodes(q.edges, q.answer) : findCycle(q.edges) !== null) p.push("answer doesn't match the graph's cycle");
       break;
     }
+    case "translate":
+      if (q.pageSize < 2 || (q.pageSize & (q.pageSize - 1)) !== 0) p.push("page size must be a power of two");
+      else if (q.table.length < 3 || q.table.length > 8) p.push("translate needs 3–8 page-table entries");
+      else if (!Number.isInteger(q.logical) || q.logical < 0 || q.logical >= q.table.length * q.pageSize) p.push("logical address outside the table");
+      else if (q.answer !== Math.floor(q.logical / q.pageSize)) p.push("answer isn't the address's page number");
+      if (q.table.some((f) => f !== null && (!Number.isInteger(f) || f < 0))) p.push("frames must be whole numbers or null");
+      break;
     default:
       if (q.options.length !== 4) p.push("mcq needs 4 options");
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) p.push("answer out of range");

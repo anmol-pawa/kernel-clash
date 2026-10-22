@@ -1,4 +1,4 @@
-import type { Generator, McqQ, NumericQ } from "@/game/engine/question";
+import type { Generator, McqQ, NumericQ, TranslateQ } from "@/game/engine/question";
 import { allocate, effectiveAccessTime, pagesFor, pageTableBytes, splitAddress, translate, translateSegment, type Fit, type Hole, type Segment } from "@/game/sim/memory";
 import { rng } from "@/lib/rng";
 
@@ -185,4 +185,31 @@ export const segmentLookup: Generator = {
   },
 };
 
-export const MEMORY_GENERATORS: Generator[] = [fitPlacement, internalFrag, addressTranslation, pageTableSize, tlbEat, outerBits, segmentLookup];
+/** Tap the page-table entry a logical address maps through (sometimes an invalid one). */
+export const tapTranslate: Generator = {
+  id: "gen-mem-tap-translate",
+  topic: "Paging: which page-table entry?",
+  make(seed): TranslateQ {
+    const r = rng(seed ^ 0x7a9);
+    const pageSize = r.pick([64, 128, 256, 512, 1024]);
+    const n = r.int(4, 6);
+    const frames = r.shuffle([...Array(12).keys()]).slice(0, n);
+    const table = frames.map((f, i) => (i > 0 && r.int(0, 5) === 0 ? null : f));
+    const logical = r.int(0, n * pageSize - 1);
+    const t = translate(logical, pageSize, table);
+    const bits = Math.log2(pageSize);
+    return {
+      kind: "translate",
+      id: `${this.id}#${seed}`,
+      prompt: `Pages are ${pageSize} bytes. Which page-table entry does logical address ${logical} go through?`,
+      pageSize,
+      logical,
+      table,
+      answer: t.page,
+      explain: `The low ${bits} bits are the offset and the rest is the page number: ${logical} ÷ ${pageSize} = page ${t.page}, offset ${t.offset}. ${t.frame === null ? `Entry ${t.page} is invalid, so the MMU raises a trap.` : `Entry ${t.page} holds frame ${t.frame}, so the physical address is ${t.frame} × ${pageSize} + ${t.offset} = ${t.physical}.`}`,
+      move: mem("Table Tap", 34),
+    };
+  },
+};
+
+export const MEMORY_GENERATORS: Generator[] = [fitPlacement, internalFrag, addressTranslation, pageTableSize, tlbEat, outerBits, segmentLookup, tapTranslate];

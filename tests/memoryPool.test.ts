@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
-import { MEMORY_GENERATORS, addressTranslation, fitPlacement, internalFrag, outerBits, pageTableSize, segmentLookup, tlbEat } from "@/content/memoryGenerators";
+import { MEMORY_GENERATORS, addressTranslation, fitPlacement, internalFrag, outerBits, pageTableSize, segmentLookup, tapTranslate, tlbEat } from "@/content/memoryGenerators";
 import { BATTLE_TURNS, MEMORY_EXTRA, POOLS, gymBattleQuestions } from "@/content/pools";
 import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
-import { kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
+import { answerText, grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ, type TranslateQ } from "@/game/engine/question";
 import { allocate, effectiveAccessTime, pagesFor, translateSegment, type Fit, type Hole, type Segment } from "@/game/sim/memory";
 
 const pool = POOLS.memory;
@@ -179,5 +179,42 @@ describe("memory generators", () => {
       seen.add(expected);
     }
     expect(seen.size).toBe(3);
+  });
+});
+
+describe("tap-to-translate", () => {
+  const q = (seed: number) => tapTranslate.make(seed) as TranslateQ;
+  it("matches Silberschatz's Figure 9.10 table and stays well-formed", () => {
+    const fig: TranslateQ = { kind: "translate", id: "fig", prompt: "p", explain: "e", pageSize: 4, logical: 13, table: [5, 6, 1, 2], answer: 3, move: { name: "Table Tap", type: "memory", power: 34 } };
+    expect(questionProblems(fig)).toEqual([]);
+    expect(grade(fig, { kind: "translate", page: 3 })).toBe(true);
+    expect(grade(fig, { kind: "translate", page: 2 })).toBe(false);
+    expect(grade(fig, { kind: "mcq", choice: 3 })).toBe(false);
+    expect(answerText(fig)).toBe("page 3, frame 2: physical 9");
+    expect(questionProblems({ ...fig, answer: 2 })).toContain("answer isn't the address's page number");
+    expect(questionProblems({ ...fig, logical: 16 })).toContain("logical address outside the table");
+    expect(questionProblems({ ...fig, pageSize: 6 })).toContain("page size must be a power of two");
+  });
+  it("generates well-formed, seed-stable questions whose answer is the page number, sometimes invalid", () => {
+    let invalid = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const a = q(seed);
+      expect(questionProblems(a), a.id).toEqual([]);
+      expect(a).toEqual(q(seed));
+      expect(a.answer).toBe(Math.floor(a.logical / a.pageSize));
+      expect(grade(a, { kind: "translate", page: a.answer })).toBe(true);
+      expect(grade(a, { kind: "translate", page: (a.answer + 1) % a.table.length })).toBe(false);
+      if (a.table[a.answer] === null) {
+        invalid++;
+        expect(a.explain).toContain("invalid");
+      } else {
+        expect(a.explain).toContain(String(a.table[a.answer]! * a.pageSize + (a.logical % a.pageSize)));
+      }
+    }
+    expect(invalid).toBeGreaterThan(0);
+  });
+  it("is in the memory pool and the Leitner bank", () => {
+    expect(pool.generators).toContain(tapTranslate);
+    expect(inBank(tapTranslate.id)).toBe(true);
   });
 });

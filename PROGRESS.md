@@ -434,3 +434,12 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/memoryPool.test.ts`, 14): well-formed unique ids, every kind covered, authored keys, numbers against the simulators and Silberschatz's examples (36 pages / 962 B, 140 and 122 ns, 10+10+12), and each generator's answer re-derived by an independent plain computation over 100–300 seeds.
 - Verified: lint, typecheck, `npm test` (522 tests), `build:pages` (236 files precached). No UI change, so no screenshots this run.
 - Next: 2.6c2 the tap-to-translate question kind.
+
+## 2026-10-22: 2.6c2 Tap-to-translate question kind (run 50)
+- Main was green and no lock was held.
+- New `translate` question kind (`TranslateQ` in `game/engine/question.ts`): a logical address, a page size and a page table (frames or invalid); the player taps the page-table entry the address goes through. Graded against `translate()` from `game/sim/memory.ts`; `answerText`, `correctionText` and `questionProblems` cover it (power-of-two page size, address inside the table, answer equals the address's page number).
+- `TranslatePanel` in `components/battle/AnswerPanel.tsx`: the address and page size, a tappable row per entry, CONFIRM; after an answer the right row goes green and a wrong tap red.
+- `tapTranslate` generator (`gen-mem-tap-translate`) in `content/memoryGenerators.ts`, in `POOLS.memory` and the Leitner bank; some entries are invalid, so the explanation covers the trap.
+- Tests (`tests/memoryPool.test.ts`): Figure 9.10 (logical 13, 4-byte pages → page 3, frame 2, physical 9), grading, malformed-question checks, 300 seeds for validity and determinism, and the pool/bank registration.
+- Verified: lint, typecheck, `npm test` (525 tests), `build:pages` (236 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), via a seeded Leitner review battle: a wrong tap and the reveal. No console errors, no horizontal overflow. I reviewed the screenshots and padded the info strip.
+- Next: 2.6d the Heap Harbor trainer creature, dex entry, trainer battles and gated flow.
