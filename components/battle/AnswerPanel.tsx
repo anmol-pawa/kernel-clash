@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TranslateQ } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TranslateQ, type VictimQ, victimSetup } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -50,6 +50,8 @@ export function AnswerPanel(p: Props) {
       return <CyclePanel {...p} q={p.q as CycleQ} />;
     case "translate":
       return <TranslatePanel {...p} q={p.q as TranslateQ} />;
+    case "victim":
+      return <VictimPanel {...p} q={p.q as VictimQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -530,6 +532,66 @@ function TranslatePanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { 
           }}
         >
           ▶ CONFIRM ENTRY
+        </button>
+      )}
+    </div>
+  );
+}
+
+const POLICY_NAME = { fifo: "FIFO", lru: "LRU", opt: "OPTIMAL" } as const;
+
+/**
+ * Page replacement: the frames before a fault and the reference string so far;
+ * tap the frame the policy evicts. After a wrong answer the right frame lights up.
+ */
+function VictimPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: VictimQ }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "victim" ? reveal.response.frame : picked;
+  const { frames } = victimSetup(q);
+  const from = Math.max(0, q.at - 9);
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="victim">
+      <div className="gb-box px-2 py-2 font-pixel text-[10px] leading-4 !text-[var(--box-ink)]" data-testid="victim-info">
+        <div>{POLICY_NAME[q.policy]} · FAULT ON PAGE {q.refs[q.at]}</div>
+        <div className="mt-1 break-words">
+          REFS {from > 0 ? "… " : ""}
+          {q.refs.slice(from, q.at).join(" ")} <b>[{q.refs[q.at]}]</b>
+          {q.at + 1 < q.refs.length ? ` ${q.refs.slice(q.at + 1).join(" ")}` : ""}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {frames.map((page, i) => {
+          const right = !!reveal && i === q.answer;
+          const wrong = !!reveal && !reveal.correct && i === shown;
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={locked}
+              data-testid={`victim-frame-${i}`}
+              aria-pressed={shown === i}
+              onClick={() => (sfx.blip(), setPicked(i))}
+              className={`gb-box flex min-h-11 items-center justify-between px-2 font-pixel text-[10px] !text-[var(--box-ink)] ${shown === i ? "outline outline-2 outline-offset-1" : ""} ${right ? "!bg-[#bfe8a8]" : wrong ? "!bg-[#f0b0a8]" : ""}`}
+            >
+              <span>FRAME {i}</span>
+              <span>PAGE {page}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || picked === null}
+          data-testid="victim-confirm"
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "victim", frame: picked! });
+          }}
+        >
+          ▶ EVICT THIS FRAME
         </button>
       )}
     </div>

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { GYM_QUESTIONS } from "@/content/gymQuestions";
-import { VIRTUAL_GENERATORS, faultCountGen, faultEat, maxRate, thrashCheck, victimChoice, workingSetSize } from "@/content/virtualGenerators";
+import { VIRTUAL_GENERATORS, faultCountGen, faultEat, maxRate, thrashCheck, tapVictim, victimChoice, workingSetSize } from "@/content/virtualGenerators";
 import { BATTLE_TURNS, POOLS, VIRTUAL_EXTRA, gymBattleQuestions } from "@/content/pools";
 import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
-import { kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ } from "@/game/engine/question";
+import { answerText, grade, kindOf, questionProblems, victimSetup, type McqQ, type MultiQ, type NumericQ, type VictimQ } from "@/game/engine/question";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, replacePages, type Replacement } from "@/game/sim/paging";
 
 const pool = POOLS.virtual;
@@ -183,5 +183,51 @@ describe("virtual-memory generators", () => {
       seen.add(q.answer);
     }
     expect(seen.size).toBe(2);
+  });
+});
+
+describe("tap-the-victim", () => {
+  const q = (seed: number) => tapVictim.make(seed) as VictimQ;
+  it("matches Silberschatz's string: LRU evicts frame 0 (page 7) at the first replacement, FIFO too", () => {
+    // 7 0 1 2: three frames hold 7 0 1, the fault on 2 evicts page 7 (frame 0) under FIFO and LRU
+    const fig: VictimQ = { kind: "victim", id: "fig", prompt: "p", explain: "e", policy: "lru" as const, frameCount: 3, refs: [7, 0, 1, 2, 0, 3], at: 3, answer: 0, move: { name: "Frame Strike", type: "memory", power: 34 } };
+    expect(questionProblems(fig)).toEqual([]);
+    expect(grade(fig, { kind: "victim", frame: 0 })).toBe(true);
+    expect(grade(fig, { kind: "victim", frame: 1 })).toBe(false);
+    expect(grade(fig, { kind: "mcq", choice: 0 })).toBe(false);
+    expect(answerText(fig)).toBe("frame 0 (page 7)");
+    expect(victimSetup(fig).frames).toEqual([7, 0, 1]);
+    expect(questionProblems({ ...fig, answer: 2 })).toContain("answer isn't the policy's victim frame");
+    expect(questionProblems({ ...fig, at: 2 })).toContain("no page is evicted at that reference");
+    // Optimal on 7 0 1 2 | 0 1 7: page 7 is used furthest ahead, so it goes
+    expect(questionProblems({ ...fig, policy: "opt" as const, refs: [7, 0, 1, 2, 0, 1, 7], answer: 0 })).toEqual([]);
+    // pages 7 and 1 are both never used again in the original string: a tie, so it isn't a fair question
+    expect(questionProblems({ ...fig, policy: "opt" as const, answer: 0 })).toContain("Optimal's victim is a tie");
+  });
+  it("generates well-formed, seed-stable questions whose victim an independent loop agrees with", () => {
+    const policies = new Set<string>();
+    for (let seed = 1; seed <= 300; seed++) {
+      const a = q(seed);
+      expect(questionProblems(a), a.id).toEqual([]);
+      expect(a).toEqual(q(seed));
+      expect(grade(a, { kind: "victim", frame: a.answer })).toBe(true);
+      expect(grade(a, { kind: "victim", frame: (a.answer + 1) % a.frameCount })).toBe(false);
+      // plain-loop check of the victim page, from the frames shown just before the fault
+      const { frames } = victimSetup(a);
+      const page = frames[a.answer] as number;
+      const before = a.refs.slice(0, a.at);
+      const lastUse = (pg: number) => before.lastIndexOf(pg);
+      if (a.policy === "lru") expect(frames.every((pg) => lastUse(pg as number) >= lastUse(page))).toBe(true);
+      if (a.policy === "opt") {
+        const next = (pg: number) => { const i = a.refs.indexOf(pg, a.at + 1); return i < 0 ? Infinity : i; };
+        expect(frames.every((pg) => next(pg as number) <= next(page))).toBe(true);
+      }
+      policies.add(a.policy);
+    }
+    expect(policies.size).toBe(3);
+  });
+  it("joins the virtual pool", () => {
+    expect(VIRTUAL_GENERATORS).toContain(tapVictim);
+    expect(Array.from({ length: 200 }, (_, i) => kindOf(q(i + 1)))).toContain("victim");
   });
 });

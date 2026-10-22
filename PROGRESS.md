@@ -478,3 +478,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/virtualPool.test.ts`, 13): generator counts and victims agree with plain-loop FIFO/LRU/Optimal, EAT is 8199.8 ns for Silberschatz's 200 ns / 8 ms / 1-in-1000 case, the 2.5-per-million tolerable rate, working sets and thrashing by hand, Belady 9→10 and Optimal 7 on the textbook string. The tests caught a reference-string bug (an undefined page) and showed that Optimal's victim is ambiguous at the end of a string, so those questions now show the future references and require a unique furthest page.
 - Verified: lint, typecheck, `npm test`, `build:pages`. No UI change, so no screenshots.
 - Next: 2.7c2 the tap-the-victim question kind.
+
+## 2026-10-22: 2.7c2 Tap-the-victim question kind (run 56)
+- Main was green and no lock was held.
+- New `victim` question kind (`VictimQ` in `game/engine/question.ts`): the policy (FIFO, LRU or Optimal), the reference string and the faulting index; the frames before the fault come from `replacePages`, and the answer is the frame the policy evicts. `grade`, `answerText`, `correctionText` and `questionProblems` cover it (problems check the answer against the simulator and reject Optimal ties). `VictimPanel` in `AnswerPanel.tsx` shows the policy, the reference history with the faulting page marked, four frame buttons and an EVICT button; the right frame turns green after answering.
+- `tapVictim` generator in `content/virtualGenerators.ts` joins `POOLS.virtual` (policies disagree so the choice matters).
+- Tests (`tests/virtualPool.test.ts`, +3): Silberschatz's 7 0 1 2 string (LRU/FIFO evict page 7 in frame 0), Optimal tie rejected, 300 seeds checked against plain-loop LRU/Optimal rules, all three policies occur.
+- Verified: lint, typecheck, `npm test` (577 tests), `build:pages` (248 files). Playwright on a temporary page (removed) at 1280×800 and iPhone 14: panel and reveal reviewed, no console errors, no horizontal overflow.
+- Next: 2.7d the virtual-memory gym trainer creature.

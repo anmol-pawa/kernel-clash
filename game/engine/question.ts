@@ -11,6 +11,7 @@
  *   banker   tap the processes in a safe order (Banker's algorithm)
  *   cycle    tap the nodes of a deadlock cycle in a resource-allocation graph
  *   translate  tap the page-table entry a logical address maps through
+ *   victim   tap the frame a page-replacement policy evicts
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
@@ -18,6 +19,7 @@
 import { ganttText, type Slice } from "@/game/sim/scheduling";
 import { findCycle, isCycleNodes, isSafeSequence, type BankerState, type Edge } from "@/game/sim/deadlock";
 import { translate } from "@/game/sim/memory";
+import { replacePages, type Replacement } from "@/game/sim/paging";
 import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
 
@@ -134,6 +136,27 @@ export interface TranslateQ extends Base {
   answer: number;
 }
 
+export interface VictimQ extends Base {
+  kind: "victim";
+  /** the policy whose choice the player must predict (Clock isn't asked: its hand isn't visible) */
+  policy: Exclude<Replacement, "clock">;
+  frameCount: number;
+  /** the whole reference string; the player is asked about the fault at `at` */
+  refs: readonly number[];
+  at: number;
+  /** the frame (index) holding the page the policy evicts */
+  answer: number;
+}
+
+/** The frames just before reference `at`, and the frame the policy replaces there (null = no replacement). */
+export function victimSetup(q: Pick<VictimQ, "policy" | "frameCount" | "refs" | "at">): { frames: (number | null)[]; victimFrame: number | null } {
+  const steps = replacePages(q.refs, q.frameCount, q.policy).steps;
+  const frames = q.at > 0 ? steps[q.at - 1].frames : Array<number | null>(q.frameCount).fill(null);
+  const after = steps[q.at].frames;
+  const victimFrame = steps[q.at].victim === null ? null : after.findIndex((p, i) => p !== frames[i]);
+  return { frames, victimFrame };
+}
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -143,8 +166,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -163,7 +186,9 @@ export type Response =
   /** the nodes the player marked as the cycle (none = "no deadlock") */
   | { kind: "cycle"; nodes: readonly string[] }
   /** the page-table entry (page number) the player tapped */
-  | { kind: "translate"; page: number };
+  | { kind: "translate"; page: number }
+  /** the frame the player tapped */
+  | { kind: "victim"; frame: number };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -249,6 +274,8 @@ export function grade(q: Question, r: Response): boolean {
     }
     case "translate":
       return r.page === (q as TranslateQ).answer;
+    case "victim":
+      return r.frame === (q as VictimQ).answer;
   }
 }
 
@@ -280,6 +307,10 @@ export function answerText(q: Question): string {
       const t = translate(q.logical, q.pageSize, q.table);
       return t.physical === null ? `page ${t.page}, which is invalid, so the MMU traps` : `page ${t.page}, frame ${t.frame}: physical ${t.physical}`;
     }
+    case "victim": {
+      const { frames } = victimSetup(q);
+      return `frame ${q.answer} (page ${frames[q.answer]})`;
+    }
     default:
       return q.options[q.answer];
   }
@@ -302,6 +333,8 @@ export function correctionText(q: Question): string | null {
       return "Here is the cycle.";
     case "translate":
       return `The entry is ${answerText(q)}.`;
+    case "victim":
+      return `The victim is ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -398,6 +431,21 @@ export function questionProblems(q: Question): string[] {
       else if (q.answer !== Math.floor(q.logical / q.pageSize)) p.push("answer isn't the address's page number");
       if (q.table.some((f) => f !== null && (!Number.isInteger(f) || f < 0))) p.push("frames must be whole numbers or null");
       break;
+    case "victim": {
+      if (!Number.isInteger(q.frameCount) || q.frameCount < 2 || q.frameCount > 5) p.push("victim needs 2–5 frames");
+      else if (q.at < 1 || q.at >= q.refs.length) p.push("fault index outside the reference string");
+      else {
+        const { frames, victimFrame } = victimSetup(q);
+        if (victimFrame === null) p.push("no page is evicted at that reference");
+        else if (victimFrame !== q.answer) p.push("answer isn't the policy's victim frame");
+        if (q.policy === "opt" && victimFrame !== null) {
+          const future = q.refs.slice(q.at + 1);
+          const dist = (frames as number[]).map((pg) => (future.indexOf(pg) < 0 ? Infinity : future.indexOf(pg)));
+          if (dist.filter((d) => d === Math.max(...dist)).length > 1) p.push("Optimal's victim is a tie");
+        }
+      }
+      break;
+    }
     default:
       if (q.options.length !== 4) p.push("mcq needs 4 options");
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) p.push("answer out of range");

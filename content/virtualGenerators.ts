@@ -1,4 +1,4 @@
-import type { Generator, McqQ, NumericQ } from "@/game/engine/question";
+import type { Generator, McqQ, NumericQ, VictimQ } from "@/game/engine/question";
 import { demandPagingEat, maxFaultRate, replacePages, thrashing, workingSet, type Replacement } from "@/game/sim/paging";
 import { rng, type Rng } from "@/lib/rng";
 
@@ -84,6 +84,49 @@ export const victimChoice: Generator = {
         answer: options.indexOf(victim),
         explain: `${POLICIES[policy]} evicts ${why}: page ${victim}. Full reference string: ${past.join(" ")}${future.length ? ` | ${future.join(" ")}` : ""}.`,
         move: vm("Queue Evict", 32),
+      };
+    }
+  },
+};
+
+/** Tap the frame a policy evicts at one fault; the frames and history are on screen. */
+export const tapVictim: Generator = {
+  id: "gen-vm-tap-victim",
+  topic: "Page replacement: tap the victim frame",
+  make(seed): VictimQ {
+    const r = rng(seed ^ 0x7ab1);
+    const frameCount = r.pick([3, 4]);
+    const policies = ["fifo", "lru", "opt"] as const;
+    for (let tries = 0; ; tries++) {
+      const policy = r.pick(policies);
+      const past = refString(r, r.int(8, 11));
+      const future = policy === "opt" ? refString(r, r.int(4, 6)) : [];
+      const refs = [...past, ...future];
+      const at = past.length - 1;
+      const steps = replacePages(refs, frameCount, policy).steps;
+      if (steps[at].victim === null || steps[at - 1].frames.includes(null)) continue;
+      const resident = steps[at - 1].frames as number[];
+      if (policy === "opt" && uniqueFurthest(resident, future) === null) continue;
+      const others = policies.filter((p) => p !== policy).map((p) => replacePages(refs, frameCount, p).steps[at].victim);
+      if (tries < 400 && !others.some((v) => v !== steps[at].victim)) continue;
+      const answer = resident.indexOf(steps[at].victim as number);
+      const why =
+        policy === "fifo"
+          ? "the page that has been resident longest"
+          : policy === "lru"
+            ? "the page whose last use is furthest in the past"
+            : "the page whose next use is furthest in the future (or never)";
+      return {
+        kind: "victim",
+        id: `${this.id}#${seed}`,
+        prompt: `Page ${refs[at]} faults and every frame is full. Which frame does ${POLICIES[policy]} evict?`,
+        policy,
+        frameCount,
+        refs,
+        at,
+        answer,
+        explain: `${POLICIES[policy]} evicts ${why}: page ${resident[answer]}, in frame ${answer}. Full reference string: ${past.join(" ")}${future.length ? ` | ${future.join(" ")}` : ""}.`,
+        move: vm("Frame Strike", 34),
       };
     }
   },
@@ -182,4 +225,4 @@ export const thrashCheck: Generator = {
   },
 };
 
-export const VIRTUAL_GENERATORS: Generator[] = [faultCountGen, victimChoice, faultEat, maxRate, workingSetSize, thrashCheck];
+export const VIRTUAL_GENERATORS: Generator[] = [faultCountGen, victimChoice, faultEat, maxRate, workingSetSize, thrashCheck, tapVictim];
