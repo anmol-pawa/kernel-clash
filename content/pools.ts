@@ -7,6 +7,7 @@ import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
 import { DEADLOCK_GENERATORS } from "./deadlockGenerators";
 import { MEMORY_GENERATORS } from "./memoryGenerators";
 import { SYNC_GENERATORS } from "./syncGenerators";
+import { VIRTUAL_GENERATORS } from "./virtualGenerators";
 import { safety, type BankerState } from "@/game/sim/deadlock";
 import { increment } from "@/game/sim/sync";
 import { GYM_QUESTIONS } from "./gymQuestions";
@@ -834,6 +835,118 @@ export const MEMORY_EXTRA: Question[] = [
   },
 ];
 
+const vm = (name: string, power: number) => ({ name, type: "memory" as const, power });
+
+/** Virtual memory (Silberschatz ch. 10), beyond the six boss questions. */
+export const VIRTUAL_EXTRA: Question[] = [
+  {
+    id: "vm-dirty",
+    prompt: "What does the modify (dirty) bit save when a victim page is chosen?",
+    options: ["Writing the victim back to disk if it was never changed", "Searching the TLB", "Reading the new page from disk", "Updating the page table"],
+    answer: 0,
+    explain: "A clean victim is identical to its copy on disk, so it can simply be overwritten. Only a dirty victim must be written out first, which halves the fault service time.",
+    move: vm("Clean Sweep", 30),
+  },
+  {
+    id: "vm-clock",
+    prompt: "The Clock (second-chance) hand meets a page whose reference bit is 1. What happens?",
+    options: ["The bit is cleared and the hand moves on", "The page is evicted at once", "The page is written to disk", "The hand goes back to the start"],
+    answer: 0,
+    explain: "Second chance: a recently used page (bit 1) gets its bit cleared and is skipped. The first page found with bit 0 is the victim. If every bit is 1 the hand circles once, clearing them all, and then it behaves like FIFO.",
+    move: vm("Second Wind", 32),
+  },
+  {
+    id: "vm-stack",
+    prompt: "Why can LRU never show Belady's anomaly?",
+    options: ["With n frames it always holds a subset of what it would hold with n + 1 frames", "It never evicts a page that will be used again", "It ignores the reference string", "It always has fewer faults than FIFO"],
+    answer: 0,
+    explain: "LRU is a stack algorithm: the pages resident with n frames are always a subset of those with n + 1, so adding a frame can only turn faults into hits. FIFO lacks that property. (LRU is not always better than FIFO on a given string.)",
+    move: vm("Anomaly", 32),
+  },
+  {
+    id: "vm-global",
+    prompt: "What is the main risk of GLOBAL page replacement?",
+    options: ["One process's faults can take frames from others, so its speed depends on how the rest behave", "It can never pick a dirty page", "It needs a separate page table per frame", "It cannot be used with LRU"],
+    answer: 0,
+    explain: "Global replacement picks the victim from all frames, so a process can steal from others and its fault rate varies with its neighbours. Local replacement is steadier, but it can leave frames idle in a process that doesn't need them.",
+    move: vm("Frame Thief", 32),
+  },
+  {
+    id: "vm-minframes",
+    prompt: "What sets the MINIMUM number of frames a process must be given?",
+    options: ["The instruction set: one instruction may touch several pages and all must be resident to finish it", "The size of the TLB", "The disk's rotation speed", "The number of other processes"],
+    answer: 0,
+    explain: "If an instruction needs its own page plus operand pages (and indirect addresses), every one of them must be in memory at once, or the instruction would fault forever. Architectures therefore fix a minimum per process.",
+    move: vm("Fault Line", 32),
+  },
+  {
+    id: "vm-pff",
+    prompt: "Page-fault-frequency control sees a process faulting far above its upper bound. What does the OS do?",
+    options: ["Give it more frames", "Take frames away", "Kill it", "Double the page size"],
+    answer: 0,
+    explain: "Above the upper bound the process has too few frames, so it gets more (if none are free, the OS may suspend a process). Below the lower bound it has too many and loses one.",
+    move: vm("Thrash Storm", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-vm-thrash",
+    prompt: "Which of these help stop thrashing? Select all that apply.",
+    options: ["Suspend a process and free its frames", "Use local replacement so processes can't steal frames", "Track working sets or page-fault frequency", "Admit more processes to keep the CPU busy", "Make the TLB larger"],
+    answers: [0, 1, 2],
+    explain: "Thrashing means processes lack the frames for their working sets. Lowering the degree of multiprogramming, local replacement and working-set or PFF control all address it. Admitting more processes makes it worse (the classic trap: low CPU use makes the OS add more), and a bigger TLB doesn't create frames.",
+    move: vm("Thrash Storm", 34),
+  },
+  {
+    kind: "multi",
+    id: "multi-vm-stack",
+    prompt: "Which page-replacement policies are stack algorithms (immune to Belady's anomaly)? Select all that apply.",
+    options: ["LRU", "Optimal", "FIFO", "Clock (second chance)"],
+    answers: [0, 1],
+    explain: "LRU and Optimal keep a nested set of pages as frames grow. FIFO is the textbook anomaly, and Clock, a FIFO variant with reference bits, can show it too.",
+    move: vm("Anomaly", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-vm-belady4",
+    prompt: "FIFO with 4 frames on the reference string 1 2 3 4 1 2 5 1 2 3 4 5. How many page faults?",
+    answer: 10,
+    explain: "With 3 frames the same string faults 9 times; with 4 frames FIFO faults 10 times. More memory, more faults: Belady's anomaly.",
+    move: vm("Anomaly", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-vm-opt3",
+    prompt: "Optimal replacement with 3 frames on the reference string 1 2 3 4 1 2 5 1 2 3 4 5. How many page faults?",
+    answer: 7,
+    explain: "Faults on 1, 2 and 3 (empty frames), then 4 (evict 3, whose next use is furthest), 5 (evict 4), 3 (evict 1 or 2, neither is used again) and 4 (evict 3 or 2, same reason): 7 in all. No policy can do better with 3 frames.",
+    move: vm("Foresight", 36),
+  },
+  {
+    kind: "numeric",
+    id: "num-vm-eat",
+    prompt: "A memory access takes 200 ns, a page fault takes 8 ms and one access in 10,000 faults. What is the effective access time in ns?",
+    answer: 999.98,
+    unit: "ns",
+    explain: "EAT = 0.9999 × 200 + 0.0001 × 8,000,000 = 199.98 + 800 = 999.98 ns. A fault rate of just 0.01% makes memory five times slower.",
+    move: vm("Swap Sting", 34),
+  },
+  {
+    kind: "order",
+    id: "order-vm-fault",
+    prompt: "Handling a page fault. Put the steps in order.",
+    steps: [
+      "The access hits an invalid page-table entry and the MMU traps to the OS",
+      "The OS checks that the reference is legal (otherwise it kills the process)",
+      "The OS finds a free frame, or evicts a victim and writes it back if dirty",
+      "The disk read for the missing page is scheduled and the process waits",
+      "The page table is updated: frame number and valid bit",
+      "The faulting instruction is restarted",
+    ],
+    explain: "The trap and legality check come first, then a frame is found (replacement happens here), the page is read in while another process runs, the table is fixed up, and the instruction restarts as though nothing happened.",
+    move: vm("Fault Line", 34),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
@@ -841,6 +954,7 @@ export const POOLS: Record<string, Pool> = {
   sync: { authored: [...GYM_QUESTIONS.sync, ...SYNC_EXTRA], generators: SYNC_GENERATORS },
   deadlocks: { authored: [...GYM_QUESTIONS.deadlocks, ...DEADLOCK_EXTRA], generators: DEADLOCK_GENERATORS },
   memory: { authored: [...GYM_QUESTIONS.memory, ...MEMORY_EXTRA], generators: MEMORY_GENERATORS },
+  virtual: { authored: [...GYM_QUESTIONS.virtual, ...VIRTUAL_EXTRA], generators: VIRTUAL_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
