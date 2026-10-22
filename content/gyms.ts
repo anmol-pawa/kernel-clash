@@ -110,6 +110,7 @@ export const GYMS: Gym[] = [
     type: "memory",
     topics: ["Demand paging", "FIFO, LRU, Optimal, Clock", "Belady's anomaly", "Thrashing", "Working sets"],
     boss: { name: "Thrashmoth", blurb: "Drawn to the light of a full frame table, it faults faster than you can swap." },
+    trainer: { name: "Swaploth", blurb: "A drowsy sloth that keeps its working set in its lap as a stack of page cards. Every beat it lifts the top card away, the victim page going out to disk, and slides a fresh one in. Its heavy lids are the only thing that never page-faults.", retreats: "drifts off into the branches", holdsOn: "is still holding the stack" },
     badge: "Victim Badge",
     ramp: ["#3a1c6e", "#5e32a8", "#9466e0", "#d2b8ff"],
   },

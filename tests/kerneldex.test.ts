@@ -123,6 +123,13 @@ describe("Kerneldex status", () => {
     expect(dexEntry("deadlocrab")!.no).toBe(e.no - 1);
   });
 
+  it("Swaploth guards the Swapwood Gym just before Thrashmoth", () => {
+    const e = dexEntry("swaploth")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "virtual", type: "memory", name: "Swaploth" });
+    expect(dexEntry("thrashmoth")!.no).toBe(e.no + 1);
+    expect(dexEntry("heapotamus")!.no).toBe(e.no - 1);
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

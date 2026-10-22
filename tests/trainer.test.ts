@@ -56,6 +56,12 @@ describe("trainer fighters", () => {
     expect(trainerFighter(gym, 2)).toMatchObject({ name: "Pagolin", level: 6, type: "memory" });
   });
 
+  it("Swaploth is the Swapwood Gym's trainer: memory type, Lv5 then Lv6", () => {
+    const gym = GYMS.find((g) => g.id === "virtual")!;
+    expect(trainerFighter(gym, 1)).toMatchObject({ name: "Swaploth", level: 5, hp: 120, type: "memory" });
+    expect(trainerFighter(gym, 2)).toMatchObject({ name: "Swaploth", level: 6, hp: 130, type: "memory" });
+  });
+
   it("Syscallow is the Bootstrap Gym's trainer: io type, Lv3 then Lv4, weaker than the boss", () => {
     const gym = GYMS[0];
     expect(trainerFighter(gym, 1)).toEqual({ name: "Syscallow", level: 3, hp: 100, maxHp: 100, type: "io" });
@@ -91,6 +97,7 @@ describe("trainer fighters", () => {
     expect(GYMS.find((g) => g.id === "sync")!.trainer).toMatchObject({ retreats: "hops back into the reeds", holdsOn: "is still croaking" });
     expect(GYMS.find((g) => g.id === "deadlocks")!.trainer).toMatchObject({ retreats: "flutters up into the rafters", holdsOn: "is still staring" });
     expect(GYMS.find((g) => g.id === "memory")!.trainer).toMatchObject({ retreats: "rolls off along the dock", holdsOn: "is still glowing" });
+    expect(GYMS.find((g) => g.id === "virtual")!.trainer).toMatchObject({ retreats: "drifts off into the branches", holdsOn: "is still holding the stack" });
   });
 });
 
@@ -130,7 +137,7 @@ describe("trainer balance for any draw", () => {
       for (let r = 1; r <= TRAINER_BATTLES; r++)
         for (const p of players) {
           expect(play(g.id, r, strongest, [true, true, false, false], p).phase, `${p.name} Lv${p.level} r${r}`).toBe("defeat");
-          expect(play(g.id, r, strongest, [false, false, true, true], p).phase).toBe("defeat");
+          expect(play(g.id, r, strongest, [false, false, true, true], p).phase, `B ${p.name} Lv${p.level} r${r}`).toBe("defeat");
         }
     });
 
@@ -157,7 +164,7 @@ describe("saved trainer wins", () => {
   it("counts wins per gym with a trainer, clamped, dropping junk", () => {
     expect(DEFAULT_SAVE.trainers).toEqual({});
     const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 2, sync: 1, deadlocks: 1, memory: 1, virtual: 1, nowhere: 1, x: "2" } }));
-    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1, scheduling: 2, sync: 1, deadlocks: 1, memory: 1 });
+    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1, scheduling: 2, sync: 1, deadlocks: 1, memory: 1, virtual: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 1.7 } })).trainers).toEqual({ basics: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 0 } })).trainers).toEqual({});
     expect(parseSave(JSON.stringify({ trainers: [1] })).trainers).toEqual({});

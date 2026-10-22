@@ -486,3 +486,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/virtualPool.test.ts`, +3): Silberschatz's 7 0 1 2 string (LRU/FIFO evict page 7 in frame 0), Optimal tie rejected, 300 seeds checked against plain-loop LRU/Optimal rules, all three policies occur.
 - Verified: lint, typecheck, `npm test` (577 tests), `build:pages` (248 files). Playwright on a temporary page (removed) at 1280×800 and iPhone 14: panel and reveal reviewed, no console errors, no horizontal overflow.
 - Next: 2.7d the virtual-memory gym trainer creature.
+
+## 2026-10-22: 2.7d Swaploth, the Swapwood trainer (run 57)
+- Main was green and no lock was held.
+- `game/sprites/swaploth.ts`: Swaploth, a 64×64 drowsy sloth keeping a stack of page cards in its lap (the top card lifts out each idle beat: the victim page going to disk), moss on its crown, front and back, idle (4 frames), attack (fling the stack) and hurt (X eyes, dropped cards). Registered in `CREATURES` (between Heapotamus and Thrashmoth) and `TRAINERS.virtual`; trainer entry on the Swapwood gym in `content/gyms.ts`, so the dex entry, trainer battles and gated flow follow the usual path.
+- Balance: at gym 7 the capped trainer HP (110/120) let a high-level partner win with two right answers, so `trainerFighter` HP now resumes growing past gym 6 (+10 per gym: 120/130 at Swapwood). Tests pin it and the existing balance tests pass. Gym 8 may need re-tuning when its trainer arrives (+20 may already break the one-slip window).
+- Tests: `TRAINERS.virtual`, Swaploth stats and retreat text, dex position between Heapotamus and Thrashmoth, save parsing now keeps `virtual` trainer wins.
+- Verified: lint, typecheck, `npm test` (586 tests), `build:pages` (254 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) with a seeded save: Swaploth trainer battle and `/dev/sprites` reviewed, no console errors, no horizontal overflow. The backdrop is still the generic one (2.7e).
+- Next: 2.7e the Swapwood battle backdrop in `game/sprites/scenery.ts`.
