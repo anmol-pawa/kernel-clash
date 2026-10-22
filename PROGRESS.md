@@ -450,3 +450,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: `TRAINERS.memory`, trainer stats and retreat text, dex position between Deadlocrab and Heapotamus, save parsing keeps `memory` trainer wins and still drops `virtual`.
 - Verified: lint, typecheck, `npm test` (534 tests), `build:pages` (242 files precached). Rendered all 18 frames to PNG and reviewed them. Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) with a seeded save: the Pagolin trainer battle shows the sprite, HP box and questions; no console errors, no horizontal overflow. The backdrop is still the generic one (2.6e).
 - Next: 2.6e the Heap Harbor battle backdrop in `game/sprites/scenery.ts`.
+
+## 2026-10-22: 2.6e Heap Harbor battle backdrop (run 52)
+- Main was green and no lock was held. This completes 2.6 (memory management).
+- `game/sprites/scenery.ts`: `HEAP_HARBOR` backdrop: a dusk quay with far warehouses, two gantry cranes hoisting containers, a row of container blocks with free holes between them (fragmentation), and water at the foot; a wooden-pier platform whose planks form a grid of pages with one gold page; container stacks with a gap, mooring bollards, crates and wet planks. Registered for the `memory` gym in `BACKDROPS`; all sheets are in `SCENERY` so they show in `/dev/sprites`.
+- Tests (`tests/backdrops.test.ts`): Heap Harbor is distinct from every other backdrop (horizon, platform, sky) and uses at least four prop sheets; the generic per-backdrop checks cover it too.
+- Verified: lint, typecheck, `npm test` (543 tests), `build:pages` (242 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), Pagolin trainer battle: reviewed screenshots, no console errors, no horizontal overflow. I dropped a buoy prop that read as a potion on the ground.
+- Next: 2.7 virtual memory (split into sub-tasks first).

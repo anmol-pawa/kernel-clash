@@ -951,6 +951,205 @@ export const CROSSING_PLATFORM: SpriteSheet = {
   idle: [crossingPlatform()],
 };
 
+/* ---------------------------------------------------------- Heap Harbor */
+
+/** A shipping container: corrugated sides, a lit top edge and a dark foot. `lead` is the colour ramp letter (c red, d blue, e yellow, m green). */
+function container(k: PixelCanvas, x: number, y: number, w: number, h: number, lead: "c" | "d" | "e" | "m") {
+  k.rect(x, y, w, h, lead);
+  k.rect(x, y, w, 1, lead.toUpperCase());
+  k.rect(x, y + h - 1, w, 1, "s");
+  for (let cx = x + 2; cx < x + w - 1; cx += 2) k.rect(cx, y + 1, 1, h - 2, "s");
+  k.rect(x + w - 2, y + 1, 1, h - 2, lead.toUpperCase());
+}
+
+/** The harbour front: a quay of container blocks with gaps between them (free holes), two gantry cranes and still water below. */
+function harborHorizon(): string[] {
+  const W = 160;
+  const H = 80;
+  const k = new PixelCanvas(W, H);
+  const rnd = lcg(97);
+  // far warehouses in the haze
+  let x = 0;
+  while (x < W) {
+    const w = 10 + Math.floor(rnd() * 12);
+    const h = 14 + Math.floor(rnd() * 16);
+    k.rect(x, H - 16 - h, w, h, "f");
+    k.rect(x, H - 16 - h, w, 1, "F");
+    for (let wx = x + 2; wx < x + w - 1; wx += 3) if (rnd() < 0.5) k.px(wx, H - 16 - h + 4, "w");
+    x += w + Math.floor(rnd() * 3);
+  }
+  // the quay
+  k.rect(0, H - 16, W, 11, "q");
+  k.rect(0, H - 16, W, 1, "Q");
+  for (let qx = 0; qx < W; qx += 8) k.rect(qx, H - 10, 1, 5, "p");
+  // two gantry cranes, each hoisting a container
+  const cranes = new PixelCanvas(W, H);
+  for (const [cx, hgt] of [[34, 56], [118, 50]] as const) {
+    const top = H - 16 - hgt;
+    cranes.rect(cx - 8, top, 2, hgt, "i");
+    cranes.rect(cx + 8, top, 2, hgt, "i");
+    cranes.rect(cx - 8, top, 1, hgt, "I");
+    cranes.rect(cx - 8, top + 8, 18, 1, "i");
+    cranes.rect(cx - 20, top, 40, 2, "i");
+    cranes.rect(cx - 20, top, 40, 1, "I");
+    cranes.line(cx - 8, top + 8, cx - 1, top, "i");
+    cranes.line(cx + 9, top + 8, cx + 2, top, "i");
+    cranes.rect(cx - 12, top + 2, 1, 14, "i");
+    cranes.rect(cx - 5, top + 2, 1, 14, "i");
+    container(cranes, cx - 14, top + 16, 12, 6, "e");
+    cranes.px(cx + 14, top - 2, "R");
+  }
+  cranes.outline("o");
+  k.stamp(cranes.toGrid(), 0, 0);
+  // allocated blocks with free holes between them
+  const blocks = new PixelCanvas(W, H);
+  const lead = ["c", "d", "e", "m"] as const;
+  let bx = 2;
+  let i = 0;
+  while (bx < W - 10) {
+    const w = 10 + 2 * Math.floor(rnd() * 5);
+    container(blocks, bx, H - 24, w, 8, lead[i % 4]);
+    if (i % 3 === 1) container(blocks, bx + 1, H - 31, w - 2, 7, lead[(i + 2) % 4]);
+    bx += w + (i % 2 ? 3 : 7 + Math.floor(rnd() * 5));
+    i++;
+  }
+  blocks.outline("o");
+  k.stamp(blocks.toGrid(), 0, 0);
+  // water at the foot
+  for (let wx = 0; wx < W; wx++) for (let y = H - 5; y < H; y++) k.px(wx, y, "v");
+  for (let r = 0; r < 18; r++) k.rect(Math.floor(rnd() * (W - 6)), H - 4 + Math.floor(rnd() * 3), 3 + Math.floor(rnd() * 3), 1, "V");
+  return k.toGrid();
+}
+
+const HARBOR_COLOURS = {
+  o: "#0c1624",
+  f: "#1f3350",
+  F: "#2f4a6c",
+  w: "#ffd98a",
+  q: "#34384a",
+  Q: "#555b72",
+  p: "#252838",
+  i: "#46526a",
+  I: "#7a8aa6",
+  R: "#ff5a4f",
+  c: "#b5443c",
+  C: "#e8786a",
+  d: "#3c6cb5",
+  D: "#74a4e8",
+  e: "#d9a441",
+  E: "#ffd97a",
+  m: "#3f9a6a",
+  M: "#78d29e",
+  s: "#241a2c",
+  v: "#16324e",
+  V: "#3a6a94",
+  b: "#7a5030",
+  B: "#a8744a",
+  L: "#d49a64",
+  h: "#c8d4e4",
+};
+
+export const HARBOR_HORIZON: SpriteSheet = {
+  name: "Heap Harbor quay",
+  palette: HARBOR_COLOURS,
+  idle: [harborHorizon()],
+};
+
+/** A stack of containers with a gap in the middle row: a hole too small for the next block. */
+function containerStack(): string[] {
+  const k = new PixelCanvas(36, 36);
+  container(k, 1, 26, 16, 9, "c");
+  container(k, 19, 26, 16, 9, "d");
+  container(k, 1, 17, 10, 9, "m");
+  container(k, 22, 17, 13, 9, "e");
+  container(k, 6, 8, 14, 9, "d");
+  k.rect(12, 18, 9, 8, "v");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const CONTAINER_STACK: SpriteSheet = {
+  name: "Container stack",
+  palette: HARBOR_COLOURS,
+  idle: [containerStack()],
+};
+
+/** A mooring bollard on the quay edge with a coil of rope. */
+function bollard(): string[] {
+  const k = new PixelCanvas(14, 20);
+  k.rect(3, 4, 8, 14, "i");
+  k.rect(3, 4, 2, 14, "I");
+  k.rect(1, 2, 12, 3, "i");
+  k.rect(1, 2, 12, 1, "I");
+  k.rect(0, 17, 14, 3, "q");
+  for (let y = 8; y < 15; y += 2) k.rect(2, y, 10, 1, "L");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const BOLLARD: SpriteSheet = {
+  name: "Mooring bollard",
+  palette: HARBOR_COLOURS,
+  idle: [bollard()],
+};
+
+/** A little wooden crate, the sort a small allocation fits in. */
+function crate(): string[] {
+  const k = new PixelCanvas(14, 14);
+  k.rect(0, 0, 14, 14, "b");
+  k.rect(0, 0, 14, 2, "B");
+  k.rect(0, 12, 14, 2, "p");
+  k.rect(0, 0, 2, 14, "B");
+  k.rect(12, 0, 2, 14, "p");
+  k.line(2, 2, 11, 11, "L");
+  k.line(11, 2, 2, 11, "L");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const CRATE: SpriteSheet = {
+  name: "Wooden crate",
+  palette: HARBOR_COLOURS,
+  idle: [crate()],
+};
+
+/** A patch of wet planks with a nail head or two, scattered over the ground. */
+function planks(): string[] {
+  const k = new PixelCanvas(30, 8);
+  k.rect(0, 2, 30, 4, "b");
+  k.rect(0, 2, 30, 1, "B");
+  for (const px of [9, 19]) k.rect(px, 2, 1, 4, "p");
+  for (const px of [4, 14, 25]) k.px(px, 4, "L");
+  k.rect(11, 6, 6, 1, "V");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PLANKS: SpriteSheet = {
+  name: "Wet planks",
+  palette: HARBOR_COLOURS,
+  idle: [planks()],
+};
+
+/** A pier platform: planks laid as a grid of fixed-size pages, with a gold page being addressed. */
+function pierPlatform(): string[] {
+  const k = new PixelCanvas(74, 20);
+  k.ellipse(37, 13, 35, 6, ["p", "q", "i"], [-0.2, -1]);
+  k.ellipse(37, 9, 33, 7, ["b", "b", "B", "L"], [-0.3, -1]);
+  for (let x = 12; x < 64; x += 8) k.rect(x, 5, 1, 9, "p");
+  for (const y of [7, 11]) k.rect(8, y, 58, 1, "p");
+  k.rect(37, 8, 7, 3, "E");
+  k.rect(37, 8, 7, 1, "h");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PIER_PLATFORM: SpriteSheet = {
+  name: "Pier platform",
+  palette: HARBOR_COLOURS,
+  idle: [pierPlatform()],
+};
+
 /* ------------------------------------------------------------ Backdrops */
 
 /** A prop on the battle ground, placed in stage coordinates by its bottom centre. */
@@ -1075,6 +1274,28 @@ export const GRIDLOCK_GYM: Backdrop = {
   ],
 };
 
+export const HEAP_HARBOR: Backdrop = {
+  name: "Heap Harbor",
+  sky: [0x0e1a3a, 0x16295a, 0x20407a, 0x2f5a90, 0x4a7aa0, 0x7aa0b0, 0xd8b88a],
+  specks: { count: 30, color: 0xfff0c8, kind: "stars" },
+  horizon: HARBOR_HORIZON,
+  ground: { base: 0x4a3a2e, stripe: 0x54433a, edge: 0x2a2018 },
+  platform: PIER_PLATFORM,
+  props: [
+    { sheet: CONTAINER_STACK, x: 100, y: 262, scale: 3 },
+    { sheet: CONTAINER_STACK, x: 950, y: 440, scale: 3, flip: true },
+    { sheet: BOLLARD, x: 40, y: 420, scale: 3 },
+    { sheet: BOLLARD, x: 520, y: 292, scale: 2 },
+    { sheet: CRATE, x: 340, y: 310, scale: 2 },
+    { sheet: CRATE, x: 880, y: 330, scale: 2, flip: true },
+    { sheet: CRATE, x: 1080, y: 530, scale: 3 },
+    { sheet: BOLLARD, x: 520, y: 560, scale: 3, flip: true },
+    ...([
+      [220, 300], [420, 360], [620, 420], [680, 350], [800, 390], [440, 540], [700, 520], [860, 500], [1000, 400], [-40, 330],
+    ] as const).map(([x, y], i) => ({ sheet: PLANKS, x, y, scale: y < 340 ? 2 : 3, flip: i % 2 === 1 })),
+  ],
+};
+
 /**
  * The battle backdrop for each gym, keyed by gym id. Gyms whose own scene
  * hasn't been drawn yet battle in kernel city.
@@ -1085,7 +1306,7 @@ export const BACKDROPS: Record<string, Backdrop> = {
   scheduling: CLOCKTOWER,
   sync: MUTEX_MARSH,
   deadlocks: GRIDLOCK_GYM,
-  memory: KERNEL_CITY,
+  memory: HEAP_HARBOR,
   virtual: KERNEL_CITY,
   storage: KERNEL_CITY,
   interview: KERNEL_CITY,

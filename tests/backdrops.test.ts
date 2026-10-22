@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
 import { SCENERY } from "@/game/sprites";
-import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, KERNEL_CITY, MUTEX_MARSH, backdropFor, type Backdrop } from "@/game/sprites/scenery";
+import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, HEAP_HARBOR, KERNEL_CITY, MUTEX_MARSH, backdropFor, type Backdrop } from "@/game/sprites/scenery";
 
 const ALL: Backdrop[] = [...new Set(Object.values(BACKDROPS))];
 const size = (s: { idle: string[][] }) => ({ w: s.idle[0][0].length, h: s.idle[0].length });
@@ -63,6 +63,16 @@ describe("battle backdrops", () => {
       expect(GRIDLOCK_GYM.sky).not.toEqual(other.sky);
     }
     expect(new Set(GRIDLOCK_GYM.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("Heap Harbor has its own scene: dusk quay, pier platform, stars and props", () => {
+    expect(backdropFor("memory")).toBe(HEAP_HARBOR);
+    for (const other of [KERNEL_CITY, FORK_GROVE, CLOCKTOWER, MUTEX_MARSH, GRIDLOCK_GYM]) {
+      expect(HEAP_HARBOR.horizon).not.toBe(other.horizon);
+      expect(HEAP_HARBOR.platform).not.toBe(other.platform);
+      expect(HEAP_HARBOR.sky).not.toEqual(other.sky);
+    }
+    expect(new Set(HEAP_HARBOR.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
   });
 
   for (const b of ALL)
