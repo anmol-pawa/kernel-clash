@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
 import { SCENERY } from "@/game/sprites";
-import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, HEAP_HARBOR, KERNEL_CITY, MUTEX_MARSH, backdropFor, type Backdrop } from "@/game/sprites/scenery";
+import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, HEAP_HARBOR, KERNEL_CITY, MUTEX_MARSH, SWAPWOOD, backdropFor, type Backdrop } from "@/game/sprites/scenery";
 
 const ALL: Backdrop[] = [...new Set(Object.values(BACKDROPS))];
 const size = (s: { idle: string[][] }) => ({ w: s.idle[0][0].length, h: s.idle[0].length });
@@ -73,6 +73,17 @@ describe("battle backdrops", () => {
       expect(HEAP_HARBOR.sky).not.toEqual(other.sky);
     }
     expect(new Set(HEAP_HARBOR.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("Swapwood has its own scene: page-card treeline, stump platform, fireflies and props", () => {
+    expect(backdropFor("virtual")).toBe(SWAPWOOD);
+    for (const other of [KERNEL_CITY, FORK_GROVE, CLOCKTOWER, MUTEX_MARSH, GRIDLOCK_GYM, HEAP_HARBOR]) {
+      expect(SWAPWOOD.horizon).not.toBe(other.horizon);
+      expect(SWAPWOOD.platform).not.toBe(other.platform);
+      expect(SWAPWOOD.sky).not.toEqual(other.sky);
+    }
+    expect(SWAPWOOD.specks.kind).toBe("fireflies");
+    expect(new Set(SWAPWOOD.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
   });
 
   for (const b of ALL)

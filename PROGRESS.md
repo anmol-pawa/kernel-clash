@@ -494,3 +494,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: `TRAINERS.virtual`, Swaploth stats and retreat text, dex position between Heapotamus and Thrashmoth, save parsing now keeps `virtual` trainer wins.
 - Verified: lint, typecheck, `npm test` (586 tests), `build:pages` (254 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) with a seeded save: Swaploth trainer battle and `/dev/sprites` reviewed, no console errors, no horizontal overflow. The backdrop is still the generic one (2.7e).
 - Next: 2.7e the Swapwood battle backdrop in `game/sprites/scenery.ts`.
+
+## 2026-10-22: 2.7e Swapwood battle backdrop (run 58)
+- Main was green and no lock was held. This finishes 2.7 (virtual memory).
+- `game/sprites/scenery.ts`: `SWAPWOOD` backdrop (violet dusk sky, violet fireflies): a misty treeline whose canopies hang page cards (some gold = resident) over a dark river carrying swapped-out pages, a sawn tree-ring stump platform with a gold frame slot, and props (page tree, swap in/out signpost, card pile, glowing toadstools, moss patches). Registered in `SCENERY` for `/dev/sprites`, and `BACKDROPS.virtual` now points at it.
+- Tests (`tests/backdrops.test.ts`): Swapwood is distinct from every other backdrop (horizon, platform, sky), uses fireflies and at least four prop sheets; the generic per-backdrop checks (160-wide tiling horizon, props clear of platforms) cover it.
+- Verified: lint, typecheck, `npm test`, `build:pages` (252 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), Swaploth trainer battle: reviewed screenshots, no console errors, no horizontal overflow.
+- Next: 2.8 storage and file systems (split into sub-tasks first).

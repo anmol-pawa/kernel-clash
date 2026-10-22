@@ -1150,6 +1150,215 @@ export const PIER_PLATFORM: SpriteSheet = {
   idle: [pierPlatform()],
 };
 
+/* ------------------------------------------------------------- Swapwood */
+
+const SWAP_COLOURS = {
+  o: "#101a1c",
+  f: "#1c3a3c",
+  F: "#2c5a54",
+  g: "#2a5a48",
+  G: "#4c9470",
+  t: "#3a2c34",
+  T: "#5c4450",
+  k: "#8a6a70",
+  p: "#e8dcc0",
+  P: "#fff6dc",
+  q: "#b8a888",
+  r: "#c8604c",
+  y: "#e8b84c",
+  u: "#7a5ac8",
+  U: "#a890f0",
+  s: "#141c22",
+  v: "#1e3a4c",
+  V: "#4a7a94",
+  m: "#4c8a3c",
+  M: "#86c456",
+  b: "#6a4c36",
+  B: "#a07850",
+  L: "#d4a870",
+};
+
+/** A page card: a small cream sheet with ruled lines, hanging from a branch. `lit` = a gold "resident" page. */
+function pageCard(k: PixelCanvas, x: number, y: number, lit = false) {
+  k.rect(x, y, 5, 6, lit ? "y" : "p");
+  k.rect(x, y, 5, 1, "P");
+  k.rect(x + 1, y + 2, 3, 1, "q");
+  k.rect(x + 1, y + 4, 3, 1, "q");
+}
+
+/** The wood: a misty wall of trunks hung with page cards (resident pages), a few swapped out into the dark river at the foot. */
+function swapHorizon(): string[] {
+  const W = 160;
+  const H = 80;
+  const k = new PixelCanvas(W, H);
+  const rnd = lcg(131);
+  // far canopy haze
+  for (let x = 0; x < W; x++) {
+    const h = 26 + Math.round(5 * Math.sin(x / 9) + 4 * Math.sin(x / 4.1));
+    for (let y = H - 12 - h; y < H - 12; y++) k.px(x, y, "f");
+    k.px(x, H - 12 - h, "F");
+  }
+  // trunks with canopies
+  const trees = new PixelCanvas(W, H);
+  for (let tx = 6; tx < W - 4; tx += 14 + Math.floor(rnd() * 8)) {
+    const top = 10 + Math.floor(rnd() * 14);
+    const bot = H - 13;
+    trees.rect(tx, top + 8, 4, bot - top - 8, "t");
+    trees.rect(tx, top + 8, 1, bot - top - 8, "T");
+    trees.ellipse(tx + 2, top + 8, 12, 9, ["g", "g", "G"], [-0.3, -1]);
+    // cards hang from the canopy edge
+    for (let c = -1; c <= 1; c++) {
+      const cy = top + 14 + Math.floor(rnd() * 8);
+      pageCard(trees, tx + 2 + c * 6 - 2, cy, rnd() < 0.3);
+      trees.rect(tx + 2 + c * 6, cy - 3, 1, 3, "k");
+    }
+  }
+  trees.outline("o");
+  k.stamp(trees.toGrid(), 0, 0);
+  // the bank and a dark river (the backing store)
+  k.rect(0, H - 13, W, 4, "m");
+  k.rect(0, H - 13, W, 1, "M");
+  k.rect(0, H - 9, W, 9, "v");
+  for (let r = 0; r < 20; r++) k.rect(Math.floor(rnd() * (W - 6)), H - 8 + Math.floor(rnd() * 7), 3 + Math.floor(rnd() * 4), 1, "V");
+  // pages that have been swapped out, floating downstream
+  for (let c = 0; c < 6; c++) {
+    const cx = 8 + c * 26 + Math.floor(rnd() * 8);
+    const cy = H - 7 + Math.floor(rnd() * 3);
+    k.rect(cx, cy, 5, 2, "p");
+    k.rect(cx, cy, 5, 1, "P");
+  }
+  return k.toGrid();
+}
+
+export const SWAP_HORIZON: SpriteSheet = {
+  name: "Swapwood treeline",
+  palette: SWAP_COLOURS,
+  idle: [swapHorizon()],
+};
+
+/** A small tree hung with page cards, a couple of them gold (in a frame). */
+function pageTree(): string[] {
+  const k = new PixelCanvas(34, 44);
+  k.rect(15, 24, 5, 19, "t");
+  k.rect(15, 24, 1, 19, "T");
+  k.ellipse(17, 16, 16, 13, ["g", "g", "G"], [-0.3, -1]);
+  for (const [cx, cy, lit] of [[4, 22, false], [12, 28, true], [24, 26, false], [28, 18, true], [2, 12, false]] as const) {
+    pageCard(k, cx, cy, lit);
+    k.rect(cx + 2, cy - 2, 1, 2, "k");
+  }
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PAGE_TREE: SpriteSheet = {
+  name: "Page tree",
+  palette: SWAP_COLOURS,
+  idle: [pageTree()],
+};
+
+/** A signpost with an arrow up (page-in) and an arrow down (page-out). */
+function swapSign(): string[] {
+  const k = new PixelCanvas(20, 30);
+  k.rect(9, 6, 3, 23, "b");
+  k.rect(9, 6, 1, 23, "B");
+  k.rect(1, 3, 17, 7, "B");
+  k.rect(1, 3, 17, 1, "L");
+  k.rect(2, 12, 15, 7, "B");
+  k.rect(2, 12, 15, 1, "L");
+  k.rect(5, 5, 1, 4, "s");
+  k.px(4, 6, "s");
+  k.px(6, 6, "s");
+  k.rect(13, 14, 1, 4, "s");
+  k.px(12, 16, "s");
+  k.px(14, 16, "s");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const SWAP_SIGN: SpriteSheet = {
+  name: "Swap signpost",
+  palette: SWAP_COLOURS,
+  idle: [swapSign()],
+};
+
+/** A stack of cards lying on the moss: the pages waiting to be evicted. */
+function cardPile(): string[] {
+  const k = new PixelCanvas(24, 14);
+  for (let i = 0; i < 4; i++) {
+    const y = 9 - i * 2;
+    k.rect(1 + (i % 2) * 2, y, 18, 3, i === 3 ? "P" : "p");
+    k.rect(1 + (i % 2) * 2, y + 2, 18, 1, "q");
+  }
+  k.rect(16, 1, 6, 8, "y");
+  k.rect(16, 1, 6, 1, "P");
+  k.rect(17, 3, 4, 1, "q");
+  k.rect(17, 5, 4, 1, "q");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const CARD_PILE: SpriteSheet = {
+  name: "Card pile",
+  palette: SWAP_COLOURS,
+  idle: [cardPile()],
+};
+
+/** Glowing violet toadstools, the glow of a page being touched. */
+function glowShrooms(): string[] {
+  const k = new PixelCanvas(20, 14);
+  for (const [x, w, h] of [[2, 8, 6], [11, 6, 5]] as const) {
+    k.rect(x + Math.floor(w / 2) - 1, 14 - h, 2, h - 2, "q");
+    k.ellipse(x + w / 2, 14 - h, w / 2, 3, ["u", "u", "U"], [-0.3, -1]);
+  }
+  k.px(5, 6, "P");
+  k.px(13, 7, "P");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const GLOW_SHROOMS: SpriteSheet = {
+  name: "Glow toadstools",
+  palette: SWAP_COLOURS,
+  idle: [glowShrooms()],
+};
+
+/** Leaf litter and moss on the ground. */
+function mossPatch(): string[] {
+  const k = new PixelCanvas(30, 8);
+  k.ellipse(15, 5, 14, 2, ["m", "m", "M"], [-0.2, -1]);
+  for (const px of [6, 14, 22]) k.px(px, 3, "r");
+  k.px(10, 2, "y");
+  k.px(19, 2, "r");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const MOSS_PATCH: SpriteSheet = {
+  name: "Moss patch",
+  palette: SWAP_COLOURS,
+  idle: [mossPatch()],
+};
+
+/** A tree-ring platform: a sawn stump whose rings are a grid of frame slots, one lit gold. */
+function stumpPlatform(): string[] {
+  const k = new PixelCanvas(74, 20);
+  k.ellipse(37, 13, 35, 6, ["s", "t", "T"], [-0.2, -1]);
+  k.ellipse(37, 9, 33, 7, ["b", "b", "B", "L"], [-0.3, -1]);
+  k.ellipse(37, 9, 24, 5, ["b", "B"], [0, -1]);
+  k.ellipse(37, 9, 14, 3, ["b", "B"], [0, -1]);
+  for (const x of [21, 29, 45, 53]) k.rect(x, 7, 1, 5, "T");
+  k.rect(34, 8, 6, 3, "y");
+  k.rect(34, 8, 6, 1, "P");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const STUMP_PLATFORM: SpriteSheet = {
+  name: "Stump platform",
+  palette: SWAP_COLOURS,
+  idle: [stumpPlatform()],
+};
+
 /* ------------------------------------------------------------ Backdrops */
 
 /** A prop on the battle ground, placed in stage coordinates by its bottom centre. */
@@ -1296,6 +1505,28 @@ export const HEAP_HARBOR: Backdrop = {
   ],
 };
 
+export const SWAPWOOD: Backdrop = {
+  name: "Swapwood",
+  sky: [0x170f38, 0x241a52, 0x37266a, 0x4e3478, 0x704486, 0xa05c8a, 0xd8887a],
+  specks: { count: 28, color: 0xc8b0ff, kind: "fireflies" },
+  horizon: SWAP_HORIZON,
+  ground: { base: 0x2c4a36, stripe: 0x345540, edge: 0x172a20 },
+  platform: STUMP_PLATFORM,
+  props: [
+    { sheet: PAGE_TREE, x: 100, y: 262, scale: 3 },
+    { sheet: PAGE_TREE, x: 950, y: 440, scale: 3, flip: true },
+    { sheet: SWAP_SIGN, x: 40, y: 420, scale: 3 },
+    { sheet: SWAP_SIGN, x: 520, y: 292, scale: 2, flip: true },
+    { sheet: CARD_PILE, x: 340, y: 310, scale: 2 },
+    { sheet: CARD_PILE, x: 1080, y: 530, scale: 3, flip: true },
+    { sheet: GLOW_SHROOMS, x: 880, y: 330, scale: 2 },
+    { sheet: GLOW_SHROOMS, x: 520, y: 560, scale: 3 },
+    ...([
+      [220, 300], [420, 360], [620, 420], [680, 350], [800, 390], [440, 540], [700, 520], [860, 500], [1000, 400], [-40, 330],
+    ] as const).map(([x, y], i) => ({ sheet: MOSS_PATCH, x, y, scale: y < 340 ? 2 : 3, flip: i % 2 === 1 })),
+  ],
+};
+
 /**
  * The battle backdrop for each gym, keyed by gym id. Gyms whose own scene
  * hasn't been drawn yet battle in kernel city.
@@ -1307,7 +1538,7 @@ export const BACKDROPS: Record<string, Backdrop> = {
   sync: MUTEX_MARSH,
   deadlocks: GRIDLOCK_GYM,
   memory: HEAP_HARBOR,
-  virtual: KERNEL_CITY,
+  virtual: SWAPWOOD,
   storage: KERNEL_CITY,
   interview: KERNEL_CITY,
 };

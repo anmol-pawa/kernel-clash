@@ -74,13 +74,13 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.6c2 A tap-to-translate question kind (split a logical address, pick the frame) and one generator using it.
   - [x] 2.6d The Heap Harbor trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [x] 2.6e The Heap Harbor battle backdrop in `game/sprites/scenery.ts`.
-- [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
+- [x] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
   - [x] 2.7a Virtual-memory simulators (`game/sim/paging.ts`: FIFO/LRU/Optimal/Clock with per-reference traces, Belady's anomaly, demand-paging EAT, working sets, thrashing) tested against Silberschatz's examples.
   - [x] 2.7b Five Pagewood lessons (demand paging and page faults, page replacement, Belady and stack algorithms, frame allocation and thrashing, working sets) with pixel diagrams and tested quick checks.
   - [x] 2.7c1 Virtual-memory question pool (12 authored: mcq, multi, numeric, order) and six seeded generators (fault counts per policy, victim choice, EAT, tolerable fault rate, working-set size, thrashing check).
   - [x] 2.7c2 A tap-the-victim question kind (tap the frame a policy evicts, step through a reference string) and one generator using it.
   - [x] 2.7d The virtual-memory gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
-  - [ ] 2.7e The virtual-memory gym battle backdrop in `game/sprites/scenery.ts`.
+  - [x] 2.7e The virtual-memory gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.8 Storage and file systems: file allocation (contiguous/linked/indexed), inodes and max-file-size calculations, directories, journaling, RAID levels, **disk scheduling** (FCFS, SSTF, SCAN, C-SCAN, LOOK) with head-movement problems.
 - [ ] 2.9 Interview gauntlet: the top OS interview questions (process vs thread, virtual memory, thrashing, mutex vs semaphore, deadlock handling, paging vs segmentation, how `malloc` works, what happens on a page fault, Linux specifics like `epoll` and copy-on-write) as a timed mock interview with a scorecard.
 
