@@ -104,6 +104,7 @@ describe("gym trainers", () => {
     expect(TRAINERS.scheduling.id).toBe("tortick");
     expect(TRAINERS.sync.id).toBe("semafrog");
     expect(TRAINERS.deadlocks.id).toBe("cyclowl");
+    expect(TRAINERS.memory.id).toBe("pagolin");
   });
 });
 

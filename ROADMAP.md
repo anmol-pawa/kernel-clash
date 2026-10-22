@@ -72,7 +72,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.6b Five Heap Harbor lessons (contiguous allocation and fragmentation, paging and address translation, page-table structures, TLB and effective access time, segmentation) with pixel diagrams and tested quick checks.
   - [x] 2.6c1 Memory question pool and seeded generators (fit placement, internal fragmentation, address translation, page-table size, EAT, two-level split, segment lookup) wired into `POOLS.memory`.
   - [x] 2.6c2 A tap-to-translate question kind (split a logical address, pick the frame) and one generator using it.
-  - [ ] 2.6d The Heap Harbor trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
+  - [x] 2.6d The Heap Harbor trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [ ] 2.6e The Heap Harbor battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
 - [ ] 2.8 Storage and file systems: file allocation (contiguous/linked/indexed), inodes and max-file-size calculations, directories, journaling, RAID levels, **disk scheduling** (FCFS, SSTF, SCAN, C-SCAN, LOOK) with head-movement problems.

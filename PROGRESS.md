@@ -443,3 +443,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/memoryPool.test.ts`): Figure 9.10 (logical 13, 4-byte pages → page 3, frame 2, physical 9), grading, malformed-question checks, 300 seeds for validity and determinism, and the pool/bank registration.
 - Verified: lint, typecheck, `npm test` (525 tests), `build:pages` (236 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), via a seeded Leitner review battle: a wrong tap and the reveal. No console errors, no horizontal overflow. I reviewed the screenshots and padded the info strip.
 - Next: 2.6d the Heap Harbor trainer creature, dex entry, trainer battles and gated flow.
+
+## 2026-10-22: 2.6d Pagolin, the Heap Harbor trainer (run 51)
+- Main was green and no lock was held.
+- `game/sprites/pagolin.ts`: Pagolin, a 64×64 pangolin armoured in a tiled page table (square plates, one glowing gold: the page being translated, hopping a plate each idle beat), front and back, idle (4 frames), attack (roll and fan the plates) and hurt (X eyes, flinch). Registered in `CREATURES` (before Heapotamus) and `TRAINERS.memory`; trainer entry on the Heap Harbor gym in `content/gyms.ts`, so the dex entry, trainer battles and the gated boss flow follow the same path as the other gyms.
+- Tests: `TRAINERS.memory`, trainer stats and retreat text, dex position between Deadlocrab and Heapotamus, save parsing keeps `memory` trainer wins and still drops `virtual`.
+- Verified: lint, typecheck, `npm test` (534 tests), `build:pages` (242 files precached). Rendered all 18 frames to PNG and reviewed them. Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) with a seeded save: the Pagolin trainer battle shows the sprite, HP box and questions; no console errors, no horizontal overflow. The backdrop is still the generic one (2.6e).
+- Next: 2.6e the Heap Harbor battle backdrop in `game/sprites/scenery.ts`.

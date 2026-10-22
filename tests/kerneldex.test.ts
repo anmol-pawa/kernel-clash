@@ -116,6 +116,13 @@ describe("Kerneldex status", () => {
     expect(status("cyclowl", { badges: ["basics", "processes", "scheduling", "sync", "deadlocks"] })).toBe("caught");
   });
 
+  it("Pagolin guards the Heap Harbor Gym just before Heapotamus", () => {
+    const e = dexEntry("pagolin")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "memory", type: "memory", name: "Pagolin" });
+    expect(dexEntry("heapotamus")!.no).toBe(e.no + 1);
+    expect(dexEntry("deadlocrab")!.no).toBe(e.no - 1);
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");

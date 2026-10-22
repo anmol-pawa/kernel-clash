@@ -98,6 +98,7 @@ export const GYMS: Gym[] = [
     type: "memory",
     topics: ["Contiguous allocation", "Fragmentation", "Paging and address translation", "TLB and EAT", "Segmentation"],
     boss: { name: "Heapotamus", blurb: "It swallows whole blocks and leaves the gaps behind." },
+    trainer: { name: "Pagolin", blurb: "A stout pangolin armoured in a tiled page table: every square plate maps to a frame, and one glows gold, the page it is translating right now. The tan belly is the only part that is not mapped.", retreats: "rolls off along the dock", holdsOn: "is still glowing" },
     badge: "Frame Badge",
     ramp: ["#173c78", "#2a62b8", "#4f93e8", "#a6d0ff"],
   },
