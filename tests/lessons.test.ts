@@ -9,6 +9,9 @@ import { DETECT_EXAMPLE, detect, findCycle, isCycleNodes } from "@/game/sim/dead
 import { PETERSON, finalValues, lostUpdates, runSemaphore, trace } from "@/game/sim/sync";
 import { DETECT_CHECK_REQUESTS, RACE_THREADS, RACE_VALUES, RAG_CHECK_EDGES, RR_CHECK_JOBS, SEM_CHECK, SJF_CHECK_JOBS } from "@/content/lessons";
 import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
+import { BEST_LEFT, FLAT_TABLE_MB, PAGING_CHECK, TLB_CHECK } from "@/content/lessons";
+import { FRAG_EXAMPLE, PAGING_EXAMPLE, PTABLE_EXAMPLE, SEGMENT_TRACES, TLB_EXAMPLE } from "@/components/lesson/Diagrams";
+import { FIT_EXAMPLE, allocate } from "@/game/sim/memory";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -16,7 +19,8 @@ const PROCESS_DIAGRAMS = ["pstates", "context", "fork", "threads", "ipc"];
 const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
 const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers"];
 const DEADLOCK_DIAGRAMS = ["rag", "banker"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS];
+const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -390,5 +394,65 @@ describe("lesson progress in the save", () => {
     const s = parseSave(JSON.stringify({ lessons: ["basics-boot", "nope", 3, "basics-boot", "basics-modes"] }));
     expect(s.lessons).toEqual(["basics-boot", "basics-modes"]);
     expect(parseSave(JSON.stringify({ lessons: "basics-boot" })).lessons).toEqual([]);
+  });
+});
+
+describe("memory lessons", () => {
+  const check = (id: string) => lessonById(id)!.check;
+  const numeric = (id: string) => {
+    const q = check(id);
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    return q;
+  };
+
+  it("cover the five Heap Harbor topics in order, each diagram used once, with the memory move", () => {
+    const ls = lessonsOf("memory");
+    expect(ls.map((l) => l.id)).toEqual(["memory-contiguous", "memory-paging", "memory-tables", "memory-tlb", "memory-segments"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual([...MEMORY_DIAGRAMS].sort());
+    for (const l of ls) expect(l.check.move.type).toBe("memory");
+  });
+
+  it("contiguous check: best fit puts 212K in the 300K hole, leaving 88K (Silberschatz exercise 9.x)", () => {
+    const q = numeric("memory-contiguous");
+    expect(q.answer).toBe(88);
+    expect(BEST_LEFT).toBe(88);
+    expect(allocate(FIT_EXAMPLE.holes, [212], "first").holes.map((h) => h.size)).toEqual([100, 288, 200, 300, 600]);
+    expect(allocate(FIT_EXAMPLE.holes, [212], "worst").holes.map((h) => h.size)).toEqual([100, 500, 200, 300, 388]);
+    expect(grade(q, { kind: "numeric", value: "88" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "288" })).toBe(false);
+  });
+
+  it("fragmentation diagram: 60K free but the largest hole is 26K, and 72,766 B in 2,048 B pages wastes 962 B", () => {
+    expect(FRAG_EXAMPLE.external).toMatchObject({ free: 60, largest: 26, fits: false });
+    expect(FRAG_EXAMPLE.internal).toEqual({ pages: 36, lastUsed: 1086, internalFragmentation: 962 });
+  });
+
+  it("paging check: logical 6 is page 1, offset 2 → frame 6 → physical 26; the diagram shows 13 → 9", () => {
+    const q = numeric("memory-paging");
+    expect(PAGING_CHECK).toMatchObject({ page: 1, offset: 2, frame: 6, physical: 26 });
+    expect(q.answer).toBe(26);
+    expect(PAGING_EXAMPLE).toMatchObject({ page: 3, offset: 1, frame: 2, physical: 9 });
+  });
+
+  it("page-table check: 2^20 four-byte entries are 4 MB; the split is 10 + 10 + 12; inverted lookup of (1, 3) finds frame 2 in 3 probes", () => {
+    expect(numeric("memory-tables").answer).toBe(4);
+    expect(FLAT_TABLE_MB).toBe(4);
+    expect(PTABLE_EXAMPLE.split.levels).toEqual([10, 10]);
+    expect(PTABLE_EXAMPLE.split.offset).toBe(12);
+    expect(PTABLE_EXAMPLE.inverted).toEqual({ frame: 2, probes: 3 });
+  });
+
+  it("TLB check: 90% hits at 10 ns TLB, 100 ns memory is 120 ns; the diagram's 80% and 98% give 140 and 122 ns", () => {
+    expect(numeric("memory-tlb").answer).toBe(120);
+    expect(TLB_CHECK).toBe(120);
+    expect(TLB_EXAMPLE.slow).toBeCloseTo(140, 9);
+    expect(TLB_EXAMPLE.fast).toBeCloseTo(122, 9);
+  });
+
+  it("segments check: offset 400 of a 400-byte segment traps; the diagram's three translations are 4353, 4052 and a trap", () => {
+    const q = check("memory-segments");
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/^A trap/);
+    expect(SEGMENT_TRACES.map((t) => (t.r.ok ? t.r.physical : "trap"))).toEqual([4353, 4052, "trap"]);
   });
 });

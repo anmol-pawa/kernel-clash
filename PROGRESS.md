@@ -418,3 +418,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/memory.test.ts`, 29): Silberschatz's 100K/500K/200K/300K/600K placement exercise for all three fits (including the holes left over), the 72,766-byte / 2,048-byte-page internal fragmentation, the Figure 9.10 page table, the 10+10+12 split and 4 MB table, the 140 ns and 122 ns TLB examples, the Figure 9.8 segment table (4353, 4052, trap), plus 200 random workloads checking placements never overlap and free space is conserved.
 - Verified: lint, typecheck, `npm test`, `build:pages`. No visual change, so no screenshots this run.
 - Next: 2.6b Heap Harbor lessons.
+
+## 2026-10-22: 2.6b Heap Harbor lessons (run 48)
+- Main was green and no lock was held.
+- Five lessons in `content/lessons.ts` (`memory-contiguous`, `memory-paging`, `memory-tables`, `memory-tlb`, `memory-segments`): contiguous allocation with first/best/worst fit and fragmentation (two pages), paging and address translation, page-table structures (two-level, hashed, inverted), the TLB and effective access time, segmentation and paging against segmentation. Each ends in a quick check whose answer comes from `game/sim/memory.ts` (best-fit leftover 88K, logical 6 → physical 26, 4 MB flat table, EAT 120 ns, a segment trap).
+- Six new pixel diagrams on a harbor backdrop in `components/lesson/Diagrams.tsx`: `fit`, `frag`, `paging` (Figure 9.10, 13 → 9), `ptable` (10+10+12 split plus an inverted-table search), `tlb`, `segments` (Figure 9.8). Their numbers are computed from the simulators and exported for tests.
+- Tests (`tests/lessons.test.ts`, 7 new): lesson order and diagram coverage, each check's answer and wrong answer, and every number printed in the diagrams (60K free / 26K largest hole, 962 B waste, 4353 / 4052 / trap, 140 and 122 ns, frame 2 after 3 probes).
+- Verified: lint, typecheck, `npm test`, `build:pages` (236 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) opened all five lessons and read every diagram page: no console errors, no horizontal overflow. I fixed overlapping labels in `fit`, `tlb` and `segments` from the screenshots. I didn't answer the quick checks on screen.
+- Next: 2.6c a tap-to-translate question kind plus the memory question pool and generators.

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { RACE_THREADS, type DiagramId } from "@/content/lessons";
+import { PAGING_TABLE, RACE_THREADS, type DiagramId } from "@/content/lessons";
 import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
+import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -1294,6 +1295,315 @@ function Banker() {
   );
 }
 
+/* ---- memory management: the Heap Harbor ---- */
+
+/** The harbor at dusk: deep blue water with wave glints. */
+function Harbor({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#10244a" />
+      {Array.from({ length: 34 }, (_, i) => (
+        <rect key={i} x={(i * 43 + seed * 17) % W} y={(i * 31 + seed * 5) % H} width={i % 3 ? 2 : 3} height={1} fill="#1f3f72" />
+      ))}
+    </>
+  );
+}
+
+export const PAGING_EXAMPLE = translate(13, 4, PAGING_TABLE);
+
+const FIT_ROWS = (["first", "best", "worst"] as const).map((fit) => {
+  const r = allocate(FIT_EXAMPLE.holes, [FIT_EXAMPLE.requests[0]], fit);
+  const hole = r.placements[0].hole!;
+  return { fit, hole, left: FIT_EXAMPLE.holes[hole].size - FIT_EXAMPLE.requests[0] };
+});
+
+/** Silberschatz's free list and one 212K request placed by first, best and worst fit. */
+function Fit() {
+  const names = { first: "FIRST FIT: FIRST BIG ENOUGH", best: "BEST FIT: SMALLEST BIG ENOUGH", worst: "WORST FIT: LARGEST HOLE" };
+  return (
+    <>
+      <Harbor seed={11} />
+      <Text x={4} y={8} size={4} fill="#ffe27a">
+        {`FREE HOLES (K)    REQUEST ${FIT_EXAMPLE.requests[0]}K`}
+      </Text>
+      {FIT_EXAMPLE.holes.map((h, i) => (
+        <Card key={i} x={5 + i * 35} y={11} w={31} h={14} lines={[`${h.size}K`]} size={4} ramp={BLUE} ink="#f8f4e6" />
+      ))}
+      {FIT_ROWS.map((r, k) => (
+        <g key={r.fit}>
+          <Text x={4} y={37 + k * 24} size={3.5} fill="#cfe4ff">
+            {names[r.fit]}
+          </Text>
+          <Card x={5 + r.hole * 35} y={40 + k * 24} w={31} h={16} lines={["LEFT", `${r.left}K`]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+        </g>
+      ))}
+    </>
+  );
+}
+
+const FRAG_STRIP: [string, number, boolean][] = [["OS", 12, true], ["P1", 30, true], ["", 20, false], ["P2", 24, true], ["", 14, false], ["P3", 22, true], ["", 26, false], ["P4", 20, true]];
+const FRAG_HOLES = (() => {
+  const holes: { start: number; size: number }[] = [];
+  let at = 0;
+  for (const [, w, used] of FRAG_STRIP) {
+    if (!used) holes.push({ start: at, size: w });
+    at += w;
+  }
+  return holes;
+})();
+export const FRAG_EXAMPLE = {
+  external: externalFragmentation(FRAG_HOLES, 50),
+  internal: pagesFor(72766, 2048),
+};
+
+/** External fragmentation in a memory strip, and internal fragmentation in a last page. */
+function Frag() {
+  const ext = FRAG_EXAMPLE.external;
+  const int = FRAG_EXAMPLE.internal;
+  const usedFrac = int.lastUsed / 2048;
+  return (
+    <>
+      <Harbor seed={12} />
+      <Text x={4} y={8} size={4} fill="#ffe27a">
+        EXTERNAL: HOLES TOO SMALL
+      </Text>
+      {FRAG_STRIP.map(([name, w, used], i) => {
+        const bx = 6 + FRAG_STRIP.slice(0, i).reduce((a, [, n]) => a + n, 0);
+        return used ? (
+          <Card key={i} x={bx} y={12} w={w} h={16} lines={[name]} size={3.5} ramp={i % 2 ? PURPLE : TEAL} ink="#f8f4e6" />
+        ) : (
+          <Card key={i} x={bx} y={12} w={w} h={16} lines={[`${w}K`]} size={3.5} ramp={RED} ink="#f8f4e6" />
+        );
+      })}
+      <Text x={90} y={37} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`NEED ${50}K. FREE ${ext.free}K, BUT LARGEST HOLE ${ext.largest}K`}
+      </Text>
+      <Text x={90} y={44} size={3.5} fill="#f87a8a" anchor="middle">
+        {ext.fits ? "FITS" : "CANNOT FIT: COMPACT, OR PAGE"}
+      </Text>
+      <Text x={4} y={60} size={4} fill="#ffe27a">
+        INTERNAL: WASTE IN THE LAST PAGE
+      </Text>
+      <Card x={6} y={64} w={26} h={16} lines={["PAGE 0", "2048 B"]} size={3} ramp={TEAL} ink="#f8f4e6" />
+      <Card x={36} y={64} w={26} h={16} lines={["...", "1-34"]} size={3} ramp={TEAL} ink="#f8f4e6" />
+      <Block x={66} y={64} w={50} h={16} ramp={RED}>
+        <rect x={67} y={65} width={Math.round(48 * usedFrac)} height={14} fill={TEAL[1]} />
+        <rect x={67} y={65} width={Math.round(48 * usedFrac)} height={1} fill={TEAL[2]} />
+        <Text x={69} y={74} size={3} fill="#f8f4e6">
+          {`PG ${int.pages - 1}`}
+        </Text>
+      </Block>
+      <Text x={120} y={69} size={3} fill="#7cf0c8">
+        {`USED ${int.lastUsed} B`}
+      </Text>
+      <Text x={120} y={77} size={3} fill="#f87a8a">
+        {`WASTED ${int.internalFragmentation} B`}
+      </Text>
+      <Text x={90} y={94} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`72,766 B / 2,048 B = ${int.pages} PAGES`}
+      </Text>
+      <Text x={90} y={102} size={3.5} fill="#cfe4ff" anchor="middle">
+        ON AVERAGE HALF A PAGE IS WASTED PER PROCESS
+      </Text>
+    </>
+  );
+}
+
+/** Figure 9.10: logical pages, the page table and physical frames; logical 13 → physical 9. */
+function Paging() {
+  const t = PAGING_EXAMPLE;
+  return (
+    <>
+      <Harbor seed={13} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        LOGICAL
+      </Text>
+      <Text x={66} y={8} size={3.5} fill="#ffe27a" anchor="middle">
+        PAGE TABLE
+      </Text>
+      <Text x={176} y={8} size={3.5} fill="#ffe27a" anchor="end">
+        PHYSICAL MEMORY
+      </Text>
+      {PAGING_TABLE.map((f, p) => {
+        const hot = p === t.page;
+        return (
+          <g key={p}>
+            <Card x={5} y={13 + p * 18} w={34} h={15} lines={[`PAGE ${p}`, `${p * 4}-${p * 4 + 3}`]} size={3} ramp={hot ? GOLD : PURPLE} ink={hot ? INK : "#f8f4e6"} />
+            <Card x={52} y={13 + p * 18} w={28} h={15} lines={[`${p} > F${f}`]} size={3.5} ramp={hot ? GOLD : TEAL} ink={hot ? INK : "#f8f4e6"} />
+          </g>
+        );
+      })}
+      {Array.from({ length: 8 }, (_, f) => {
+        const page = PAGING_TABLE.indexOf(f);
+        const hot = f === t.frame;
+        return <Card key={f} x={118} y={12 + f * 10} w={58} h={9} lines={[page < 0 ? `F${f}  FREE` : `F${f}  PAGE ${page}`]} size={3} ramp={hot ? GOLD : page < 0 ? STONE : BLUE} ink={hot ? INK : "#f8f4e6"} />;
+      })}
+      <Arrow x1={40} y1={13 + t.page * 18 + 7} x2={51} y2={13 + t.page * 18 + 7} color="#ffe27a" />
+      <Arrow x1={81} y1={13 + t.page * 18 + 7} x2={117} y2={13 + t.page * 18 + 7} color="#ffe27a" />
+      <Text x={90} y={98} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`LOGICAL 13 = PAGE ${t.page}, OFFSET ${t.offset}. PAGE ${t.page} IS IN FRAME ${t.frame}`}
+      </Text>
+      <Text x={90} y={106} size={3.5} fill="#7cf0c8" anchor="middle">
+        {`PHYSICAL = ${t.frame} x 4 + ${t.offset} = ${t.physical}`}
+      </Text>
+    </>
+  );
+}
+
+const PT_SPLIT = splitAddress(32, 4096, 2, 4);
+const INVERTED_TABLE = [{ pid: 1, page: 0 }, { pid: 2, page: 5 }, { pid: 1, page: 3 }, { pid: 3, page: 1 }, { pid: 2, page: 0 }, { pid: 1, page: 7 }];
+export const PTABLE_EXAMPLE = {
+  split: PT_SPLIT,
+  flatBytes: pageTableBytes(32, 4096, 4),
+  inverted: invertedLookup(INVERTED_TABLE, 1, 3),
+};
+
+/** A 10+10+12 two-level split with the walk it drives, and an inverted page table search. */
+function PageTables() {
+  const bits = PT_SPLIT.levels;
+  const unit = 160 / 32;
+  const labels = [`P1  ${bits[0]}`, `P2  ${bits[1]}`, `OFFSET  ${PT_SPLIT.offset}`];
+  const widths = [bits[0], bits[1], PT_SPLIT.offset];
+  const inv = PTABLE_EXAMPLE.inverted;
+  return (
+    <>
+      <Harbor seed={14} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        32-BIT ADDRESS, 4 KB PAGES, 4-BYTE ENTRIES
+      </Text>
+      {widths.map((w, i) => {
+        const bx = 10 + widths.slice(0, i).reduce((a, n) => a + n, 0) * unit;
+        return <Card key={i} x={bx} y={11} w={w * unit} h={12} lines={[labels[i]]} size={3.5} ramp={[PURPLE, TEAL, GOLD][i]} ink={i === 2 ? INK : "#f8f4e6"} />;
+      })}
+      <Card x={8} y={30} w={44} h={16} lines={["OUTER TABLE", `${2 ** bits[0]} ENTRIES`]} size={3} ramp={PURPLE} ink="#f8f4e6" />
+      <Arrow x1={53} y1={38} x2={65} y2={38} />
+      <Card x={66} y={30} w={44} h={16} lines={["INNER TABLE", `${2 ** bits[1]} ENTRIES`]} size={3} ramp={TEAL} ink="#f8f4e6" />
+      <Arrow x1={111} y1={38} x2={123} y2={38} />
+      <Card x={124} y={30} w={48} h={16} lines={["FRAME + OFFSET", "= PHYSICAL"]} size={3} ramp={GOLD} />
+      <Text x={90} y={55} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`ONE LEVEL: 2^${PT_SPLIT.pageNumber} ENTRIES = ${PTABLE_EXAMPLE.flatBytes / 2 ** 20} MB PER PROCESS`}
+      </Text>
+      <Text x={90} y={62} size={3.5} fill="#7cf0c8" anchor="middle">
+        UNUSED INNER TABLES NEED NOT EXIST
+      </Text>
+      <Text x={4} y={74} size={4} fill="#ffe27a">
+        INVERTED TABLE: ONE ENTRY PER FRAME
+      </Text>
+      {INVERTED_TABLE.map((e, i) => {
+        const hot = i === inv.frame;
+        return (
+          <g key={i}>
+            <Text x={20 + i * 28} y={83} size={3} fill={hot ? "#ffe27a" : "#cfe4ff"} anchor="middle">
+              {`F${i}`}
+            </Text>
+            <Card x={6 + i * 28} y={85} w={26} h={11} lines={[`P${e.pid},${e.page}`]} size={3.5} ramp={hot ? GOLD : BLUE} ink={hot ? INK : "#f8f4e6"} />
+          </g>
+        );
+      })}
+      <Text x={90} y={106} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`SEARCH (PID 1, PAGE 3): FRAME ${inv.frame} AFTER ${inv.probes} PROBES`}
+      </Text>
+    </>
+  );
+}
+
+export const TLB_EXAMPLE = {
+  slow: effectiveAccessTime(0.8, 20, 100),
+  fast: effectiveAccessTime(0.98, 20, 100),
+};
+
+/** CPU → TLB; a hit goes straight to memory, a miss reads the page table first. */
+function Tlb() {
+  return (
+    <>
+      <Harbor seed={15} />
+      <Card x={4} y={28} w={26} h={20} lines={["CPU", "PAGE 3"]} size={3.5} ramp={PURPLE} ink="#f8f4e6" />
+      <Arrow x1={31} y1={38} x2={43} y2={38} />
+      <Block x={44} y={12} w={36} h={60} ramp={TEAL}>
+        <Text x={62} y={20} size={4} fill="#f8f4e6" anchor="middle">
+          TLB
+        </Text>
+        {[["PG", "FR"], ["0", "5"], ["3", "2"], ["7", "4"]].map(([p, f], i) => (
+          <g key={i}>
+            <Text x={50} y={30 + i * 9} size={3.5} fill={i === 2 ? "#ffe27a" : "#f8f4e6"}>
+              {p}
+            </Text>
+            <Text x={74} y={30 + i * 9} size={3.5} fill={i === 2 ? "#ffe27a" : "#f8f4e6"} anchor="end">
+              {f}
+            </Text>
+          </g>
+        ))}
+      </Block>
+      <Text x={113} y={13} size={3.5} fill="#7cf0c8" anchor="middle">
+        HIT: 120 NS
+      </Text>
+      <Arrow x1={81} y1={22} x2={96} y2={22} color="#7cc24f" />
+      <Card x={97} y={15} w={32} h={14} lines={["FRAME 2"]} size={3.5} ramp={GREEN} ink="#f8f4e6" />
+      <Arrow x1={130} y1={22} x2={146} y2={22} color="#7cc24f" />
+      <Text x={113} y={44} size={3.5} fill="#f87a8a" anchor="middle">
+        MISS: 220 NS
+      </Text>
+      <Arrow x1={81} y1={58} x2={96} y2={58} color="#f87a8a" />
+      <Card x={94} y={49} w={38} h={18} lines={["PAGE TABLE", "IN MEMORY"]} size={3} ramp={RED} ink="#f8f4e6" />
+      <Arrow x1={130} y1={58} x2={146} y2={58} color="#f87a8a" />
+      <Block x={147} y={12} w={28} h={60} ramp={BLUE}>
+        <Text x={161} y={44} size={4} fill="#f8f4e6" anchor="middle">
+          RAM
+        </Text>
+      </Block>
+      <Text x={90} y={84} size={3.5} fill="#f8f4e6" anchor="middle">
+        EAT = H x 120 + (1 - H) x 220
+      </Text>
+      <Text x={90} y={93} size={3.5} fill="#ffe27a" anchor="middle">
+        {`H = 80%: ${TLB_EXAMPLE.slow} NS      H = 98%: ${TLB_EXAMPLE.fast} NS`}
+      </Text>
+      <Text x={90} y={102} size={3} fill="#cfe4ff" anchor="middle">
+        HIT = 20 + 100, MISS = 20 + 100 + 100
+      </Text>
+    </>
+  );
+}
+
+export const SEGMENT_TRACES = [[2, 53], [3, 852], [0, 1222]].map(([s, d]) => ({ s, d, r: translateSegment(SEGMENT_EXAMPLE, s, d) }));
+
+/** Figure 9.8's segment table and three (segment, offset) translations, one trapping. */
+function Segments() {
+  return (
+    <>
+      <Harbor seed={16} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        SEGMENT TABLE
+      </Text>
+      {["SEG", "LIMIT", "BASE"].map((h, i) => (
+        <Text key={h} x={[17, 40, 66][i]} y={17} size={3} fill="#cfe4ff" anchor="middle">
+          {h}
+        </Text>
+      ))}
+      {SEGMENT_EXAMPLE.map((s, i) => {
+        const hot = SEGMENT_TRACES.some((t) => t.s === i);
+        return (
+          <g key={i}>
+            <Card x={5} y={20 + i * 12} w={24} h={10} lines={[`${i}`]} size={3.5} ramp={PURPLE} ink="#f8f4e6" />
+            <Card x={30} y={20 + i * 12} w={20} h={10} lines={[`${s.limit}`]} size={3.5} ramp={hot ? TEAL : STONE} ink="#f8f4e6" />
+            <Card x={51} y={20 + i * 12} w={26} h={10} lines={[`${s.base}`]} size={3.5} ramp={hot ? TEAL : STONE} ink="#f8f4e6" />
+          </g>
+        );
+      })}
+      {SEGMENT_TRACES.map(({ s, d, r }, i) => (
+        <g key={i}>
+          <Card x={86} y={14 + i * 24} w={90} h={21} lines={[`(${s}, ${d})`, r.ok ? `${d}<${SEGMENT_EXAMPLE[s].limit}: ${SEGMENT_EXAMPLE[s].base}+${d}=${r.physical}` : `${d}>=${SEGMENT_EXAMPLE[s].limit}: TRAP TO OS`]} size={3.5} ramp={r.ok ? GREEN : RED} ink="#f8f4e6" />
+        </g>
+      ))}
+      <Text x={90} y={94} size={3.5} fill="#f8f4e6" anchor="middle">
+        OFFSET MUST BE BELOW THE LIMIT
+      </Text>
+      <Text x={90} y={102} size={3.5} fill="#7cf0c8" anchor="middle">
+        PHYSICAL = BASE + OFFSET
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -1323,6 +1633,12 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   philosophers: { title: "Five dining philosophers, each holding one chopstick: deadlock", draw: Philosophers },
   rag: { title: "A resource-allocation graph with a cycle, and the four Coffman conditions", draw: Rag },
   banker: { title: "The Banker's algorithm: allocation, max, need and a safe sequence", draw: Banker },
+  fit: { title: "One 212K request placed by first fit, best fit and worst fit", draw: Fit },
+  frag: { title: "External fragmentation in a memory strip and internal fragmentation in a last page", draw: Frag },
+  paging: { title: "Pages mapped to frames through a page table: logical 13 becomes physical 9", draw: Paging },
+  ptable: { title: "A two-level page-table address split and an inverted page table search", draw: PageTables },
+  tlb: { title: "The TLB: a hit goes straight to memory, a miss reads the page table first", draw: Tlb },
+  segments: { title: "A segment table and three (segment, offset) translations, one of which traps", draw: Segments },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];
