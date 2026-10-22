@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PAGING_TABLE, RACE_THREADS, type DiagramId } from "@/content/lessons";
 import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
+import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -1604,6 +1605,223 @@ function Segments() {
   );
 }
 
+/* ---- virtual memory: the Swapwood ---- */
+
+/** Twilight woods: deep violet with drifting spores. */
+function Wood({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#1c1236" />
+      {Array.from({ length: 30 }, (_, i) => (
+        <rect key={i} x={(i * 47 + seed * 19) % W} y={(i * 23 + seed * 11) % H} width={i % 3 ? 1 : 2} height={i % 3 ? 1 : 2} fill="#3a2a68" />
+      ))}
+    </>
+  );
+}
+
+const DEMAND_STEPS = ["1 PAGE NOT IN RAM", "2 TRAP TO THE OS", "3 FIND IT ON DISK", "4 READ INTO A FREE FRAME", "5 SET THE VALID BIT", "6 RESTART INSTRUCTION"];
+/** Silberschatz §10.2.2: 200 ns memory, 8 ms fault service, one fault in 1,000 accesses. */
+export const DEMAND_EXAMPLE = { eat: demandPagingEat(0.001, 200, 8_000_000), faultNs: 8_000_000 };
+
+/** The six steps of servicing a page fault. */
+function Demand() {
+  return (
+    <>
+      <Wood seed={3} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        SERVICING A PAGE FAULT
+      </Text>
+      {DEMAND_STEPS.map((t, i) => {
+        const x = 4 + (i % 2) * 88;
+        const y = 13 + Math.floor(i / 2) * 22;
+        const [n, ...rest] = t.split(" ");
+        return <Card key={i} x={x} y={y} w={84} h={18} lines={[n, rest.join(" ")]} size={3.5} ramp={i === 3 ? TEAL : i === 1 ? RED : i === 5 ? GREEN : PURPLE} ink="#f8f4e6" />;
+      })}
+      <Text x={90} y={86} size={3.5} fill="#f8f4e6" anchor="middle">
+        EAT = (1 - P) x 200 + P x 8,000,000 NS
+      </Text>
+      <Text x={90} y={95} size={3.5} fill="#ffe27a" anchor="middle">
+        {`P = 1/1000: EAT = ${DEMAND_EXAMPLE.eat} NS`}
+      </Text>
+      <Text x={90} y={104} size={3} fill="#cfe4ff" anchor="middle">
+        THE FAULT IS 40,000 TIMES SLOWER THAN A HIT
+      </Text>
+    </>
+  );
+}
+
+const POLICY_ROWS = [
+  { policy: "fifo" as const, label: "FIFO", ramp: RED },
+  { policy: "lru" as const, label: "LRU", ramp: TEAL },
+  { policy: "opt" as const, label: "OPTIMAL", ramp: GOLD },
+];
+/** Silberschatz Figure 10.12's string in 3 frames. */
+export const REPLACE_EXAMPLE = { faults: Object.fromEntries(POLICY_ROWS.map((r) => [r.policy, faultCount(REFERENCE_EXAMPLE, 3, r.policy)])) as Record<"fifo" | "lru" | "opt", number> };
+
+/** The textbook reference string through FIFO, LRU and Optimal with three frames. */
+function Replace() {
+  return (
+    <>
+      <Wood seed={5} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        3 FRAMES, 20 REFERENCES
+      </Text>
+      <Text x={4} y={16} size={3.5} fill="#cfe4ff">
+        {REFERENCE_EXAMPLE.join(" ")}
+      </Text>
+      {POLICY_ROWS.map((r, i) => {
+        const n = REPLACE_EXAMPLE.faults[r.policy];
+        return (
+          <g key={r.policy}>
+            <Text x={4} y={32 + i * 20} size={3.5} fill="#f8f4e6">
+              {r.label}
+            </Text>
+            <Block x={40} y={25 + i * 20} w={n * 5} h={11} ramp={r.ramp} />
+            <Text x={40 + n * 5 + 4} y={33 + i * 20} size={4} fill="#ffe27a">
+              {`${n} FAULTS`}
+            </Text>
+          </g>
+        );
+      })}
+      <Text x={90} y={93} size={3.5} fill="#f8f4e6" anchor="middle">
+        OPTIMAL EVICTS THE PAGE USED FURTHEST AHEAD
+      </Text>
+      <Text x={90} y={101} size={3.5} fill="#7cf0c8" anchor="middle">
+        LRU GUESSES THE FUTURE FROM THE PAST
+      </Text>
+    </>
+  );
+}
+
+const BELADY_FRAMES = 5;
+export const BELADY_CURVES = { fifo: faultCurve(BELADY_EXAMPLE, "fifo", BELADY_FRAMES), lru: faultCurve(BELADY_EXAMPLE, "lru", BELADY_FRAMES) };
+
+/** Fault counts against frame count for FIFO and LRU on the anomaly string. */
+function Belady() {
+  const base = 78;
+  const unit = 5;
+  return (
+    <>
+      <Wood seed={8} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        1 2 3 4 1 2 5 1 2 3 4 5
+      </Text>
+      {(["fifo", "lru"] as const).map((k, row) =>
+        BELADY_CURVES[k].map((n, i) => {
+          const x = 10 + row * 84 + i * 15;
+          const rise = k === "fifo" && i === 3;
+          return (
+            <g key={`${k}${i}`}>
+              <Block x={x} y={base - n * unit} w={11} h={n * unit} ramp={rise ? RED : k === "fifo" ? PURPLE : TEAL} />
+              <Text x={x + 5.5} y={base - n * unit - 2} size={3.5} fill={rise ? "#f87a8a" : "#f8f4e6"} anchor="middle">
+                {n}
+              </Text>
+              <Text x={x + 5.5} y={base + 6} size={3} fill="#cfe4ff" anchor="middle">
+                {i + 1}
+              </Text>
+            </g>
+          );
+        }),
+      )}
+      <Text x={45} y={93} size={3.5} fill="#f8f4e6" anchor="middle">
+        FIFO: 9 THEN 10
+      </Text>
+      <Text x={129} y={93} size={3.5} fill="#f8f4e6" anchor="middle">
+        LRU NEVER RISES
+      </Text>
+      <Text x={90} y={103} size={3.5} fill="#f87a8a" anchor="middle">
+        BELADY: MORE FRAMES, MORE FAULTS
+      </Text>
+    </>
+  );
+}
+
+/** CPU utilisation against the degree of multiprogramming, collapsing past the peak. */
+const THRASH_CURVE = [10, 26, 42, 56, 66, 70, 52, 26, 12, 8];
+
+function Thrash() {
+  const base = 80;
+  return (
+    <>
+      <Wood seed={11} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        CPU UTILISATION
+      </Text>
+      {THRASH_CURVE.map((v, i) => (
+        <Block key={i} x={10 + i * 12} y={base - v} w={10} h={v} ramp={i < 6 ? TEAL : RED} />
+      ))}
+      <Text x={10 + 5 * 12 + 5} y={base - 73} size={3.5} fill="#7cf0c8" anchor="middle">
+        PEAK
+      </Text>
+      <Text x={152} y={base - 52} size={3.5} fill="#f87a8a" anchor="middle">
+        THRASHING
+      </Text>
+      <Text x={65} y={base + 7} size={3} fill="#cfe4ff" anchor="middle">
+        DEGREE OF MULTIPROGRAMMING
+      </Text>
+      <Text x={90} y={97} size={3.5} fill="#f8f4e6" anchor="middle">
+        TOO FEW FRAMES: PAGES EVICTED ARE NEEDED AGAIN
+      </Text>
+      <Text x={90} y={105} size={3.5} fill="#ffe27a" anchor="middle">
+        THE OS ADDS MORE PROCESSES AND IT GETS WORSE
+      </Text>
+    </>
+  );
+}
+
+/** Silberschatz Figure 10.16's reference string; Δ = 10. */
+export const WSS_REFS = [2, 6, 1, 5, 7, 7, 7, 7, 5, 1, 6, 2, 3, 4, 1, 2, 3, 4, 4, 4, 3, 4, 3, 4, 4, 4, 1, 3, 2, 3, 4, 4, 4, 3, 4, 4, 4];
+export const WSS_WINDOW = 10;
+export const WSS_T1 = 9;
+export const WSS_T2 = 25;
+export const WSS_EXAMPLE = { t1: workingSet(WSS_REFS, WSS_T1, WSS_WINDOW), t2: workingSet(WSS_REFS, WSS_T2, WSS_WINDOW) };
+
+/** A window of the last 10 references at two moments in a program's life. */
+function Wss() {
+  const cell = 12;
+  const rows = [
+    { t: WSS_T1, set: WSS_EXAMPLE.t1, label: "T1" },
+    { t: WSS_T2, set: WSS_EXAMPLE.t2, label: "T2" },
+  ];
+  return (
+    <>
+      <Wood seed={14} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        WORKING SET WITH WINDOW = 10
+      </Text>
+      {rows.map((r, row) => {
+        const y = 14 + row * 34;
+        const lo = Math.max(0, r.t - WSS_WINDOW + 1);
+        return (
+          <g key={r.label}>
+            {WSS_REFS.slice(lo, r.t + 1).map((p, i) => (
+              <Card key={i} x={22 + i * (cell + 0.4)} y={y} w={cell} h={9} lines={[`${p}`]} size={3.5} ramp={TEAL} ink="#f8f4e6" />
+            ))}
+            <Text x={4} y={y + 6.5} size={4} fill="#ffe27a">
+              {r.label}
+            </Text>
+            <Text x={22} y={y + 19} size={3.5} fill="#f8f4e6">
+              {`WS = { ${r.set.join(", ")} }`}
+            </Text>
+            <Text x={176} y={y + 19} size={4} fill="#7cf0c8" anchor="end">
+              {`SIZE ${r.set.length}`}
+            </Text>
+          </g>
+        );
+      })}
+      <Text x={90} y={85} size={3.5} fill="#f8f4e6" anchor="middle">
+        D = SUM OF WORKING-SET SIZES
+      </Text>
+      <Text x={90} y={94} size={3.5} fill="#f87a8a" anchor="middle">
+        D MORE THAN THE FRAMES: SUSPEND A PROCESS
+      </Text>
+      <Text x={90} y={103} size={3} fill="#cfe4ff" anchor="middle">
+        LOCALITY: A PROGRAM MOVES FROM ONE SET OF PAGES TO ANOTHER
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -1639,6 +1857,11 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   ptable: { title: "A two-level page-table address split and an inverted page table search", draw: PageTables },
   tlb: { title: "The TLB: a hit goes straight to memory, a miss reads the page table first", draw: Tlb },
   segments: { title: "A segment table and three (segment, offset) translations, one of which traps", draw: Segments },
+  demand: { title: "The six steps of servicing a page fault and the demand-paging effective access time", draw: Demand },
+  replace: { title: "FIFO, LRU and Optimal fault counts on the textbook reference string with three frames", draw: Replace },
+  belady: { title: "Belady's anomaly: FIFO faults rise from 9 to 10 when a frame is added", draw: Belady },
+  thrash: { title: "CPU utilisation collapses when too many processes thrash", draw: Thrash },
+  wss: { title: "The working set at two moments of a program, with a window of ten references", draw: Wss },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

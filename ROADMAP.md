@@ -76,7 +76,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.6e The Heap Harbor battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.
   - [x] 2.7a Virtual-memory simulators (`game/sim/paging.ts`: FIFO/LRU/Optimal/Clock with per-reference traces, Belady's anomaly, demand-paging EAT, working sets, thrashing) tested against Silberschatz's examples.
-  - [ ] 2.7b Five Pagewood lessons (demand paging and page faults, page replacement, Belady and stack algorithms, frame allocation and thrashing, working sets) with pixel diagrams and tested quick checks.
+  - [x] 2.7b Five Pagewood lessons (demand paging and page faults, page replacement, Belady and stack algorithms, frame allocation and thrashing, working sets) with pixel diagrams and tested quick checks.
   - [ ] 2.7c Virtual-memory question pool and seeded generators (fault counts per policy, victim choice, EAT with fault rate, working set size) plus a tap-the-victim question kind.
   - [ ] 2.7d The virtual-memory gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [ ] 2.7e The virtual-memory gym battle backdrop in `game/sprites/scenery.ts`.

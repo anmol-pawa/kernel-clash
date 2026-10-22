@@ -2,6 +2,7 @@ import type { Question } from "@/game/engine/question";
 import { roundRobin, sjf } from "@/game/sim/scheduling";
 import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, pageTableBytes, translate, translateSegment } from "@/game/sim/memory";
+import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -11,7 +12,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss";
 
 export interface LessonPage {
   heading: string;
@@ -64,6 +65,7 @@ export const DETECT_CHECK_REQUESTS = DETECT_EXAMPLE.requests.map((r, i) => (i ==
 export const DETECT_CHECK = detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allocation, DETECT_CHECK_REQUESTS);
 /** the graph check: P1 → R1, R1 → P2 and P2 → R2, where R2 is free */
 export const RAG_CHECK_EDGES = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"]] as const;
+const VMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -74,6 +76,14 @@ export const PAGING_CHECK = translate(6, 4, PAGING_TABLE);
 export const FLAT_TABLE_MB = pageTableBytes(32, 4096, 4) / 2 ** 20;
 export const TLB_CHECK = Math.round(effectiveAccessTime(0.9, 10, 100) * 100) / 100;
 export const SEGMENT_CHECK = !translateSegment(SEGMENT_EXAMPLE, 1, 400).ok;
+
+/** The virtual-memory quick checks' answers, computed by the simulators. */
+export const DEMAND_CHECK = Math.round(demandPagingEat(0.0005, 200, 8_000_000) * 10) / 10;
+export const LRU_CHECK_REFS = [1, 2, 3, 1, 4, 2, 1, 5];
+export const LRU_CHECK = faultCount(LRU_CHECK_REFS, 3, "lru");
+export const ANOMALY = { fifo: beladyAt(faultCurve(BELADY_EXAMPLE, "fifo", 7)), lru: beladyAt(faultCurve(BELADY_EXAMPLE, "lru", 7)), opt: beladyAt(faultCurve(BELADY_EXAMPLE, "opt", 7)) };
+export const WSS_CHECK_REFS = [2, 6, 1, 5, 7, 7, 7, 7, 5, 1];
+export const WSS_CHECK = workingSet(WSS_CHECK_REFS, WSS_CHECK_REFS.length - 1, 10).length;
 const table = (js: { name: string; burst: number }[]) => ["Proc  Burst", ...js.map((j) => `${j.name.padEnd(6)}${j.burst}`)].join("\n");
 
 export const LESSONS: Lesson[] = [
@@ -1155,6 +1165,157 @@ export const LESSONS: Lesson[] = [
       answer: SEGMENT_CHECK ? 0 : 1,
       explain: "Valid offsets are 0 to 399, because the offset must be less than the limit. Offset 399 maps to 6300 + 399 = 6699, but offset 400 would be 6700, which lies outside the segment, so the hardware traps to the OS.",
       move: MMOVE,
+    },
+  },
+  {
+    id: "virtual-demand",
+    gym: "virtual",
+    title: "Demand paging and page faults",
+    pages: [
+      {
+        heading: "Load only what is used",
+        body: [
+          "Virtual memory lets a process run without all of it in RAM. With demand paging a page is brought in only when it is first touched. Each page-table entry has a valid bit: 1 means the page is in a frame, 0 means it is on disk (or not mapped at all).",
+          "Touching a page whose bit is 0 raises a page-fault trap. This is not an error, just a request for service: the OS checks the access was legal, finds a free frame, reads the page from the swap area on disk, sets the entry valid and restarts the instruction that faulted.",
+        ],
+        diagram: "demand",
+      },
+      {
+        heading: "The cost of a fault",
+        body: [
+          "A fault is slow because of the disk: about 8 ms, against 200 ns for a memory access. With fault rate p, EAT = (1 − p) × memory time + p × fault service time. In Silberschatz's example, p = 1/1000 gives 8,199.8 ns, a slowdown by a factor of 40.",
+          "To keep the slowdown under 10% (220 ns) the fault rate must be below about 1 in 399,990. Demand paging only works because of locality of reference: programs keep reusing a few pages, so faults are rare. Copy-on-write uses the same trap after fork(): parent and child share pages marked read-only, and a write faults to copy that one page.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-demand",
+      kind: "numeric",
+      prompt: "A memory access takes 200 ns and servicing a page fault takes 8 ms (8,000,000 ns). One access in 2,000 faults (p = 0.0005). What is the effective access time in ns?",
+      answer: DEMAND_CHECK,
+      tolerance: 0.1,
+      explain: `EAT = (1 − 0.0005) × 200 + 0.0005 × 8,000,000 = 199.9 + 4,000 = ${DEMAND_CHECK} ns. The rare faults cost twenty times more than all the hits.`,
+      move: VMOVE,
+    },
+  },
+  {
+    id: "virtual-replace",
+    gym: "virtual",
+    title: "Page replacement",
+    pages: [
+      {
+        heading: "Choosing a victim",
+        body: [
+          "When a fault finds no free frame the OS must evict a page: the victim. If it was modified (the dirty bit is set) it is written back to disk first; a clean page is simply dropped. The aim is the fewest faults over a reference string.",
+          "FIFO evicts the oldest page, which is easy but may throw out a page in constant use. Optimal evicts the page that will be used furthest in the future: the best possible, but it needs to know the future, so it is only a yardstick. LRU evicts the page unused for longest, a good guess at Optimal.",
+        ],
+        diagram: "replace",
+      },
+      {
+        heading: "Approximating LRU",
+        body: [
+          "True LRU needs a timestamp or a stack updated on every reference, which is too slow in hardware, so systems use a reference bit that the hardware sets whenever a page is used.",
+          "The second-chance (clock) algorithm keeps the frames in a circle with a hand. The hand looks at the next page: if its reference bit is 1 it clears the bit and moves on; if it is 0 that page is the victim. Pages in use keep getting their second chance. On Silberschatz's 20-reference string with 3 frames, FIFO has 15 faults, LRU 12 and Optimal 9.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-replace",
+      kind: "numeric",
+      prompt: "Reference string 1, 2, 3, 1, 4, 2, 1, 5 with 3 empty frames and LRU replacement. How many page faults?",
+      answer: LRU_CHECK,
+      explain: "Faults on 1, 2 and 3 fill the frames; the second 1 hits. 4 faults and evicts 2 (least recently used). 2 faults and evicts 3. 1 hits. 5 faults and evicts 4. That is faults on 1, 2, 3, 4, 2 and 5.",
+      move: VMOVE,
+    },
+  },
+  {
+    id: "virtual-belady",
+    gym: "virtual",
+    title: "Belady's anomaly and stack algorithms",
+    pages: [
+      {
+        heading: "More frames, more faults?",
+        body: [
+          "Intuition says that giving a process more frames can only reduce its faults. For FIFO that is false. On the reference string 1 2 3 4 1 2 5 1 2 3 4 5, FIFO takes 9 faults with 3 frames and 10 faults with 4. This is Belady's anomaly.",
+          "It happens because FIFO's set of resident pages with 4 frames need not contain its set with 3 frames: it can keep the wrong pages around.",
+        ],
+        diagram: "belady",
+      },
+      {
+        heading: "Stack algorithms",
+        body: [
+          "A stack algorithm has the inclusion property: the pages in memory with n frames are always a subset of those with n + 1 frames. Such algorithms can never show the anomaly.",
+          "LRU and Optimal are stack algorithms; FIFO is not. Real systems still use approximations such as clock rather than exact LRU, because exact LRU is expensive, but second-chance behaves like LRU, not like FIFO, for the pages in active use.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-belady",
+      prompt: "Which of these page-replacement algorithms can suffer Belady's anomaly?",
+      options: ["FIFO", "LRU", "Optimal", "All three"],
+      answer: ANOMALY.fifo !== null && ANOMALY.lru === null && ANOMALY.opt === null ? 0 : 3,
+      explain: "LRU and Optimal are stack algorithms: the pages resident with n frames are always among those resident with n + 1, so more frames never hurt. FIFO has no such property, and the string 1 2 3 4 1 2 5 1 2 3 4 5 takes 9 faults with 3 frames and 10 with 4.",
+      move: VMOVE,
+    },
+  },
+  {
+    id: "virtual-thrash",
+    gym: "virtual",
+    title: "Frame allocation and thrashing",
+    pages: [
+      {
+        heading: "Sharing the frames",
+        body: [
+          "Each process needs a minimum number of frames, set by the architecture: one instruction may touch several pages. Beyond that, equal allocation gives every process m ÷ n frames, and proportional allocation gives each a share by its size: a process of size s_i out of a total S gets s_i ÷ S × m.",
+          "Replacement can be global (a process may evict any process's frame, which is flexible but lets one process hurt another) or local (only its own frames, which is predictable but may leave frames unused).",
+        ],
+      },
+      {
+        heading: "Thrashing",
+        body: [
+          "A process without enough frames for the pages it is actively using faults, evicts a page it needs again at once, and faults again. It spends more time paging than executing: thrashing.",
+          "The vicious circle: CPU utilisation drops, so the OS sees idle time and starts more processes, which take frames from the others, which fault more. Local replacement limits the spread; the real cures are to give each process the frames it needs (see working sets) or to suspend some processes and swap them out.",
+        ],
+        diagram: "thrash",
+      },
+    ],
+    check: {
+      id: "lesson-thrash",
+      prompt: "CPU utilisation is 5% and the paging disk is almost always busy. What should the OS do?",
+      options: ["Suspend some processes to free frames", "Start more processes to use the idle CPU", "Install a faster CPU", "Lengthen the time quantum"],
+      answer: 0,
+      explain: "This is thrashing: the CPU is idle because every process is waiting for a page. More processes would take frames from the others and make it worse; a faster CPU just waits faster. Reduce the degree of multiprogramming so each remaining process has enough frames.",
+      move: VMOVE,
+    },
+  },
+  {
+    id: "virtual-wss",
+    gym: "virtual",
+    title: "Working sets",
+    pages: [
+      {
+        heading: "The locality window",
+        body: [
+          "Programs run in localities: for a while they use one group of pages (a function, its data), then move to another. The working-set model captures this with a window of the last Δ references. The working set WS is the set of distinct pages in that window, and its size WSS is how many frames the process needs right now.",
+          "If Δ is too small the window misses part of the locality; too large and it spans several. In Silberschatz's Figure 10.16 with Δ = 10 the working set at t1 is {1, 2, 5, 6, 7} (size 5) and later at t2 it is {3, 4} (size 2).",
+        ],
+        diagram: "wss",
+      },
+      {
+        heading: "Using it",
+        body: [
+          "Let D be the sum of every process's WSS. If D is more than the number of frames m, some process cannot have its working set resident, so the system thrashes: the OS suspends a process and gives its frames to the others. If D is below m it may start another process.",
+          "The model prevents thrashing while keeping multiprogramming as high as it can safely be. Tracking it exactly is costly, so real systems approximate it with reference bits and a timer, or control the page-fault frequency directly: too high a rate means give the process more frames, too low means take some away.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-wss",
+      kind: "numeric",
+      prompt: "A process's last 10 references were 2, 6, 1, 5, 7, 7, 7, 7, 5, 1. With a window of 10 references, what is its working-set size?",
+      answer: WSS_CHECK,
+      explain: "The distinct pages in the window are 1, 2, 5, 6 and 7, so the working set is {1, 2, 5, 6, 7} and its size is 5. The repeated 7s and the second 5 and 1 add nothing.",
+      move: VMOVE,
     },
   },
 ];

@@ -12,6 +12,8 @@ import { fcfs, ganttText, mlfq, roundRobin, sjf } from "@/game/sim/scheduling";
 import { BEST_LEFT, FLAT_TABLE_MB, PAGING_CHECK, TLB_CHECK } from "@/content/lessons";
 import { FRAG_EXAMPLE, PAGING_EXAMPLE, PTABLE_EXAMPLE, SEGMENT_TRACES, TLB_EXAMPLE } from "@/components/lesson/Diagrams";
 import { FIT_EXAMPLE, allocate } from "@/game/sim/memory";
+import { ANOMALY, DEMAND_CHECK, LRU_CHECK, WSS_CHECK } from "@/content/lessons";
+import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -20,7 +22,8 @@ const SCHEDULING_DIAGRAMS = ["fcfs", "sjf", "priority", "rr", "mlfq"];
 const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers"];
 const DEADLOCK_DIAGRAMS = ["rag", "banker"];
 const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS];
+const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -454,5 +457,57 @@ describe("memory lessons", () => {
     if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
     expect(q.options[q.answer]).toMatch(/^A trap/);
     expect(SEGMENT_TRACES.map((t) => (t.r.ok ? t.r.physical : "trap"))).toEqual([4353, 4052, "trap"]);
+  });
+});
+
+describe("virtual-memory lessons", () => {
+  const check = (id: string) => lessonById(id)!.check;
+  const numeric = (id: string) => {
+    const q = check(id);
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    return q;
+  };
+
+  it("cover the five Swapwood topics in order, each diagram used once, with the memory move", () => {
+    const ls = lessonsOf("virtual");
+    expect(ls.map((l) => l.id)).toEqual(["virtual-demand", "virtual-replace", "virtual-belady", "virtual-thrash", "virtual-wss"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual([...VIRTUAL_DIAGRAMS].sort());
+    for (const l of ls) expect(l.check.move.type).toBe("memory");
+  });
+
+  it("demand check: p = 0.0005 gives 4199.9 ns; the diagram's p = 0.001 gives 8199.8 ns", () => {
+    const q = numeric("virtual-demand");
+    expect(DEMAND_CHECK).toBe(4199.9);
+    expect(q.answer).toBe(4199.9);
+    expect(grade(q, { kind: "numeric", value: "4199.9" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "8199.8" })).toBe(false);
+    expect(DEMAND_EXAMPLE.eat).toBeCloseTo(8199.8, 6);
+  });
+
+  it("replace check: LRU on 1 2 3 1 4 2 1 5 faults 6 times; the diagram shows 15, 12 and 9 faults", () => {
+    expect(numeric("virtual-replace").answer).toBe(6);
+    expect(LRU_CHECK).toBe(6);
+    expect(REPLACE_EXAMPLE.faults).toEqual({ fifo: 15, lru: 12, opt: 9 });
+  });
+
+  it("Belady check: only FIFO is anomalous; the diagram's FIFO curve rises 9 → 10 at 4 frames and LRU's never rises", () => {
+    const q = check("virtual-belady");
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toBe("FIFO");
+    expect(ANOMALY).toEqual({ fifo: 4, lru: null, opt: null });
+    expect(BELADY_CURVES.fifo.slice(2, 4)).toEqual([9, 10]);
+    expect(BELADY_CURVES.lru.every((n, i, a) => i === 0 || n <= a[i - 1])).toBe(true);
+  });
+
+  it("thrash check: suspend processes", () => {
+    const q = check("virtual-thrash");
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/^Suspend/);
+  });
+
+  it("working-set check: size 5; Figure 10.16 gives {1,2,5,6,7} at t1 and {3,4} at t2", () => {
+    expect(numeric("virtual-wss").answer).toBe(5);
+    expect(WSS_CHECK).toBe(5);
+    expect(WSS_EXAMPLE).toEqual({ t1: [1, 2, 5, 6, 7], t2: [3, 4] });
   });
 });

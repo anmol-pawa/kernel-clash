@@ -464,3 +464,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/paging.test.ts`, 12): Silberschatz's 20-reference string with 3 frames (FIFO 15, LRU 12, OPT 9), Figure 10.12's first frames, Optimal ≤ every policy, a hand-traced Clock sweep, Belady's string (FIFO 9 → 10 faults going from 3 to 4 frames; LRU/OPT never anomalous), 8199.8 ns EAT, the 2.5e-6 fault-rate bound, working sets and thrashing.
 - Verified: lint, typecheck, `npm test`, `build:pages`. No UI change, so no screenshots.
 - Next: 2.7b the five virtual-memory lessons.
+
+## 2026-10-22: 2.7b Five Swapwood lessons (run 54)
+- Main was green and no lock was held.
+- Five lessons for the virtual-memory gym in `content/lessons.ts` (demand paging and page faults, page replacement, Belady's anomaly and stack algorithms, frame allocation and thrashing, working sets), each with a pixel diagram in `components/lesson/Diagrams.tsx` (`demand`, `replace`, `belady`, `thrash`, `wss`) and a quick check whose answer comes from `game/sim/paging.ts`.
+- Tests (`tests/lessons.test.ts`): lesson order and diagram use; EAT 4199.9 ns (and the diagram's 8199.8 ns); LRU faults 6 on a hand-traced string; diagram counts 15/12/9; only FIFO is anomalous (9 → 10 at 4 frames); Figure 10.16 working sets {1,2,5,6,7} and {3,4}. A test caught my second working-set moment being off by one index.
+- Verified: lint, typecheck, `npm test` (561 tests), `build:pages` (248 files precached). Playwright on the static build at 1280×800 and iPhone 14: all five lessons' diagrams reviewed. I fixed text overflowing the fault-step cards and a label overlapping a bar. No console errors, no horizontal overflow.
+- Next: 2.7c the virtual-memory question pool, seeded generators and a tap-the-victim question kind.
