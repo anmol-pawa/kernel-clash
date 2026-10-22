@@ -411,3 +411,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: Gridlock Gym backdrop distinct from the other four, prop and platform clearance (the standoff-cars prop was moved once the test caught an overlap).
 - Verified: lint, typecheck, `npm test` (472 tests), `build:pages` (230 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): a Cyclowl trainer battle (numeric and banker questions). No console errors, no horizontal overflow. I reviewed the screenshots.
 - Next: 2.6 memory management (split into sub-tasks first).
+
+## 2026-10-22: 2.6a Memory simulators (run 47)
+- Main was green and no lock was held. Split 2.6 into 2.6a–e in `ROADMAP.md`.
+- `game/sim/memory.ts`: `allocate` (first/best/worst fit over an address-ordered free list, ties to the lowest address), `coalesce`, `externalFragmentation`, `compact`, `pagesFor` (internal fragmentation), `translate` (page, offset, frame, physical, or invalid), `splitAddress`/`walkIndices` for multi-level tables, `pageTableBytes`, `invertedLookup`, `effectiveAccessTime`/`hitRatioFor`, and `translateSegment` with limit traps.
+- Tests (`tests/memory.test.ts`, 29): Silberschatz's 100K/500K/200K/300K/600K placement exercise for all three fits (including the holes left over), the 72,766-byte / 2,048-byte-page internal fragmentation, the Figure 9.10 page table, the 10+10+12 split and 4 MB table, the 140 ns and 122 ns TLB examples, the Figure 9.8 segment table (4353, 4052, trap), plus 200 random workloads checking placements never overlap and free space is conserved.
+- Verified: lint, typecheck, `npm test`, `build:pages`. No visual change, so no screenshots this run.
+- Next: 2.6b Heap Harbor lessons.
