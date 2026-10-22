@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TranslateQ, type VictimQ, victimSetup } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -52,6 +52,8 @@ export function AnswerPanel(p: Props) {
       return <TranslatePanel {...p} q={p.q as TranslateQ} />;
     case "victim":
       return <VictimPanel {...p} q={p.q as VictimQ} />;
+    case "track":
+      return <TrackPanel {...p} q={p.q as TrackQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -592,6 +594,75 @@ function VictimPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: 
           }}
         >
           ▶ EVICT THIS FRAME
+        </button>
+      )}
+    </div>
+  );
+}
+
+const TRACK_NAME = { fcfs: "FCFS", sstf: "SSTF", scan: "SCAN", cscan: "C-SCAN", look: "LOOK", clook: "C-LOOK" } as const;
+
+/**
+ * Disk scheduling: a cylinder strip with the head and the served requests, and
+ * the waiting requests as tap targets in arrival order. After a wrong answer
+ * the right request lights up.
+ */
+function TrackPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: TrackQ }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "track" ? reveal.response.cylinder : picked;
+  const { at, pending } = trackSetup(q);
+  const pct = (c: number) => `${(c / (q.cylinders - 1)) * 100}%`;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="track">
+      <div className="gb-box px-2 py-2 font-pixel text-[10px] leading-4 !text-[var(--box-ink)]" data-testid="track-info">
+        <div>
+          {TRACK_NAME[q.policy]} · HEAD AT {at}
+          {q.policy === "fcfs" || q.policy === "sstf" ? "" : q.direction === "up" ? " · MOVING UP" : " · MOVING DOWN"}
+        </div>
+        <div className="relative mx-1 mt-3 h-6" aria-hidden>
+          <div className="absolute inset-x-0 top-3 h-1 bg-[var(--box-ink)] opacity-40" />
+          {q.served.map((c) => (
+            <span key={`s${c}`} className="absolute top-2.5 h-2 w-2 -translate-x-1 bg-[var(--box-ink)] opacity-60" style={{ left: pct(c) }} />
+          ))}
+          {pending.map((c) => (
+            <span key={`p${c}`} className="absolute top-2 h-3 w-2 -translate-x-1 bg-[#d8883a]" style={{ left: pct(c) }} />
+          ))}
+          <span className="absolute -top-1 h-0 w-0 -translate-x-1 border-x-4 border-t-[7px] border-x-transparent border-t-[#c8383a]" style={{ left: pct(at) }} />
+        </div>
+        <div className="mt-1 break-words">DONE {q.served.join(" ") || "-"}</div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {pending.map((c) => {
+          const right = !!reveal && c === q.answer;
+          const wrong = !!reveal && !reveal.correct && c === shown;
+          return (
+            <button
+              key={c}
+              type="button"
+              disabled={locked}
+              data-testid={`track-${c}`}
+              aria-pressed={shown === c}
+              onClick={() => (sfx.blip(), setPicked(c))}
+              className={`gb-box flex min-h-11 items-center justify-center px-2 font-pixel text-[11px] !text-[var(--box-ink)] ${shown === c ? "outline outline-2 outline-offset-1" : ""} ${right ? "!bg-[#bfe8a8]" : wrong ? "!bg-[#f0b0a8]" : ""}`}
+            >
+              CYL {c}
+            </button>
+          );
+        })}
+      </div>
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || picked === null}
+          data-testid="track-confirm"
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "track", cylinder: picked! });
+          }}
+        >
+          ▶ SERVE THIS REQUEST
         </button>
       )}
     </div>

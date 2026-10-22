@@ -1,4 +1,4 @@
-import type { Generator, McqQ, NumericQ } from "@/game/engine/question";
+import type { Generator, McqQ, NumericQ, TrackQ } from "@/game/engine/question";
 import { blockReads, inodeMaxBlocks, linkedDataBytes, raidUsableDisks, scheduleDisk, type Allocation, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { rng, type Rng } from "@/lib/rng";
 
@@ -175,4 +175,50 @@ export const raidCapacity: Generator = {
   },
 };
 
-export const STORAGE_GENERATORS: Generator[] = [headMovement, firstServed, inodeBlocks, allocationReads, linkedBlocks, raidCapacity];
+/** Tap the request a policy serves next, after some have already been served. */
+export const tapNextTrack: Generator = {
+  id: "gen-st-tap-track",
+  topic: "Disk scheduling: tap the next request",
+  make(seed): TrackQ {
+    const r = rng(seed ^ 0x7ac4);
+    for (;;) {
+      const policy = r.pick(["fcfs", "sstf", "scan", "look", "cscan", "clook"] as DiskPolicy[]);
+      const { queue, head } = diskQueue(r, r.int(5, 7));
+      const direction = r.pick(["up", "down"] as const);
+      const order = scheduleDisk(queue, head, policy, CYLINDERS, direction).order;
+      const k = r.int(1, order.length - 2);
+      const served = order.slice(0, k);
+      const answer = order[k];
+      // the sweep must give a different answer than FCFS would, or the tap proves nothing
+      const pending = queue.filter((c) => !served.includes(c));
+      if (policy !== "fcfs" && pending[0] === answer) continue;
+      const at = served[k - 1];
+      if (policy === "sstf" && sstfTies(pending, at)) continue;
+      const how: Record<DiskPolicy, string> = {
+        fcfs: "FCFS serves requests in arrival order, so the oldest one still waiting",
+        sstf: "SSTF serves the request closest to the head",
+        scan: "SCAN keeps sweeping in its direction, serving requests on the way, and only turns at the end of the disk",
+        look: "LOOK keeps sweeping in its direction and turns at the last request",
+        cscan: "C-SCAN sweeps one way to the end, jumps back to the start and sweeps the same way again",
+        clook: "C-LOOK sweeps one way to the last request, jumps to the lowest or highest waiting request and sweeps the same way",
+      };
+      const sweeps = policy === "fcfs" || policy === "sstf" ? "" : ` The head is moving toward ${direction === "up" ? "higher" : "lower"} cylinders.`;
+      return {
+        kind: "track",
+        id: `${this.id}#${seed}`,
+        prompt: `${DISK_NAMES[policy]}: the head started at ${head}, has served ${served.join(", ")} and is now at ${at}.${sweeps} Tap the request it serves next.`,
+        policy,
+        cylinders: CYLINDERS,
+        head,
+        direction,
+        queue,
+        served,
+        answer,
+        explain: `${how[policy]}: cylinder ${answer}. The full service order is ${order.join(", ")}.`,
+        move: st("Seek Strike", 34),
+      };
+    }
+  },
+};
+
+export const STORAGE_GENERATORS: Generator[] = [headMovement, firstServed, inodeBlocks, allocationReads, linkedBlocks, raidCapacity, tapNextTrack];

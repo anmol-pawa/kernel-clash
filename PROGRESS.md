@@ -522,3 +522,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/storagePool.test.ts`, 13): answer keys, textbook FCFS 640, generators checked against independent plain-loop formulas for all six policies and both directions, determinism, bank labels, battle draws.
 - Verified: lint, typecheck, `npm test`, `build:pages` (258 files precached). No UI change, so no screenshots.
 - Next: 2.8c2 the tap-the-next-track question kind.
+
+## 2026-10-22: 2.8c2 Tap-the-next-track question kind (run 62)
+- Main was green and no lock was held.
+- New `track` question kind (`game/engine/question.ts`): the policy, head, direction, arrival-order queue and the requests already served; the player taps the request served next. Graded against `scheduleDisk()`'s service order, with `questionProblems` checks (distinct cylinders, served prefix follows the policy, answer is the next request), `answerText`/`correctionText`, and `trackSetup`. `TrackPanel` in `AnswerPanel.tsx`: a cylinder strip (head marker, served ticks, waiting requests), tappable `CYL n` buttons in arrival order, a confirm button, and green/red marking after the answer.
+- `tapNextTrack` generator (`content/storageGenerators.ts`) over all six policies, skipping SSTF ties and cases where the answer is just the oldest request; added to `POOLS.storage`.
+- Tests (`tests/trackQuestion.test.ts`): Figure 11.4 SSTF from 53 serves 65, 67, 37; invalid questions rejected; 150 generated questions checked against independent plain-rule next-request code, all six policies seen.
+- Verified: lint, typecheck, `npm test` (636 tests). `next build` compiles and prerenders but the final step is stopped by Next 16.4.0's security-upgrade nudge (`SecurityFatalError`, also on a clean tree); I did not upgrade Next. `scripts/gen-sw.mjs` run by hand (258 files precached) for the Playwright check.
+- Next: 2.8d the Diskraken-gym trainer creature, dex entry, trainer battles and gated flow.

@@ -12,6 +12,7 @@
  *   cycle    tap the nodes of a deadlock cycle in a resource-allocation graph
  *   translate  tap the page-table entry a logical address maps through
  *   victim   tap the frame a page-replacement policy evicts
+ *   track    tap the cylinder a disk-scheduling policy serves next
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
@@ -19,6 +20,7 @@
 import { ganttText, type Slice } from "@/game/sim/scheduling";
 import { findCycle, isCycleNodes, isSafeSequence, type BankerState, type Edge } from "@/game/sim/deadlock";
 import { translate } from "@/game/sim/memory";
+import { scheduleDisk, type Direction, type DiskPolicy } from "@/game/sim/storage";
 import { replacePages, type Replacement } from "@/game/sim/paging";
 import { runSchedule, scheduleText, type SyncThread } from "@/game/sim/sync";
 import type { MoveType } from "./types";
@@ -157,6 +159,25 @@ export function victimSetup(q: Pick<VictimQ, "policy" | "frameCount" | "refs" | 
   return { frames, victimFrame };
 }
 
+export interface TrackQ extends Base {
+  kind: "track";
+  policy: DiskPolicy;
+  cylinders: number;
+  head: number;
+  direction: Direction;
+  /** every request, in arrival order */
+  queue: readonly number[];
+  /** the requests already served, in order; the head is now at the last one */
+  served: readonly number[];
+  /** the request served next */
+  answer: number;
+}
+
+/** Where the head is now, and the requests still waiting (in arrival order). */
+export function trackSetup(q: Pick<TrackQ, "head" | "queue" | "served">): { at: number; pending: number[] } {
+  return { at: q.served.length ? q.served[q.served.length - 1] : q.head, pending: q.queue.filter((c) => !q.served.includes(c)) };
+}
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -166,8 +187,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -188,7 +209,9 @@ export type Response =
   /** the page-table entry (page number) the player tapped */
   | { kind: "translate"; page: number }
   /** the frame the player tapped */
-  | { kind: "victim"; frame: number };
+  | { kind: "victim"; frame: number }
+  /** the cylinder the player tapped */
+  | { kind: "track"; cylinder: number };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -276,6 +299,8 @@ export function grade(q: Question, r: Response): boolean {
       return r.page === (q as TranslateQ).answer;
     case "victim":
       return r.frame === (q as VictimQ).answer;
+    case "track":
+      return r.cylinder === (q as TrackQ).answer;
   }
 }
 
@@ -311,6 +336,8 @@ export function answerText(q: Question): string {
       const { frames } = victimSetup(q);
       return `frame ${q.answer} (page ${frames[q.answer]})`;
     }
+    case "track":
+      return `cylinder ${q.answer}`;
     default:
       return q.options[q.answer];
   }
@@ -335,6 +362,8 @@ export function correctionText(q: Question): string | null {
       return `The entry is ${answerText(q)}.`;
     case "victim":
       return `The victim is ${answerText(q)}.`;
+    case "track":
+      return `The next request served is ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -443,6 +472,19 @@ export function questionProblems(q: Question): string[] {
           const dist = (frames as number[]).map((pg) => (future.indexOf(pg) < 0 ? Infinity : future.indexOf(pg)));
           if (dist.filter((d) => d === Math.max(...dist)).length > 1) p.push("Optimal's victim is a tie");
         }
+      }
+      break;
+    }
+    case "track": {
+      const all = [...q.queue];
+      if (q.queue.length < 4 || q.queue.length > 8) p.push("track needs 4–8 requests");
+      else if (new Set(all).size !== all.length || all.some((c) => !Number.isInteger(c) || c < 0 || c >= q.cylinders || c === q.head)) p.push("requests must be distinct cylinders on the disk, away from the head");
+      else if (q.served.some((c, i) => !q.queue.includes(c) || q.served.indexOf(c) !== i)) p.push("served requests must come from the queue");
+      else if (q.served.length >= q.queue.length) p.push("nothing is left to serve");
+      else {
+        const order = scheduleDisk(q.queue, q.head, q.policy, q.cylinders, q.direction).order;
+        if (q.served.some((c, i) => order[i] !== c)) p.push("served requests don't follow the policy");
+        else if (order[q.served.length] !== q.answer) p.push("answer isn't the policy's next request");
       }
       break;
     }
