@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+import { INTERVIEW_EXTRA } from "@/content/interviewQuestions";
+import { GYM_QUESTIONS } from "@/content/gymQuestions";
+import { BATTLE_TURNS, POOLS, gymBattleQuestions } from "@/content/pools";
+import { cardLabel, inBank } from "@/content/questionBank";
+import { cardKey } from "@/game/engine/leitner";
+import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
+import { roundRobin } from "@/game/sim/scheduling";
+import { effectiveAccessTime, pagesFor } from "@/game/sim/memory";
+
+const pool = POOLS.interview;
+const find = (id: string) => INTERVIEW_EXTRA.find((q) => q.id === id)!;
+
+/** Processes alive after n unconditional fork() calls, simulated rather than 2**n. */
+function forkCount(n: number): number {
+  let alive = 1;
+  for (let i = 0; i < n; i++) alive += alive;
+  return alive;
+}
+
+describe("interview pool", () => {
+  it("has the six boss questions plus the authored ones, all well-formed with unique ids", () => {
+    expect(pool.authored.length).toBeGreaterThanOrEqual(24);
+    expect(pool.authored.slice(0, 6).map((q) => q.id)).toEqual(GYM_QUESTIONS.interview.map((q) => q.id));
+    for (const q of pool.authored) expect(questionProblems(q), q.id).toEqual([]);
+    const ids = pool.authored.map((q) => q.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const elsewhere = [...Object.entries(GYM_QUESTIONS).filter(([k]) => k !== "interview").flatMap(([, v]) => v), ...Object.entries(POOLS).filter(([k]) => k !== "interview").flatMap(([, p]) => p.authored)].map((q) => q.id);
+    for (const id of INTERVIEW_EXTRA.map((q) => q.id)) expect(elsewhere).not.toContain(id);
+  });
+
+  it("covers mcq, multi, numeric and order, and spreads the right answer around", () => {
+    const kinds = new Set(INTERVIEW_EXTRA.map(kindOf));
+    for (const k of ["mcq", "multi", "numeric", "order"] as const) expect(kinds.has(k), k).toBe(true);
+    const mcq = INTERVIEW_EXTRA.filter((q): q is McqQ => kindOf(q) === "mcq");
+    expect(new Set(mcq.map((q) => q.answer)).size).toBeGreaterThanOrEqual(3);
+    for (const q of mcq) expect(q.options.length, q.id).toBe(4);
+  });
+
+  it("grades the intended answer right and a wrong one wrong for every question", () => {
+    for (const q of INTERVIEW_EXTRA) {
+      switch (kindOf(q)) {
+        case "mcq": {
+          const m = q as McqQ;
+          expect(grade(m, { kind: "mcq", choice: m.answer }), q.id).toBe(true);
+          expect(grade(m, { kind: "mcq", choice: (m.answer + 1) % m.options.length }), q.id).toBe(false);
+          break;
+        }
+        case "multi": {
+          const m = q as MultiQ;
+          expect(grade(m, { kind: "multi", choices: [...m.answers] }), q.id).toBe(true);
+          expect(grade(m, { kind: "multi", choices: [m.answers[0]] }), q.id).toBe(false);
+          break;
+        }
+        case "numeric": {
+          const n = q as NumericQ;
+          expect(grade(n, { kind: "numeric", value: String(n.answer) }), q.id).toBe(true);
+          expect(grade(n, { kind: "numeric", value: String(n.answer + 1) }), q.id).toBe(false);
+          break;
+        }
+        case "order": {
+          const o = q as OrderQ;
+          expect(grade(o, { kind: "order", order: o.steps.map((_, i) => i) }), q.id).toBe(true);
+          expect(grade(o, { kind: "order", order: o.steps.map((_, i) => o.steps.length - 1 - i) }), q.id).toBe(false);
+          break;
+        }
+      }
+    }
+  });
+
+  it("checks each computed answer against the simulators", () => {
+    expect((find("ivx-forks") as NumericQ).answer).toBe(forkCount(3));
+    // Silberschatz 5.3.4: bursts 24, 3, 3 at quantum 4 wait 6, 4, 7 (average 17/3)
+    const rr = roundRobin([{ name: "P1", arrival: 0, burst: 24 }, { name: "P2", arrival: 0, burst: 3 }, { name: "P3", arrival: 0, burst: 3 }], 4);
+    expect(rr.waiting).toEqual([6, 4, 7]);
+    expect((find("ivx-rr") as NumericQ).answer).toBeCloseTo(rr.avgWaiting, 2);
+    expect((find("ivx-eat-tlb") as NumericQ).answer).toBeCloseTo(effectiveAccessTime(0.9, 10, 100), 6);
+    const fault = 0.999 * 200 + 0.001 * 8_000_000;
+    expect((find("ivx-eat-fault") as NumericQ).answer).toBeCloseTo(fault, 6);
+    expect(pagesFor(2 ** 32, 4096).pages).toBe((find("ivx-ptentries") as NumericQ).answer);
+    // counting semaphore: 5 waits on a count of 3 leave 2 blocked
+    expect((find("ivx-semaphore") as NumericQ).answer).toBe(Math.max(0, 5 - 3));
+  });
+
+  it("puts the page-fault steps in the right order and keeps every step distinct", () => {
+    const o = find("ivx-pagefault") as OrderQ;
+    expect(o.steps[0]).toMatch(/traps/);
+    expect(o.steps[o.steps.length - 1]).toMatch(/restarts/);
+    expect(o.steps.findIndex((s) => /free frame/.test(s))).toBeLessThan(o.steps.findIndex((s) => /reads the page/.test(s)));
+    expect(o.steps.findIndex((s) => /reads the page/.test(s))).toBeLessThan(o.steps.findIndex((s) => /page table/.test(s)));
+  });
+
+  it("is in the Leitner bank and draws a six-question battle", () => {
+    for (const q of INTERVIEW_EXTRA) {
+      expect(inBank(cardKey(q)), q.id).toBe(true);
+      expect(cardLabel(cardKey(q))?.from).toBe("Kernel Summit");
+    }
+    const qs = gymBattleQuestions("interview", 3, {}, 0);
+    expect(qs).toHaveLength(BATTLE_TURNS);
+    expect(new Set(qs.map((q) => q.id)).size).toBe(BATTLE_TURNS);
+  });
+});
