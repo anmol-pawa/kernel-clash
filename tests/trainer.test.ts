@@ -44,6 +44,12 @@ describe("trainer fighters", () => {
     expect(trainerFighter(gym, 2)).toEqual({ name: "Semafrog", level: 6, hp: 120, maxHp: 120, type: "sync" });
   });
 
+  it("Cyclowl is the Gridlock Gym's trainer: sync type, same stats as Semafrog", () => {
+    const gym = GYMS.find((g) => g.id === "deadlocks")!;
+    expect(trainerFighter(gym, 1)).toEqual({ name: "Cyclowl", level: 5, hp: 110, maxHp: 110, type: "sync" });
+    expect(trainerFighter(gym, 2)).toEqual({ name: "Cyclowl", level: 6, hp: 120, maxHp: 120, type: "sync" });
+  });
+
   it("Syscallow is the Bootstrap Gym's trainer: io type, Lv3 then Lv4, weaker than the boss", () => {
     const gym = GYMS[0];
     expect(trainerFighter(gym, 1)).toEqual({ name: "Syscallow", level: 3, hp: 100, maxHp: 100, type: "io" });
@@ -77,6 +83,7 @@ describe("trainer fighters", () => {
     expect(GYMS.find((g) => g.id === "processes")!.trainer).toMatchObject({ retreats: "curls up under its quills", holdsOn: "is still bristling" });
     expect(GYMS.find((g) => g.id === "scheduling")!.trainer).toMatchObject({ retreats: "pulls back into its shell", holdsOn: "is still ticking" });
     expect(GYMS.find((g) => g.id === "sync")!.trainer).toMatchObject({ retreats: "hops back into the reeds", holdsOn: "is still croaking" });
+    expect(GYMS.find((g) => g.id === "deadlocks")!.trainer).toMatchObject({ retreats: "flutters up into the rafters", holdsOn: "is still staring" });
   });
 });
 
@@ -142,8 +149,8 @@ describe("trainer balance for any draw", () => {
 describe("saved trainer wins", () => {
   it("counts wins per gym with a trainer, clamped, dropping junk", () => {
     expect(DEFAULT_SAVE.trainers).toEqual({});
-    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 2, sync: 1, deadlocks: 1, nowhere: 1, x: "2" } }));
-    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1, scheduling: 2, sync: 1 });
+    const s = parseSave(JSON.stringify({ trainers: { basics: 5, processes: 1, scheduling: 2, sync: 1, deadlocks: 1, memory: 1, nowhere: 1, x: "2" } }));
+    expect(s.trainers).toEqual({ basics: TRAINER_BATTLES, processes: 1, scheduling: 2, sync: 1, deadlocks: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 1.7 } })).trainers).toEqual({ basics: 1 });
     expect(parseSave(JSON.stringify({ trainers: { basics: 0 } })).trainers).toEqual({});
     expect(parseSave(JSON.stringify({ trainers: [1] })).trainers).toEqual({});

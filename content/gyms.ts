@@ -86,6 +86,7 @@ export const GYMS: Gym[] = [
     type: "sync",
     topics: ["Coffman conditions", "Resource-allocation graphs", "Prevention and avoidance", "Banker's algorithm", "Recovery"],
     boss: { name: "Deadlocrab", blurb: "Each claw holds what the other one wants. Neither will ever let go." },
+    trainer: { name: "Cyclowl", blurb: "A round owl with a ring of wait-for arrows chasing round in each eye. One talon clamps a key it will never release while the other reaches for the next: hold and wait, round and round.", retreats: "flutters up into the rafters", holdsOn: "is still staring" },
     badge: "Banker Badge",
     ramp: ["#6e1414", "#a82a20", "#e0533a", "#ff9c7a"],
   },

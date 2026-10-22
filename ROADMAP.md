@@ -65,7 +65,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.5b Tap-to-build Banker's safe-sequence widget (`banker` question kind, lesson free-play page).
   - [x] 2.5b2 RAG cycle spotter: tap the nodes that form the cycle (`cycle` question kind, `RagBoard`, lesson play page).
   - [x] 2.5c Deadlock question pool and seeded generators (safe sequence, request granted or not, need matrix, detection, lock-order deadlock) checked against the simulators, wired into `POOLS.deadlocks`.
-  - [ ] 2.5d The Gridlock Gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
+  - [x] 2.5d The Gridlock Gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [ ] 2.5e The Gridlock Gym battle backdrop in `game/sprites/scenery.ts`.
 - [ ] 2.6 Memory management: contiguous allocation (first/best/worst fit), fragmentation, paging and **address translation** problems, page tables (multi-level, inverted), TLB and effective access time, segmentation.
 - [ ] 2.7 Virtual memory: demand paging, **page replacement** (FIFO, LRU, Optimal, Clock) with fault-counting simulators and Belady's anomaly demo, thrashing and working sets.

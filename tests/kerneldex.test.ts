@@ -107,6 +107,15 @@ describe("Kerneldex status", () => {
     expect(status("semafrog", { badges: ["basics", "processes", "scheduling", "sync"] })).toBe("caught");
   });
 
+  it("Cyclowl guards the Gridlock Gym just before Deadlocrab", () => {
+    const e = dexEntry("cyclowl")!;
+    expect(e).toMatchObject({ kind: "trainer", gym: "deadlocks", type: "sync", name: "Cyclowl" });
+    expect(dexEntry("deadlocrab")!.no).toBe(e.no + 1);
+    expect(dexEntry("mutexa")!.no).toBe(e.no - 1);
+    expect(status("cyclowl", { badges: ["basics", "processes", "scheduling", "sync"] })).toBe("unknown");
+    expect(status("cyclowl", { badges: ["basics", "processes", "scheduling", "sync", "deadlocks"] })).toBe("caught");
+  });
+
   it("the recorded caught list wins over seen", () => {
     expect(status("glitchit", { seen: ["glitchit"] })).toBe("seen");
     expect(status("glitchit", { seen: ["glitchit"], caught: ["glitchit"] })).toBe("caught");
