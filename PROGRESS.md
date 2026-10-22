@@ -457,3 +457,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/backdrops.test.ts`): Heap Harbor is distinct from every other backdrop (horizon, platform, sky) and uses at least four prop sheets; the generic per-backdrop checks cover it too.
 - Verified: lint, typecheck, `npm test` (543 tests), `build:pages` (242 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion), Pagolin trainer battle: reviewed screenshots, no console errors, no horizontal overflow. I dropped a buoy prop that read as a potion on the ground.
 - Next: 2.7 virtual memory (split into sub-tasks first).
+
+## 2026-10-22: 2.7a Virtual-memory simulators (run 53)
+- Main was green and no lock was held. Split 2.7 into 2.7a–e in `ROADMAP.md`.
+- `game/sim/paging.ts`: `replacePages` runs a reference string through FIFO, LRU, Optimal or second-chance Clock and returns a per-reference trace (fault, victim, frames); plus `faultCurve`/`beladyAt` for Belady's anomaly, `demandPagingEat`, `maxFaultRate`, `workingSet` and `thrashing`.
+- Tests (`tests/paging.test.ts`, 12): Silberschatz's 20-reference string with 3 frames (FIFO 15, LRU 12, OPT 9), Figure 10.12's first frames, Optimal ≤ every policy, a hand-traced Clock sweep, Belady's string (FIFO 9 → 10 faults going from 3 to 4 frames; LRU/OPT never anomalous), 8199.8 ns EAT, the 2.5e-6 fault-rate bound, working sets and thrashing.
+- Verified: lint, typecheck, `npm test`, `build:pages`. No UI change, so no screenshots.
+- Next: 2.7b the five virtual-memory lessons.
