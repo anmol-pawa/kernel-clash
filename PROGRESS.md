@@ -515,3 +515,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/lessons.test.ts`, +6): topic order, each diagram used once, storage move; linked block 9 takes 10 reads (1 contiguous, 2 indexed); 12 + 256 + 65,536 + 16,777,216 = 16,843,020 inode blocks; journal replay; RAID 5 on six 2 TB disks = 10 TB and the four-disk table; LOOK 299 and the Figure 11.4 bars (640, 236, 331, 382, 299, 322).
 - Verified: lint, typecheck, `npm test` (618 tests), `build:pages` (258 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): all five lessons' diagrams reviewed (fixed a clipped FCFS label), no console errors, no horizontal overflow.
 - Next: 2.8c1 storage question pool and seeded generators.
+
+## 2026-10-22: 2.8c1 Storage question pool and generators (run 61)
+- Main was green and no lock was held.
+- `STORAGE_EXTRA` in `content/pools.ts`: 14 authored questions (mcq, multi, numeric, order) on allocation methods, links, C-SCAN, SSTF starvation, SSDs, inode contents, RAID fault tolerance, Figure 11.4 FCFS, inode size, RAID 5 capacity, linked reads and the journaling order. `POOLS.storage` = the six boss questions + these + six seeded generators in `content/storageGenerators.ts`: head movement per policy (SSTF ties and one-sided queues excluded), first request served, inode blocks (direct + single + double), allocation reads, linked-allocation blocks, RAID capacity. `inodeMaxBlocks` gained an optional `levels` argument.
+- Tests (`tests/storagePool.test.ts`, 13): answer keys, textbook FCFS 640, generators checked against independent plain-loop formulas for all six policies and both directions, determinism, bank labels, battle draws.
+- Verified: lint, typecheck, `npm test`, `build:pages` (258 files precached). No UI change, so no screenshots.
+- Next: 2.8c2 the tap-the-next-track question kind.

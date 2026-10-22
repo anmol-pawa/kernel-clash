@@ -85,10 +85,10 @@ export function scheduleDisk(
 
 // ---- file allocation ---------------------------------------------------
 
-/** Unix inode: direct pointers plus single, double and triple indirect blocks. */
-export function inodeMaxBlocks(blockBytes: number, pointerBytes: number, direct = 12): number {
+/** Unix inode: direct pointers plus up to `levels` indirect blocks (1 single, 2 + double, 3 + triple). */
+export function inodeMaxBlocks(blockBytes: number, pointerBytes: number, direct = 12, levels: 1 | 2 | 3 = 3): number {
   const per = Math.floor(blockBytes / pointerBytes);
-  return direct + per + per * per + per * per * per;
+  return direct + per + (levels >= 2 ? per * per : 0) + (levels >= 3 ? per * per * per : 0);
 }
 
 /** Largest file in bytes an inode can address (exact in a double up to 2^53 bytes). */

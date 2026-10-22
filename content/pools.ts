@@ -8,6 +8,7 @@ import { DEADLOCK_GENERATORS } from "./deadlockGenerators";
 import { MEMORY_GENERATORS } from "./memoryGenerators";
 import { SYNC_GENERATORS } from "./syncGenerators";
 import { VIRTUAL_GENERATORS } from "./virtualGenerators";
+import { STORAGE_GENERATORS } from "./storageGenerators";
 import { safety, type BankerState } from "@/game/sim/deadlock";
 import { increment } from "@/game/sim/sync";
 import { GYM_QUESTIONS } from "./gymQuestions";
@@ -947,6 +948,135 @@ export const VIRTUAL_EXTRA: Question[] = [
   },
 ];
 
+const sto = (name: string, power: number) => ({ name, type: "storage" as const, power });
+
+/** Storage and file systems (Silberschatz ch. 11–14), beyond the six boss questions. */
+export const STORAGE_EXTRA: Question[] = [
+  {
+    id: "st-contig",
+    prompt: "What is the classic weakness of contiguous file allocation?",
+    options: ["External fragmentation, and files that can't grow without moving", "Slow sequential reads", "It needs a pointer in every block", "It can't do direct access"],
+    answer: 0,
+    explain: "Contiguous files are the fastest to read (sequential and direct access are both trivial), but free space splinters into holes as files come and go, and a file that outgrows its hole has to be copied elsewhere.",
+    move: sto("Hole Punch", 30),
+  },
+  {
+    id: "st-linked",
+    prompt: "Why is plain linked allocation poor at direct (random) access?",
+    options: ["To reach block n the system must follow n links from the first block", "It stores files in scattered holes that cannot be found", "It needs an index block for every file", "It wastes a whole block per file"],
+    answer: 0,
+    explain: "Each block only knows where the next one is, so block n costs n + 1 reads. A FAT keeps the links in one table (often cached in memory), which fixes most of this.",
+    move: sto("Chain Lookup", 32),
+  },
+  {
+    id: "st-indexed",
+    prompt: "What does indexed allocation give up to get fast direct access without external fragmentation?",
+    options: ["Space for an index block per file, even for tiny files", "The ability to append to files", "Support for large files", "The ability to share blocks"],
+    answer: 0,
+    explain: "An index block lists every data block of the file, so block n is one index read plus one data read and blocks can live anywhere. The cost is the index block itself, which is mostly wasted on a one-block file; big files need multi-level indexes (like the inode's indirect blocks).",
+    move: sto("Index Dive", 32),
+  },
+  {
+    id: "st-links",
+    prompt: "You create a hard link b to file a, then delete the name a. What happens to b?",
+    options: ["It still opens the file, because the inode's link count is still 1", "It breaks, because it pointed at the name a", "The file is deleted along with a", "It becomes a symbolic link"],
+    answer: 0,
+    explain: "A hard link is just another directory entry for the same inode. The data is freed only when the link count reaches 0 (and no process has it open). A symbolic link stores a path instead, so it would break.",
+    move: sto("Inode Ink", 32),
+  },
+  {
+    id: "st-cscan",
+    prompt: "Why prefer C-SCAN over SCAN?",
+    options: ["It gives more uniform waiting times, since requests at the ends aren't served twice as often as those in the middle", "It always moves the head less", "It never needs to know the head position", "It serves the oldest request first"],
+    answer: 0,
+    explain: "SCAN sweeps up and then down, so a request just behind the head waits for nearly two full sweeps while the middle gets two visits per cycle. C-SCAN sweeps one way only and jumps back, treating the disk as a circle.",
+    move: sto("Seek Sweep", 34),
+  },
+  {
+    id: "st-starve",
+    prompt: "Which disk-scheduling policy can starve a request?",
+    options: ["SSTF: a steady stream of nearby requests keeps a far one waiting", "FCFS", "C-SCAN", "LOOK"],
+    answer: 0,
+    explain: "SSTF always serves the closest request, so new arrivals near the head can postpone a distant request indefinitely. FCFS is fair, and the SCAN family bounds waiting by the length of a sweep.",
+    move: sto("Nearest Nab", 36),
+  },
+  {
+    id: "st-ssd",
+    prompt: "Why does seek-based disk scheduling matter much less on an SSD?",
+    options: ["There is no moving head, so access time doesn't depend on where the previous request was", "SSDs are always faster than the CPU", "SSDs don't have a queue", "SSDs only do sequential access"],
+    answer: 0,
+    explain: "Elevator algorithms reduce arm movement. A flash device has none, so the OS mostly uses simple policies (FCFS or noop-like) and leaves ordering and wear levelling to the drive's controller.",
+    move: sto("Flash Step", 30),
+  },
+  {
+    kind: "multi",
+    id: "multi-st-inode",
+    prompt: "Which of these does a Unix inode store? Select all that apply.",
+    options: ["File size", "Owner and permissions", "Link count", "Pointers to data blocks", "The file's name"],
+    answers: [0, 1, 2, 3],
+    explain: "The inode holds everything about the file except its name: size, owner, mode, timestamps, link count and block pointers. Names live in directory entries that map a name to an inode number.",
+    move: sto("Inode Ink", 30),
+  },
+  {
+    kind: "multi",
+    id: "multi-st-raid",
+    prompt: "Which RAID levels survive the failure of any one disk? Select all that apply.",
+    options: ["RAID 0", "RAID 1", "RAID 5", "RAID 6", "RAID 10"],
+    answers: [1, 2, 3, 4],
+    explain: "RAID 0 only stripes, so one failure loses the array. RAID 1 and 10 mirror, RAID 5 has one parity disk's worth and RAID 6 has two (it survives any two failures).",
+    move: sto("Parity Wave", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-st-fcfs",
+    prompt: "Head at 53; queue 98, 183, 37, 122, 14, 124, 65, 67 (Silberschatz Figure 11.4). How many cylinders does the head move under FCFS?",
+    answer: 640,
+    unit: "cylinders",
+    explain: "|98−53| + |183−98| + |37−183| + |122−37| + |14−122| + |124−14| + |65−124| + |67−65| = 45 + 85 + 146 + 85 + 108 + 110 + 59 + 2 = 640.",
+    move: sto("Seek Sweep", 34),
+  },
+  {
+    kind: "numeric",
+    id: "num-st-inode",
+    prompt: "An inode has 12 direct pointers and one single indirect pointer. Blocks are 4 KB and pointers are 4 bytes. What is the largest file, in KB?",
+    answer: 4144,
+    unit: "KB",
+    explain: "An indirect block holds 4096 / 4 = 1024 pointers. So 12 + 1024 = 1036 blocks × 4 KB = 4144 KB.",
+    move: sto("Inode Ink", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-st-raid5",
+    prompt: "Six 2 TB disks form a RAID 5 array. How many TB of data does it hold?",
+    answer: 10,
+    unit: "TB",
+    explain: "RAID 5 spreads one disk's worth of parity across the array: (6 − 1) × 2 TB = 10 TB.",
+    move: sto("Parity Wave", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-st-linked",
+    prompt: "A file is stored with linked allocation (no FAT). How many disk reads does it take to read its logical block 9, counting from 0?",
+    answer: 10,
+    unit: "reads",
+    explain: "The chain must be followed from block 0: blocks 0 through 9 are read, 10 reads. Contiguous would take 1 and indexed 2.",
+    move: sto("Chain Lookup", 32),
+  },
+  {
+    kind: "order",
+    id: "order-st-journal",
+    prompt: "A journaling file system updates metadata. Put the steps in order.",
+    steps: [
+      "Write the transaction's changes to the journal",
+      "Write a commit record to the journal",
+      "Apply (checkpoint) the changes to the real file-system structures",
+      "Free the transaction's space in the journal",
+    ],
+    explain: "The journal is write-ahead: log the changes, commit, then apply them in place, and only then free the log entry. After a crash, committed transactions are replayed and uncommitted ones are discarded, so the metadata is never half updated.",
+    move: sto("Log Replay", 34),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
@@ -955,6 +1085,7 @@ export const POOLS: Record<string, Pool> = {
   deadlocks: { authored: [...GYM_QUESTIONS.deadlocks, ...DEADLOCK_EXTRA], generators: DEADLOCK_GENERATORS },
   memory: { authored: [...GYM_QUESTIONS.memory, ...MEMORY_EXTRA], generators: MEMORY_GENERATORS },
   virtual: { authored: [...GYM_QUESTIONS.virtual, ...VIRTUAL_EXTRA], generators: VIRTUAL_GENERATORS },
+  storage: { authored: [...GYM_QUESTIONS.storage, ...STORAGE_EXTRA], generators: STORAGE_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
