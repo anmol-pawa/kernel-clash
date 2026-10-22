@@ -743,6 +743,214 @@ export const PAD_PLATFORM: SpriteSheet = {
   idle: [padPlatform()],
 };
 
+/* --------------------------------------------------------- Gridlock Gym */
+
+/** A little side-on car: body, cabin, glass, wheels and a lamp at the nose. `lead` is the body ramp letter (c red, d blue, e yellow). */
+function car(k: PixelCanvas, x: number, base: number, w: number, lead: "c" | "d" | "e", faceRight: boolean) {
+  const up = lead.toUpperCase();
+  k.rect(x, base - 7, w, 5, lead);
+  k.rect(x, base - 7, w, 1, up);
+  k.rect(x, base - 3, w, 1, "z");
+  const cx = x + (faceRight ? 3 : w - 3 - (w - 8));
+  k.rect(cx, base - 11, w - 8, 4, lead);
+  k.rect(cx, base - 11, w - 8, 1, up);
+  k.rect(cx + 1, base - 10, Math.max(2, Math.floor((w - 10) / 2) - 1), 3, "g");
+  k.rect(cx + Math.floor((w - 8) / 2) + 1, base - 10, Math.max(2, Math.floor((w - 10) / 2) - 1), 3, "g");
+  k.rect(faceRight ? x + w - 1 : x, base - 6, 1, 2, "y");
+  k.rect(faceRight ? x : x + w - 1, base - 6, 1, 2, "r");
+  for (const wx of [x + 2, x + w - 5]) {
+    k.rect(wx, base - 3, 3, 3, "t");
+    k.px(wx + 1, base - 2, "h");
+  }
+}
+
+/** A traffic light on a post; every lamp but the lit one is dark. Gridlock Gym lights are all red. */
+function trafficLight(k: PixelCanvas, x: number, base: number, h: number) {
+  k.rect(x, base - h, 2, h, "i");
+  k.rect(x, base - h, 1, h, "I");
+  k.rect(x - 1, base - 3, 4, 3, "i");
+  k.rect(x - 2, base - h - 9, 6, 9, "z");
+  k.rect(x - 2, base - h - 9, 1, 9, "i");
+  k.rect(x - 1, base - h - 8, 4, 2, "R");
+  k.px(x, base - h - 8, "W");
+  k.rect(x - 1, base - h - 5, 4, 2, "q");
+  k.rect(x - 1, base - h - 2, 4, 2, "q");
+}
+
+/** The gym's skyline: dusk towers, a gantry of red lights over a jam of cars nose to tail. */
+function gridlockHorizon(): string[] {
+  const W = 160;
+  const H = 80;
+  const k = new PixelCanvas(W, H);
+  const rnd = lcg(83);
+  // far towers, two layers
+  for (const [layer, lo, col] of [[0, 22, "f"], [1, 14, "b"]] as const) {
+    let x = layer ? 3 : 0;
+    while (x < W) {
+      const w = 7 + Math.floor(rnd() * 9);
+      const h = lo + 6 + Math.floor(rnd() * 22);
+      k.rect(x, H - 10 - h, w, h, col);
+      k.rect(x, H - 10 - h, 1, h, "B");
+      if (layer)
+        for (let wy = H - 10 - h + 3; wy < H - 14; wy += 3)
+          for (let wx = x + 2; wx < x + w - 1; wx += 3) if (rnd() < 0.4) k.px(wx, wy, rnd() < 0.5 ? "w" : "y");
+      x += w + Math.floor(rnd() * 3);
+    }
+  }
+  // the road
+  k.rect(0, H - 10, W, 10, "z");
+  for (let x = 2; x < W; x += 12) k.rect(x, H - 5, 6, 1, "y");
+  // a gantry of red lights across the street
+  const g = new PixelCanvas(W, H);
+  g.rect(8, H - 52, W - 16, 2, "i");
+  g.rect(8, H - 52, W - 16, 1, "I");
+  g.rect(8, H - 52, 2, 46, "i");
+  g.rect(W - 10, H - 52, 2, 46, "i");
+  for (const lx of [34, 80, 124]) {
+    g.rect(lx, H - 50, 2, 3, "i");
+    g.rect(lx - 2, H - 47, 6, 9, "z");
+    g.rect(lx - 1, H - 46, 4, 2, "R");
+    g.px(lx, H - 46, "W");
+    g.rect(lx - 1, H - 43, 4, 2, "q");
+    g.rect(lx - 1, H - 40, 4, 2, "q");
+  }
+  g.outline("o");
+  k.stamp(g.toGrid(), 0, 0);
+  // cars jammed bumper to bumper, facing both ways
+  const cars = new PixelCanvas(W, H);
+  const colours = ["c", "d", "e"] as const;
+  let cx = 2;
+  let i = 0;
+  while (cx < W - 18) {
+    const w = 15 + Math.floor(rnd() * 5);
+    car(cars, cx, H - 5 + (i % 2), w, colours[i % 3], i % 2 === 0);
+    cx += w + 1;
+    i++;
+  }
+  cars.outline("o");
+  k.stamp(cars.toGrid(), 0, 0);
+  return k.toGrid();
+}
+
+const GRIDLOCK_COLOURS = {
+  o: "#1a1018",
+  f: "#2a2145",
+  b: "#3a2a58",
+  B: "#5a4278",
+  w: "#ffcf6e",
+  y: "#e8b04a",
+  z: "#2a2630",
+  i: "#4a4654",
+  I: "#7a7686",
+  R: "#ff4a3f",
+  r: "#a82a2a",
+  q: "#3a1a1e",
+  W: "#ffe3de",
+  c: "#c2413b",
+  C: "#ef7467",
+  d: "#3b6fc2",
+  D: "#72a4ec",
+  e: "#d9a441",
+  E: "#ffd97a",
+  g: "#a8d8f0",
+  t: "#15121a",
+  h: "#8a8696",
+};
+
+export const GRIDLOCK_HORIZON: SpriteSheet = {
+  name: "Gridlock Gym street",
+  palette: GRIDLOCK_COLOURS,
+  idle: [gridlockHorizon()],
+};
+
+/** A traffic light standing at the kerb, stuck on red. */
+function lightProp(): string[] {
+  const k = new PixelCanvas(16, 46);
+  trafficLight(k, 7, 45, 34);
+  k.rect(3, 43, 10, 3, "z");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const TRAFFIC_LIGHT: SpriteSheet = {
+  name: "Traffic light",
+  palette: GRIDLOCK_COLOURS,
+  idle: [lightProp()],
+};
+
+/** Two cars nose to nose, neither able to back out. */
+function standoff(): string[] {
+  const k = new PixelCanvas(44, 14);
+  car(k, 1, 13, 20, "c", true);
+  car(k, 23, 13, 20, "d", false);
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const STANDOFF_CARS: SpriteSheet = {
+  name: "Nose-to-nose cars",
+  palette: GRIDLOCK_COLOURS,
+  idle: [standoff()],
+};
+
+/** An orange traffic cone with two reflective bands. */
+function cone(): string[] {
+  const k = new PixelCanvas(12, 16);
+  k.rect(1, 13, 10, 3, "z");
+  k.rect(1, 13, 10, 1, "i");
+  for (let y = 0; y < 13; y++) {
+    const half = 1 + Math.floor((y * 4) / 13);
+    k.rect(6 - half, y, half * 2, 1, y % 5 === 0 ? "w" : "n");
+  }
+  k.rect(4, 5, 4, 1, "W");
+  k.rect(3, 9, 6, 1, "W");
+  k.rect(5, 0, 1, 12, "N");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const CONE: SpriteSheet = {
+  name: "Traffic cone",
+  palette: { ...GRIDLOCK_COLOURS, n: "#e8742a", N: "#ffa45a", w: "#f4b27a" },
+  idle: [cone()],
+};
+
+/** A patch of asphalt with a cracked kerb stripe, scattered over the ground. */
+function asphalt(): string[] {
+  const k = new PixelCanvas(30, 8);
+  k.rect(0, 2, 30, 4, "z");
+  k.rect(0, 2, 30, 1, "i");
+  for (let x = 3; x < 28; x += 9) k.rect(x, 4, 5, 1, "y");
+  k.line(12, 5, 16, 7, "t");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const ASPHALT: SpriteSheet = {
+  name: "Asphalt patch",
+  palette: GRIDLOCK_COLOURS,
+  idle: [asphalt()],
+};
+
+/** A round manhole-cover platform with a yellow ring: an intersection to stand in. */
+function crossingPlatform(): string[] {
+  const k = new PixelCanvas(74, 20);
+  k.ellipse(37, 13, 35, 6, ["z", "i", "I"], [-0.2, -1]);
+  k.ellipse(37, 9, 33, 7, ["a", "A", "s", "S"], [-0.3, -1]);
+  // hazard-yellow rim
+  for (let x = 6; x < 68; x += 6) k.rect(x, 3 + Math.round(Math.abs(37 - x) / 10), 3, 1, "y");
+  // crosswalk stripes
+  for (let x = 18; x < 58; x += 5) k.rect(x, 8, 3, 4, "W");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const CROSSING_PLATFORM: SpriteSheet = {
+  name: "Intersection platform",
+  palette: { ...GRIDLOCK_COLOURS, a: "#2c2a36", A: "#403d4c", s: "#58546a", S: "#767288", W: "#e8e4ee" },
+  idle: [crossingPlatform()],
+};
+
 /* ------------------------------------------------------------ Backdrops */
 
 /** A prop on the battle ground, placed in stage coordinates by its bottom centre. */
@@ -845,6 +1053,28 @@ export const MUTEX_MARSH: Backdrop = {
   ],
 };
 
+export const GRIDLOCK_GYM: Backdrop = {
+  name: "Gridlock Gym",
+  sky: [0x1a1440, 0x2c1c58, 0x462a6a, 0x6a3a72, 0x984e72, 0xc86a62, 0xf0975a],
+  specks: { count: 30, color: 0xffd9a0, kind: "stars" },
+  horizon: GRIDLOCK_HORIZON,
+  ground: { base: 0x3a3844, stripe: 0x433f4e, edge: 0x1e1c26 },
+  platform: CROSSING_PLATFORM,
+  props: [
+    { sheet: TRAFFIC_LIGHT, x: 100, y: 262, scale: 3 },
+    { sheet: TRAFFIC_LIGHT, x: 950, y: 440, scale: 3, flip: true },
+    { sheet: STANDOFF_CARS, x: 520, y: 292, scale: 2 },
+    { sheet: STANDOFF_CARS, x: 560, y: 570, scale: 3, flip: true },
+    { sheet: CONE, x: 40, y: 420, scale: 3 },
+    { sheet: CONE, x: 340, y: 310, scale: 2 },
+    { sheet: CONE, x: 880, y: 330, scale: 2 },
+    { sheet: CONE, x: 1080, y: 530, scale: 3 },
+    ...([
+      [220, 300], [420, 360], [620, 420], [680, 350], [800, 390], [440, 560], [700, 520], [860, 500], [1000, 400], [-40, 330],
+    ] as const).map(([x, y], i) => ({ sheet: ASPHALT, x, y, scale: y < 340 ? 2 : 3, flip: i % 2 === 1 })),
+  ],
+};
+
 /**
  * The battle backdrop for each gym, keyed by gym id. Gyms whose own scene
  * hasn't been drawn yet battle in kernel city.
@@ -854,7 +1084,7 @@ export const BACKDROPS: Record<string, Backdrop> = {
   processes: FORK_GROVE,
   scheduling: CLOCKTOWER,
   sync: MUTEX_MARSH,
-  deadlocks: KERNEL_CITY,
+  deadlocks: GRIDLOCK_GYM,
   memory: KERNEL_CITY,
   virtual: KERNEL_CITY,
   storage: KERNEL_CITY,

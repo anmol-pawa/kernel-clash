@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
 import { SCENERY } from "@/game/sprites";
-import { BACKDROPS, CLOCKTOWER, FORK_GROVE, KERNEL_CITY, MUTEX_MARSH, backdropFor, type Backdrop } from "@/game/sprites/scenery";
+import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, KERNEL_CITY, MUTEX_MARSH, backdropFor, type Backdrop } from "@/game/sprites/scenery";
 
 const ALL: Backdrop[] = [...new Set(Object.values(BACKDROPS))];
 const size = (s: { idle: string[][] }) => ({ w: s.idle[0][0].length, h: s.idle[0].length });
@@ -53,6 +53,16 @@ describe("battle backdrops", () => {
     }
     expect(MUTEX_MARSH.specks.kind).toBe("fireflies");
     expect(new Set(MUTEX_MARSH.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("Gridlock Gym has its own scene: dusk street, intersection platform, stars and props", () => {
+    expect(backdropFor("deadlocks")).toBe(GRIDLOCK_GYM);
+    for (const other of [KERNEL_CITY, FORK_GROVE, CLOCKTOWER, MUTEX_MARSH]) {
+      expect(GRIDLOCK_GYM.horizon).not.toBe(other.horizon);
+      expect(GRIDLOCK_GYM.platform).not.toBe(other.platform);
+      expect(GRIDLOCK_GYM.sky).not.toEqual(other.sky);
+    }
+    expect(new Set(GRIDLOCK_GYM.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
   });
 
   for (const b of ALL)

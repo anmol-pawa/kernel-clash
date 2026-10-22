@@ -404,3 +404,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: trainer fighter stats and lines, dex order and status, `TRAINERS.deadlocks`, and the save test now keeps `deadlocks` trainer wins.
 - Verified: lint, typecheck, `npm test` (463 tests), `build:pages` (228 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): `/dev/sprites` and a Cyclowl trainer battle (banker and numeric questions). No console errors, no horizontal overflow. I reviewed the screenshots and tidied the back view's tail feathers. The attack animation was only checked in the sprite viewer.
 - Next: 2.5e the Gridlock Gym battle backdrop in `game/sprites/scenery.ts`.
+
+## 2026-10-22: 2.5e Gridlock Gym battle backdrop (run 46)
+- Main was green and no lock was held.
+- `game/sprites/scenery.ts`: `GRIDLOCK_GYM` backdrop (`BACKDROPS.deadlocks`): a dusk-orange sky, a skyline with lit windows over a gantry of red traffic lights and a jam of red/blue/yellow cars bumper to bumper, an asphalt ground with lane dashes, an intersection platform (crosswalk stripes, hazard rim), and props (kerb traffic lights stuck on red, nose-to-nose cars, cones, asphalt patches). Registered in `SCENERY` so `/dev/sprites` shows them.
+- Tests: Gridlock Gym backdrop distinct from the other four, prop and platform clearance (the standoff-cars prop was moved once the test caught an overlap).
+- Verified: lint, typecheck, `npm test` (472 tests), `build:pages` (230 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): a Cyclowl trainer battle (numeric and banker questions). No console errors, no horizontal overflow. I reviewed the screenshots.
+- Next: 2.6 memory management (split into sub-tasks first).
