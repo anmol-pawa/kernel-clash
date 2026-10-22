@@ -3,6 +3,7 @@ import { PAGING_TABLE, RACE_THREADS, type DiagramId } from "@/content/lessons";
 import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
+import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -1822,6 +1823,203 @@ function Wss() {
   );
 }
 
+/* ---- storage and file systems: the Disk Docks ---- */
+
+/** Harbour night: dark teal water with a few lamp glints. */
+function Dock({ seed = 0 }: { seed?: number }) {
+  return (
+    <>
+      <rect x={0} y={0} width={W} height={H} fill="#0f2a2a" />
+      {Array.from({ length: 30 }, (_, i) => (
+        <rect key={i} x={(i * 41 + seed * 17) % W} y={(i * 29 + seed * 13) % H} width={i % 3 ? 1 : 2} height={1} fill="#1f4a46" />
+      ))}
+    </>
+  );
+}
+
+/** Where the file's blocks sit for the three allocation methods, and the reads to reach block 9. */
+export const ALLOC_ROWS = [
+  { label: "CONTIGUOUS", note: "RUN OF BLOCKS: FAST, BUT FRAGMENTS", reads: 1 },
+  { label: "LINKED", note: "EACH BLOCK POINTS TO THE NEXT", reads: 10 },
+  { label: "INDEXED", note: "ONE INDEX BLOCK LISTS THEM ALL", reads: 2 },
+] as const;
+
+function Alloc() {
+  return (
+    <>
+      <Dock seed={1} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        WHERE ARE BLOCK 0 TO 4 OF THE FILE?
+      </Text>
+      {ALLOC_ROWS.map((r, i) => {
+        const y = 14 + i * 29;
+        return (
+          <g key={r.label}>
+            <Text x={4} y={y + 9} size={3.5} fill="#f8f4e6">
+              {r.label}
+            </Text>
+            {i === 0 && [0, 1, 2, 3, 4].map((k) => <Block key={k} x={50 + k * 11} y={y + 2} w={11} h={11} ramp={GOLD} />)}
+            {i === 1 &&
+              [0, 1, 2, 3, 4].map((k) => (
+                <g key={k}>
+                  <Block x={50 + k * 26} y={y + 2} w={11} h={11} ramp={PURPLE} />
+                  {k < 4 && <Arrow x1={61 + k * 26} y1={y + 7} x2={75 + k * 26} y2={y + 7} />}
+                </g>
+              ))}
+            {i === 2 && (
+              <>
+                <Block x={50} y={y + 2} w={16} h={11} ramp={TEAL} />
+                {[0, 1, 2, 3].map((k) => (
+                  <Block key={k} x={82 + k * 24} y={y + 2} w={11} h={11} ramp={GOLD} />
+                ))}
+              </>
+            )}
+            <Text x={4} y={y + 22} size={3} fill="#cfe4ff">
+              {`${r.note} - BLOCK 9: ${r.reads} ${r.reads === 1 ? "READ" : "READS"}`}
+            </Text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/** A Unix inode with 1 KB blocks and 4-byte pointers: 256 pointers per block. */
+export const INODE_EXAMPLE = { per: 256, blocks: inodeMaxBlocks(1024, 4), parts: [12, 256, 256 ** 2, 256 ** 3] };
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+function Inode() {
+  const rows = [
+    { t: "12 DIRECT", ramp: GOLD },
+    { t: "SINGLE INDIRECT", ramp: GREEN },
+    { t: "DOUBLE INDIRECT", ramp: TEAL },
+    { t: "TRIPLE INDIRECT", ramp: PURPLE },
+  ];
+  return (
+    <>
+      <Dock seed={2} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        INODE: 1 KB BLOCKS, 4-BYTE POINTERS
+      </Text>
+      {rows.map((r, i) => (
+        <g key={r.t}>
+          <Card x={4} y={14 + i * 17} w={62} h={14} ramp={r.ramp} lines={[r.t]} size={3.5} ink="#f8f4e6" />
+          <Text x={72} y={24 + i * 17} size={3.5} fill="#f8f4e6">
+            {i === 0 ? "12 BLOCKS" : i === 1 ? "256 BLOCKS" : i === 2 ? `256 X 256 = ${fmt(256 ** 2)}` : `256 CUBED = ${fmt(256 ** 3)}`}
+          </Text>
+        </g>
+      ))}
+      <Text x={90} y={90} size={3.5} fill="#7cf0c8" anchor="middle">
+        {`TOTAL = ${fmt(INODE_EXAMPLE.blocks)} BLOCKS`}
+      </Text>
+      <Text x={90} y={99} size={3.5} fill="#ffe27a" anchor="middle">
+        ABOUT 16 GIB: THE TRIPLE LEVEL DOMINATES
+      </Text>
+    </>
+  );
+}
+
+const JOURNAL_STEPS = ["1 LOG THE CHANGES", "2 WRITE COMMIT RECORD", "3 CHECKPOINT TO DISK", "4 FREE THE LOG ENTRY", "CRASH BEFORE 2", "CRASH AFTER 2"];
+
+/** The life of a journaled transaction and what recovery does at each crash point. */
+function Journal() {
+  return (
+    <>
+      <Dock seed={3} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        A JOURNALED TRANSACTION
+      </Text>
+      {JOURNAL_STEPS.map((t, i) => {
+        const x = 4 + (i % 2) * 88;
+        const y = 13 + Math.floor(i / 2) * 22;
+        const [n, ...rest] = t.split(" ");
+        return <Card key={i} x={x} y={y} w={84} h={18} lines={[n, rest.join(" ")]} size={3.5} ramp={i === 4 ? RED : i === 5 ? GREEN : i === 1 ? GOLD : TEAL} ink="#f8f4e6" />;
+      })}
+      <Text x={90} y={86} size={3.5} fill="#f8f4e6" anchor="middle">
+        BEFORE THE COMMIT: THROW THE LOG AWAY
+      </Text>
+      <Text x={90} y={95} size={3.5} fill="#7cf0c8" anchor="middle">
+        AFTER THE COMMIT: REPLAY (REDO) THE LOG
+      </Text>
+      <Text x={90} y={104} size={3} fill="#cfe4ff" anchor="middle">
+        THE FILE SYSTEM IS NEVER HALF-UPDATED
+      </Text>
+    </>
+  );
+}
+
+const RAID_LEVELS: RaidLevel[] = [0, 1, 5, 6, 10];
+/** Usable disks and guaranteed failure tolerance for four equal disks. */
+export const RAID_EXAMPLE = RAID_LEVELS.map((level) => ({ level, usable: raidUsableDisks(level, 4), survives: raidGuaranteedFailures(level) }));
+
+function Raid() {
+  return (
+    <>
+      <Dock seed={4} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        FOUR DISKS: HOW MUCH IS USABLE?
+      </Text>
+      {RAID_EXAMPLE.map((r, i) => {
+        const y = 13 + i * 17;
+        return (
+          <g key={r.level}>
+            <Text x={4} y={y + 9} size={3.5} fill="#f8f4e6">
+              {`RAID ${r.level}`}
+            </Text>
+            <Block x={40} y={y} w={r.usable * 16} h={12} ramp={r.survives === 0 ? RED : r.survives === 1 ? TEAL : GREEN} />
+            <Text x={40 + r.usable * 16 + 4} y={y + 8} size={3.5} fill="#ffe27a">
+              {`${r.usable} OF 4, SURVIVES ${r.survives}`}
+            </Text>
+          </g>
+        );
+      })}
+      <Text x={90} y={103} size={3} fill="#cfe4ff" anchor="middle">
+        RAID 5 SPREADS ONE DISK OF PARITY ACROSS ALL
+      </Text>
+    </>
+  );
+}
+
+const DISK_ROWS: { policy: DiskPolicy; label: string }[] = [
+  { policy: "fcfs", label: "FCFS" },
+  { policy: "sstf", label: "SSTF" },
+  { policy: "scan", label: "SCAN" },
+  { policy: "cscan", label: "C-SCAN" },
+  { policy: "look", label: "LOOK" },
+  { policy: "clook", label: "C-LOOK" },
+];
+/** Silberschatz Figure 11.4 (head at 53, heading up): cylinders moved by each policy. */
+export const DISK_BARS = Object.fromEntries(DISK_ROWS.map((r) => [r.policy, scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, r.policy, DISK_EXAMPLE.cylinders, "up").movement])) as Record<DiskPolicy, number>;
+
+function DiskSched() {
+  return (
+    <>
+      <Dock seed={5} />
+      <Text x={4} y={8} size={3.5} fill="#ffe27a">
+        HEAD AT 53, QUEUE 98 183 37 122 14 124 65 67
+      </Text>
+      {DISK_ROWS.map((r, i) => {
+        const n = DISK_BARS[r.policy];
+        const y = 13 + i * 14;
+        return (
+          <g key={r.policy}>
+            <Text x={4} y={y + 8} size={3.5} fill="#f8f4e6">
+              {r.label}
+            </Text>
+            <Block x={34} y={y} w={Math.round(n / 6)} h={10} ramp={r.policy === "fcfs" ? RED : r.policy === "sstf" || r.policy === "look" ? TEAL : GOLD} />
+            <Text x={34 + Math.round(n / 6) + 4} y={y + 8} size={3.5} fill="#ffe27a">
+              {`${n} CYL`}
+            </Text>
+          </g>
+        );
+      })}
+      <Text x={90} y={102} size={3} fill="#cfe4ff" anchor="middle">
+        SCAN GOES TO THE END, LOOK TURNS AT THE LAST REQUEST
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -1862,6 +2060,11 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   belady: { title: "Belady's anomaly: FIFO faults rise from 9 to 10 when a frame is added", draw: Belady },
   thrash: { title: "CPU utilisation collapses when too many processes thrash", draw: Thrash },
   wss: { title: "The working set at two moments of a program, with a window of ten references", draw: Wss },
+  alloc: { title: "Contiguous, linked and indexed file allocation, and the reads to reach block 9", draw: Alloc },
+  inode: { title: "A Unix inode with direct, single, double and triple indirect pointers", draw: Inode },
+  journal: { title: "The four steps of a journaled transaction and what recovery does after a crash", draw: Journal },
+  raid: { title: "Usable disks and failure tolerance for RAID 0, 1, 5, 6 and 10 on four disks", draw: Raid },
+  disk: { title: "Head movement of six disk-scheduling policies on the textbook queue", draw: DiskSched },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

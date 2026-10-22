@@ -3,6 +3,7 @@ import { roundRobin, sjf } from "@/game/sim/scheduling";
 import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, pageTableBytes, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
+import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk } from "@/game/sim/storage";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -12,7 +13,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk";
 
 export interface LessonPage {
   heading: string;
@@ -66,6 +67,7 @@ export const DETECT_CHECK = detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allo
 /** the graph check: P1 → R1, R1 → P2 and P2 → R2, where R2 is free */
 export const RAG_CHECK_EDGES = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"]] as const;
 const VMOVE = { name: "Recall", type: "memory", power: 30 } as const;
+const STMOVE = { name: "Defrag", type: "storage", power: 30 } as const;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -84,6 +86,12 @@ export const LRU_CHECK = faultCount(LRU_CHECK_REFS, 3, "lru");
 export const ANOMALY = { fifo: beladyAt(faultCurve(BELADY_EXAMPLE, "fifo", 7)), lru: beladyAt(faultCurve(BELADY_EXAMPLE, "lru", 7)), opt: beladyAt(faultCurve(BELADY_EXAMPLE, "opt", 7)) };
 export const WSS_CHECK_REFS = [2, 6, 1, 5, 7, 7, 7, 7, 5, 1];
 export const WSS_CHECK = workingSet(WSS_CHECK_REFS, WSS_CHECK_REFS.length - 1, 10).length;
+
+/** The storage quick checks' answers, computed by the simulators. */
+export const ALLOC_CHECK = blockReads("linked", 9);
+export const INODE_CHECK = inodeMaxBlocks(1024, 4);
+export const RAID_CHECK = raidUsableDisks(5, 6) * 2;
+export const LOOK_CHECK = scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, "look", DISK_EXAMPLE.cylinders, "up").movement;
 const table = (js: { name: string; burst: number }[]) => ["Proc  Burst", ...js.map((j) => `${j.name.padEnd(6)}${j.burst}`)].join("\n");
 
 export const LESSONS: Lesson[] = [
@@ -1316,6 +1324,156 @@ export const LESSONS: Lesson[] = [
       answer: WSS_CHECK,
       explain: "The distinct pages in the window are 1, 2, 5, 6 and 7, so the working set is {1, 2, 5, 6, 7} and its size is 5. The repeated 7s and the second 5 and 1 add nothing.",
       move: VMOVE,
+    },
+  },
+  {
+    id: "storage-alloc",
+    gym: "storage",
+    title: "File allocation",
+    pages: [
+      {
+        heading: "Three ways to lay out a file",
+        body: [
+          "A disk is an array of fixed-size blocks, and the file system decides which blocks belong to a file. Contiguous allocation gives a file one run of adjacent blocks: the directory stores only the start and the length, and both sequential and direct access are fast. But free space fragments externally, and a file that grows may have nowhere to go.",
+          "Linked allocation chains the blocks: each block holds a pointer to the next, so there is no external fragmentation and a file can grow freely. The price is that direct access is slow (reaching block n means following n links) and a damaged pointer loses the rest of the file. FAT keeps all the links in one table at the start of the disk to speed this up.",
+        ],
+        diagram: "alloc",
+      },
+      {
+        heading: "Indexed allocation",
+        body: [
+          "Indexed allocation gives each file an index block, an array of pointers to its data blocks. Direct access costs one read for the index block and one for the data block, and there is no external fragmentation. The cost is the index block itself, wasteful for tiny files, and a limit on file size when one index block is not enough.",
+          "That limit is what the Unix inode answers with multilevel indexing. Almost every modern file system is a variation on indexed allocation.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-alloc",
+      kind: "numeric",
+      prompt: "A file uses linked allocation and only its directory entry (the first block's address) is in memory. How many disk reads does it take to read the file's block 9 (counting from block 0)?",
+      answer: ALLOC_CHECK,
+      explain: "Block 0 is read from the address in the directory entry, and each block holds the address of the next. To reach block 9 you read blocks 0, 1, 2, ... 9 in turn: 10 reads. Contiguous allocation would need 1 and indexed allocation 2.",
+      move: STMOVE,
+    },
+  },
+  {
+    id: "storage-inode",
+    gym: "storage",
+    title: "Inodes and maximum file size",
+    pages: [
+      {
+        heading: "One inode per file",
+        body: [
+          "A Unix file is described by an inode that holds its owner, permissions, timestamps and size, and the addresses of its blocks, but not its name (names live in directories). The inode has a few direct pointers (12 is typical) that point straight at data blocks, so small files, the vast majority, need no extra reads.",
+          "Past that come a single indirect pointer (to a block of pointers), a double indirect pointer (to a block of blocks of pointers) and a triple indirect pointer. Each level multiplies the reach by the number of pointers that fit in a block.",
+        ],
+        diagram: "inode",
+      },
+      {
+        heading: "Counting the maximum",
+        body: [
+          "With block size B and pointer size P, one block holds B / P pointers. The largest file is (12 + B/P + (B/P)² + (B/P)³) blocks. With 1 KB blocks and 4-byte pointers that is 12 + 256 + 65,536 + 16,777,216 = 16,843,020 blocks, a little over 16 GiB.",
+          "Opening a file also costs a chain of reads: the inode, then up to three index blocks for a deep offset. Disk caches keep the hot ones in RAM. Hard links are extra directory names for one inode, which is why the inode, not the directory entry, holds the link count.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-inode",
+      kind: "numeric",
+      prompt: "An inode has 12 direct pointers plus single, double and triple indirect pointers. Blocks are 1 KB and each pointer is 4 bytes. How many data blocks can a file have at most?",
+      answer: INODE_CHECK,
+      explain: "A block holds 1024 / 4 = 256 pointers. Blocks reached: 12 direct + 256 (single) + 256² = 65,536 (double) + 256³ = 16,777,216 (triple) = 16,843,020.",
+      move: STMOVE,
+    },
+  },
+  {
+    id: "storage-journal",
+    gym: "storage",
+    title: "Directories and journaling",
+    pages: [
+      {
+        heading: "Directories",
+        body: [
+          "A directory is a file whose contents map names to inode numbers. A linear list is simple but slow to search; a hash table or a B-tree makes lookups fast in big directories. Resolving /home/ana/a.txt reads the root directory's inode and data, finds home, reads that, and so on down the path.",
+          "A hard link is another name for the same inode. A symbolic link is a small file that stores a path, so it can cross file systems and dangle if its target is deleted.",
+        ],
+      },
+      {
+        heading: "Surviving a crash",
+        body: [
+          "Creating a file touches several blocks: the bitmap, the inode, the directory and the data. A crash between those writes leaves the file system inconsistent, and checking it with fsck means scanning the whole disk.",
+          "A journaling file system first writes the intended changes to a log (the journal), then writes a commit record, and only then performs the real updates (the checkpoint) and frees the log entry. After a crash the OS replays the committed transactions and discards the ones with no commit record. Recovery takes seconds, not a full scan.",
+        ],
+        diagram: "journal",
+      },
+    ],
+    check: {
+      id: "lesson-journal",
+      prompt: "A journaling file system crashes after a transaction's commit record reached the log but before its changes were checkpointed to their final blocks. What does recovery do?",
+      options: ["Replay the logged transaction", "Throw the transaction away", "Run fsck over the whole disk", "Delete the file"],
+      answer: 0,
+      explain: "The commit record means the whole transaction is safely in the log, so recovery redoes it. A transaction with no commit record would be discarded instead, and no full scan is needed.",
+      move: STMOVE,
+    },
+  },
+  {
+    id: "storage-raid",
+    gym: "storage",
+    title: "RAID levels",
+    pages: [
+      {
+        heading: "Many disks, one volume",
+        body: [
+          "RAID combines several disks for speed, reliability or both. Striping spreads consecutive blocks across the disks so they are read in parallel; mirroring keeps copies; parity stores enough redundancy to rebuild a lost disk.",
+          "RAID 0 is striping only: n disks of capacity, but any failure loses everything. RAID 1 mirrors: half the capacity, survives one failure (more if they are on different pairs). RAID 10 stripes across mirrored pairs.",
+        ],
+        diagram: "raid",
+      },
+      {
+        heading: "Parity",
+        body: [
+          "RAID 5 stripes data with one block of parity per stripe, spread over all the disks. Parity is the XOR of the data blocks, so any one lost block is the XOR of the survivors. Usable capacity is n − 1 disks, and one disk can fail. Small writes are slow: read the old data and parity, write the new ones.",
+          "RAID 6 keeps two independent parities, so n − 2 disks are usable and two failures are survived: valuable on big arrays, where a second disk often fails during the long rebuild of the first. RAID is not a backup: it does not protect against deletion or corruption.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-raid",
+      kind: "numeric",
+      prompt: "A RAID 5 array has 6 disks of 2 TB each. How many TB are usable?",
+      answer: RAID_CHECK,
+      explain: "One disk's worth of space holds parity, so usable capacity is (6 − 1) × 2 TB = 10 TB.",
+      move: STMOVE,
+    },
+  },
+  {
+    id: "storage-disk",
+    gym: "storage",
+    title: "Disk scheduling",
+    pages: [
+      {
+        heading: "Seeking is the cost",
+        body: [
+          "On a magnetic disk the slow part is the seek: moving the head to the right cylinder. A scheduler orders the pending requests to cut the total head movement. Take Silberschatz's queue 98, 183, 37, 122, 14, 124, 65, 67 with the head at cylinder 53 on a 200-cylinder disk.",
+          "FCFS serves them in arrival order and moves 640 cylinders. SSTF always picks the closest request: 236 cylinders, but it can starve far-away requests. SCAN (the elevator) sweeps one way to the end of the disk and then back: 331 cylinders when heading up first.",
+        ],
+        diagram: "disk",
+      },
+      {
+        heading: "Circular and look variants",
+        body: [
+          "C-SCAN sweeps one way only: at the end it jumps straight back to cylinder 0 and sweeps again, which gives more uniform waiting times (382 cylinders counting the return jump). LOOK and C-LOOK are the practical versions, turning at the last request instead of the disk edge: LOOK moves 299 and C-LOOK 322 on this queue.",
+          "Seek time matters less on SSDs, which have no moving head, and Linux's I/O schedulers (deadline, BFQ, none for NVMe) are built around fairness and latency instead. Disk scheduling is still a classic interview computation: draw the head's path and add up the gaps.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-disk",
+      kind: "numeric",
+      prompt: "Queue 98, 183, 37, 122, 14, 124, 65, 67 with the head at cylinder 53, heading towards higher cylinders. How many cylinders does LOOK move in total?",
+      answer: LOOK_CHECK,
+      explain: "LOOK goes up from 53 to the highest request, 183 (130 cylinders), then turns round and goes down to the lowest, 14 (169 cylinders): 130 + 169 = 299. SCAN would go on to cylinder 199 first, adding 16 and 16 cylinders: 331.",
+      move: STMOVE,
     },
   },
 ];

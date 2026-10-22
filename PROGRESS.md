@@ -508,3 +508,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/storage.test.ts`, 16): Silberschatz Figure 11.4 queue from head 53: FCFS 640, SSTF 236 (order 65 67 37 14 98 122 124 183), SCAN down 236, SCAN up 331, C-SCAN 382 (183 without the jump), LOOK 208/299, C-LOOK 322 (153 without); inode and RAID arithmetic; edge cases.
 - Verified: lint, typecheck, `npm test` (612 tests), `build:pages` (252 files precached). No visual change, so no Playwright run.
 - Next: 2.8b the five Disk Docks lessons.
+
+## 2026-10-22: 2.8b Five Disk Docks lessons (run 60)
+- Main was green and no lock was held.
+- Five `storage` lessons in `content/lessons.ts`: file allocation, inodes and maximum file size, directories and journaling, RAID levels, disk scheduling, each with a pixel diagram (`alloc`, `inode`, `journal`, `raid`, `disk` in `components/lesson/Diagrams.tsx`, on a dark harbour backdrop) and a quick check with the storage move. Check answers and diagram figures come from `game/sim/storage.ts`.
+- Tests (`tests/lessons.test.ts`, +6): topic order, each diagram used once, storage move; linked block 9 takes 10 reads (1 contiguous, 2 indexed); 12 + 256 + 65,536 + 16,777,216 = 16,843,020 inode blocks; journal replay; RAID 5 on six 2 TB disks = 10 TB and the four-disk table; LOOK 299 and the Figure 11.4 bars (640, 236, 331, 382, 299, 322).
+- Verified: lint, typecheck, `npm test` (618 tests), `build:pages` (258 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion): all five lessons' diagrams reviewed (fixed a clipped FCFS label), no console errors, no horizontal overflow.
+- Next: 2.8c1 storage question pool and seeded generators.

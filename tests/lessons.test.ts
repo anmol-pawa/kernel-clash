@@ -14,6 +14,8 @@ import { FRAG_EXAMPLE, PAGING_EXAMPLE, PTABLE_EXAMPLE, SEGMENT_TRACES, TLB_EXAMP
 import { FIT_EXAMPLE, allocate } from "@/game/sim/memory";
 import { ANOMALY, DEMAND_CHECK, LRU_CHECK, WSS_CHECK } from "@/content/lessons";
 import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/components/lesson/Diagrams";
+import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
+import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -23,7 +25,8 @@ const SYNC_DIAGRAMS = ["race", "peterson", "semaphore", "monitor", "philosophers
 const DEADLOCK_DIAGRAMS = ["rag", "banker"];
 const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
 const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS];
+const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
+const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -509,5 +512,58 @@ describe("virtual-memory lessons", () => {
     expect(numeric("virtual-wss").answer).toBe(5);
     expect(WSS_CHECK).toBe(5);
     expect(WSS_EXAMPLE).toEqual({ t1: [1, 2, 5, 6, 7], t2: [3, 4] });
+  });
+});
+
+describe("storage lessons", () => {
+  const check = (id: string) => lessonById(id)!.check;
+  const numeric = (id: string) => {
+    const q = check(id);
+    if (q.kind !== "numeric") throw new Error("expected numeric");
+    return q;
+  };
+
+  it("cover the five Disk Docks topics in order, each diagram used once, with the storage move", () => {
+    const ls = lessonsOf("storage");
+    expect(ls.map((l) => l.id)).toEqual(["storage-alloc", "storage-inode", "storage-journal", "storage-raid", "storage-disk"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : []))).sort()).toEqual([...STORAGE_DIAGRAMS].sort());
+    for (const l of ls) expect(l.check.move.type).toBe("storage");
+  });
+
+  it("alloc check: linked allocation needs 10 reads for block 9; the diagram says 1, 10 and 2", () => {
+    expect(numeric("storage-alloc").answer).toBe(10);
+    expect(ALLOC_CHECK).toBe(10);
+    expect(ALLOC_ROWS.map((r) => r.reads)).toEqual([1, 10, 2]);
+  });
+
+  it("inode check: 12 + 256 + 65,536 + 16,777,216 = 16,843,020 blocks", () => {
+    expect(numeric("storage-inode").answer).toBe(16_843_020);
+    expect(INODE_CHECK).toBe(12 + 256 + 65_536 + 16_777_216);
+    expect(INODE_EXAMPLE.blocks).toBe(INODE_CHECK);
+    expect(grade(numeric("storage-inode"), { kind: "numeric", value: "16843020" })).toBe(true);
+  });
+
+  it("journal check: replay the committed transaction", () => {
+    const q = check("storage-journal");
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toBe("Replay the logged transaction");
+  });
+
+  it("RAID check: RAID 5 on six 2 TB disks leaves 10 TB; the diagram's four-disk rows are textbook", () => {
+    expect(numeric("storage-raid").answer).toBe(10);
+    expect(RAID_CHECK).toBe(10);
+    expect(RAID_EXAMPLE).toEqual([
+      { level: 0, usable: 4, survives: 0 },
+      { level: 1, usable: 2, survives: 1 },
+      { level: 5, usable: 3, survives: 1 },
+      { level: 6, usable: 2, survives: 2 },
+      { level: 10, usable: 2, survives: 1 },
+    ]);
+  });
+
+  it("disk check: LOOK moves 299; the diagram shows Silberschatz's 640, 236, 331, 382, 299 and 322", () => {
+    expect(numeric("storage-disk").answer).toBe(299);
+    expect(LOOK_CHECK).toBe(299);
+    expect(DISK_BARS).toEqual({ fcfs: 640, sstf: 236, scan: 331, cscan: 382, look: 299, clook: 322 });
   });
 });
