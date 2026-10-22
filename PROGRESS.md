@@ -426,3 +426,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/lessons.test.ts`, 7 new): lesson order and diagram coverage, each check's answer and wrong answer, and every number printed in the diagrams (60K free / 26K largest hole, 962 B waste, 4353 / 4052 / trap, 140 and 122 ns, frame 2 after 3 probes).
 - Verified: lint, typecheck, `npm test`, `build:pages` (236 files precached). Playwright on the static build at 1280×800 and iPhone 14 (reduced motion) opened all five lessons and read every diagram page: no console errors, no horizontal overflow. I fixed overlapping labels in `fit`, `tlb` and `segments` from the screenshots. I didn't answer the quick checks on screen.
 - Next: 2.6c a tap-to-translate question kind plus the memory question pool and generators.
+
+## 2026-10-22: 2.6c1 Memory question pool and generators (run 49)
+- Main was green and no lock was held. Split 2.6c into 2.6c1 (pool and generators on existing kinds) and 2.6c2 (the tap-to-translate kind) in `ROADMAP.md`.
+- `content/memoryGenerators.ts`: seven seeded generators: which hole a fit policy picks (policies chosen to disagree), internal fragmentation, logical→physical translation through a page table, single-level page-table size, TLB effective access time (one or two levels), outer-table bits of a two-level split, and segment lookups (address, limit trap or missing-segment trap).
+- `content/pools.ts`: `MEMORY_EXTRA` (14 authored questions: mcq, multi, numeric and order) and `POOLS.memory` (6 boss + 14 authored + 7 generators); generators registered in `GENERATORS` so the Leitner bank finds them.
+- Tests (`tests/memoryPool.test.ts`, 14): well-formed unique ids, every kind covered, authored keys, numbers against the simulators and Silberschatz's examples (36 pages / 962 B, 140 and 122 ns, 10+10+12), and each generator's answer re-derived by an independent plain computation over 100–300 seeds.
+- Verified: lint, typecheck, `npm test` (522 tests), `build:pages` (236 files precached). No UI change, so no screenshots this run.
+- Next: 2.6c2 the tap-to-translate question kind.

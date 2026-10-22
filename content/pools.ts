@@ -5,6 +5,7 @@ import { BASICS_GENERATORS } from "./basicsGenerators";
 import { PROCESS_GENERATORS } from "./processGenerators";
 import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
 import { DEADLOCK_GENERATORS } from "./deadlockGenerators";
+import { MEMORY_GENERATORS } from "./memoryGenerators";
 import { SYNC_GENERATORS } from "./syncGenerators";
 import { safety, type BankerState } from "@/game/sim/deadlock";
 import { increment } from "@/game/sim/sync";
@@ -703,12 +704,143 @@ export const DEADLOCK_EXTRA: Question[] = [
   },
 ];
 
+
+const mm = (name: string, power: number) => ({ name, type: "memory" as const, power });
+
+/** Memory management (Silberschatz ch. 9), beyond the six boss questions. */
+export const MEMORY_EXTRA: Question[] = [
+  {
+    id: "mm-internal",
+    prompt: "Paging has no external fragmentation. Which waste can it still have?",
+    options: ["Internal fragmentation: unused space in a process's last page", "External fragmentation: small holes between pages", "Both kinds in every page", "None at all"],
+    answer: 0,
+    explain: "Frames are all the same size, so any free frame fits any page. But a process rarely fills its last page exactly, and the rest of that frame is wasted: on average about half a page per process.",
+    move: mm("Snug Fit", 30),
+  },
+  {
+    id: "mm-compaction",
+    prompt: "What can remove external fragmentation from variable-size partitions?",
+    options: ["Compaction, which needs addresses bound at run time", "Choosing best fit instead of first fit", "Using bigger pages", "Splitting each hole in two"],
+    answer: 0,
+    explain: "Compaction slides processes together so the holes merge into one. It only works if processes can be relocated, i.e. address binding happens at execution time (a relocation register). Fit policies reduce fragmentation but never remove it.",
+    move: mm("Defrag", 34),
+  },
+  {
+    id: "mm-tlb-switch",
+    prompt: "Why must the TLB be flushed (or its entries tagged with an address-space ID) on a context switch?",
+    options: ["Its entries belong to the old process; the new one would otherwise be mapped to the wrong frames", "The TLB is too small to hold two processes", "Flushing makes the next process faster", "Page tables are rewritten on every switch"],
+    answer: 0,
+    explain: "A TLB entry says \"page 3 → frame 9\" for one process only. Without ASIDs the hardware can't tell whose entry it is, so stale entries must go. ASIDs let several processes' entries coexist and avoid the flush.",
+    move: mm("TLB Strike", 34),
+  },
+  {
+    id: "mm-ptbr",
+    prompt: "What does the page-table base register (PTBR) hold?",
+    options: ["The memory address of the running process's page table", "The page number of the last access", "The size of a page", "The address of the free-frame list"],
+    answer: 0,
+    explain: "Translation starts from PTBR + page number × entry size. A context switch loads the new process's page table address into it, which is why switching address spaces is cheap compared with copying tables.",
+    move: mm("Frame Shift", 32),
+  },
+  {
+    id: "mm-valid-bit",
+    prompt: "A page-table entry's valid bit is clear and the process touches that page. What happens?",
+    options: ["The hardware traps to the OS", "The access reads zeros", "The TLB supplies a frame", "The access silently succeeds"],
+    answer: 0,
+    explain: "A clear valid bit means the page is not a legal, mapped page of the process (or, with virtual memory, not in memory). The hardware raises a trap and the OS decides: kill the process or bring the page in.",
+    move: mm("Segfault", 34),
+  },
+  {
+    id: "mm-sharing",
+    prompt: "How can two processes share one copy of a library's code under paging?",
+    options: ["Map the same frames from both page tables (the code must be read-only and reentrant)", "Copy the library into each process's last page", "Give both processes the same page table", "It can't be done with paging"],
+    answer: 0,
+    explain: "Each process has its own page table, and entries in both can point to the same frames. Because the code is never modified, a single physical copy serves everyone.",
+    move: mm("Frame Shift", 32),
+  },
+  {
+    id: "mm-inverted",
+    prompt: "Compared with per-process page tables, an inverted page table…",
+    options: ["Uses less memory (one entry per frame) but needs a search, usually a hash, to translate", "Translates faster with no search", "Stores one entry per virtual page of every process", "Makes shared pages easier"],
+    answer: 0,
+    explain: "An inverted table has one entry per physical frame holding (pid, page), so its size follows physical memory, not the number of processes. The price is a search on every lookup (eased with a hash table) and harder page sharing.",
+    move: mm("Frame Shift", 34),
+  },
+  {
+    id: "mm-worst-fit",
+    prompt: "Which placement policy always carves the request out of the largest hole?",
+    options: ["Worst fit", "Best fit", "First fit", "Next fit"],
+    answer: 0,
+    explain: "Worst fit picks the largest hole, hoping the leftover is still big enough to use. Simulations (Silberschatz §9.2.2) show first and best fit usually do better on utilisation.",
+    move: mm("First Grab", 32),
+  },
+  {
+    kind: "multi",
+    id: "multi-mm-paging",
+    prompt: "Which statements about paging are true? Select all that apply.",
+    options: ["It causes no external fragmentation", "Physical memory is split into fixed-size frames", "A process's pages must sit next to each other in physical memory", "The last page of a process may be only partly used", "Every page table must fit in the TLB"],
+    answers: [0, 1, 3],
+    explain: "Pages can go in any free frames, so contiguity isn't needed and no external fragmentation arises. The cost is internal fragmentation in the last page. The TLB is only a small cache of recent translations; the full table lives in memory.",
+    move: mm("Snug Fit", 32),
+  },
+  {
+    kind: "multi",
+    id: "multi-mm-bigpages",
+    prompt: "Which are advantages of larger pages? Select all that apply.",
+    options: ["A smaller page table", "More memory covered by each TLB entry", "Less internal fragmentation", "More efficient disk transfers (a seek is paid once for more data)", "Finer-grained protection"],
+    answers: [0, 1, 3],
+    explain: "Bigger pages mean fewer pages, so fewer table entries, and each TLB entry reaches farther. Disk transfers amortise the seek. But more of the last page is wasted and protection is coarser, which is why sizes are a trade-off.",
+    move: mm("Frame Shift", 34),
+  },
+  {
+    kind: "numeric",
+    id: "num-mm-frames",
+    prompt: "Pages are 2,048 bytes. A process is 72,766 bytes. How many frames does it need?",
+    answer: 36,
+    explain: "⌈72,766 / 2,048⌉ = 36 (35 full pages cover 71,680 bytes; 1,086 bytes spill into a 36th). Internal fragmentation is 2,048 − 1,086 = 962 bytes (Silberschatz §9.3.2).",
+    move: mm("Snug Fit", 30),
+  },
+  {
+    kind: "numeric",
+    id: "num-mm-offset",
+    prompt: "A 32-bit logical address uses 4 KB pages. How many bits form the page offset?",
+    answer: 12,
+    explain: "4 KB = 2^12 bytes, so the low 12 bits select a byte within the page and the upper 32 − 12 = 20 bits are the page number.",
+    unit: "bits",
+    move: mm("Frame Shift", 32),
+  },
+  {
+    kind: "numeric",
+    id: "num-mm-ram",
+    prompt: "A machine has 2^20 frames of 4 KB each. How many GB of physical memory is that?",
+    answer: 4,
+    explain: "2^20 frames × 2^12 bytes = 2^32 bytes = 4 GB. Physical address = frame number (20 bits) followed by the offset (12 bits).",
+    unit: "GB",
+    move: mm("Frame Shift", 32),
+  },
+  {
+    kind: "order",
+    id: "order-mm-translate",
+    prompt: "A TLB miss on a paged system. Put the steps in order.",
+    steps: [
+      "Split the logical address into page number and offset",
+      "Search the TLB for the page number: no match",
+      "Read the page-table entry from memory (PTBR + page number)",
+      "Check the valid bit and load page → frame into the TLB",
+      "Join the frame number with the offset to form the physical address",
+      "Access memory at that physical address",
+    ],
+    explain: "The TLB is checked first; on a miss the hardware (or the OS) walks the page table in memory, which costs an extra memory access, then caches the mapping so the next access hits.",
+    move: mm("TLB Strike", 34),
+  },
+];
+
 export const POOLS: Record<string, Pool> = {
   basics: { authored: [...GYM_QUESTIONS.basics, ...BASICS_EXTRA], generators: BASICS_GENERATORS },
   processes: { authored: [...GYM_QUESTIONS.processes, ...PROCESSES_EXTRA], generators: PROCESS_GENERATORS },
   scheduling: { authored: [...GYM_QUESTIONS.scheduling, ...SCHEDULING_EXTRA], generators: SCHEDULING_GENERATORS },
   sync: { authored: [...GYM_QUESTIONS.sync, ...SYNC_EXTRA], generators: SYNC_GENERATORS },
   deadlocks: { authored: [...GYM_QUESTIONS.deadlocks, ...DEADLOCK_EXTRA], generators: DEADLOCK_GENERATORS },
+  memory: { authored: [...GYM_QUESTIONS.memory, ...MEMORY_EXTRA], generators: MEMORY_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
