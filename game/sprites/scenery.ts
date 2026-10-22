@@ -1359,6 +1359,184 @@ export const STUMP_PLATFORM: SpriteSheet = {
   idle: [stumpPlatform()],
 };
 
+/* ---------------------------------------------------------- Platter Peak */
+
+const PEAK_COLOURS = {
+  o: "#0c1620",
+  f: "#1c2c40",
+  F: "#2c4460",
+  n: "#3c5a78",
+  N: "#6e92b0",
+  w: "#e8f2fa",
+  d: "#26303c",
+  D: "#3e4c5c",
+  e: "#62758a",
+  E: "#9fb2c6",
+  r: "#e0483c",
+  R: "#ff8a70",
+  y: "#e8b84c",
+  Y: "#ffe08a",
+  s: "#141c26",
+  v: "#16283a",
+  V: "#3a6684",
+  k: "#586a7c",
+  K: "#8fa4b8",
+};
+
+/** The peak range: jagged snow-capped ridges with a huge platter rising behind them, its tracks ringed and a read arm reaching in. */
+function peakHorizon(): string[] {
+  const W = 160;
+  const H = 80;
+  const k = new PixelCanvas(W, H);
+  const rnd = lcg(131);
+  // the giant platter behind the range, tracks as concentric rings
+  const disc = new PixelCanvas(W, H);
+  disc.ellipse(104, 36, 34, 26, ["f", "F", "n"], [-0.4, -0.8]);
+  for (const [rx, ry] of [[26, 20], [18, 14], [10, 8]] as const) {
+    for (let a = 0; a < 360; a += 2) {
+      const t = (a * Math.PI) / 180;
+      disc.px(Math.round(104 + Math.cos(t) * rx), Math.round(36 + Math.sin(t) * ry), "N");
+    }
+  }
+  disc.ellipse(104, 36, 4, 3, ["d", "e", "E"], [-0.4, -0.8]);
+  // the actuator arm sweeping in from the left, ending in a red read head
+  disc.line(54, 14, 90, 34, "e");
+  disc.line(54, 15, 90, 35, "D");
+  disc.rect(86, 31, 6, 4, "r");
+  disc.px(87, 31, "R");
+  disc.outline("o");
+  k.stamp(disc.toGrid(), 0, 0);
+  // two ridges of peaks, far then near, with snow caps
+  const ridge = (base: number, peakH: number, step: number, body: string, cap: string, shade: string) => {
+    const r = new PixelCanvas(W, H);
+    let x = -4;
+    while (x < W) {
+      const w = step + Math.floor(rnd() * step);
+      const h = peakH - 6 + Math.floor(rnd() * 12);
+      for (let i = 0; i < w; i++) {
+        const t = i / (w - 1);
+        const y = base - Math.round(h * (1 - Math.abs(t * 2 - 1)));
+        for (let yy = y; yy < base; yy++) {
+          const c = yy - y < 5 && Math.abs(t - 0.5) < 0.22 && h > peakH - 4 ? cap : t > 0.5 ? shade : body;
+          if (x + i >= 0 && x + i < W) r.px(x + i, yy, c);
+        }
+      }
+      x += w - 2;
+    }
+    r.outline("o");
+    k.stamp(r.toGrid(), 0, 0);
+  };
+  ridge(H - 18, 34, 30, "F", "w", "f");
+  ridge(H - 8, 20, 26, "n", "w", "F");
+  // dark foot of the ridge so the platform reads against it
+  k.rect(0, H - 8, W, 8, "f");
+  k.rect(0, H - 8, W, 1, "o");
+  for (let i = 0; i < 12; i++) k.rect(Math.floor(rnd() * (W - 6)), H - 6 + Math.floor(rnd() * 5), 3 + Math.floor(rnd() * 3), 1, "F");
+  return k.toGrid();
+}
+
+export const PEAK_HORIZON: SpriteSheet = {
+  name: "Platter Peak range",
+  palette: PEAK_COLOURS,
+  idle: [peakHorizon()],
+};
+
+/** A stack of platters, each a thin disc with a bright rim and a spindle hole, leaning a little. */
+function platterStack(): string[] {
+  const k = new PixelCanvas(32, 30);
+  const discs: [number, number, number][] = [[16, 25, 14], [15, 20, 13], [17, 15, 12], [15, 10, 10], [16, 5, 8]];
+  for (const [cx, cy, rx] of discs) {
+    k.ellipse(cx, cy + 2, rx, 4, ["d", "D"], [0, -1]);
+    k.ellipse(cx, cy, rx, 4, ["k", "e", "E", "K"], [-0.3, -1]);
+    k.ellipse(cx, cy, rx - 5, 2, ["e", "k"], [0, -1]);
+    k.px(cx, cy, "s");
+  }
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PLATTER_STACK: SpriteSheet = {
+  name: "Platter stack",
+  palette: PEAK_COLOURS,
+  idle: [platterStack()],
+};
+
+/** A read-write head post: a pivot with an arm and a little red head, as if left parked on the slope. */
+function headPost(): string[] {
+  const k = new PixelCanvas(24, 34);
+  k.rect(10, 12, 4, 20, "e");
+  k.rect(10, 12, 1, 20, "E");
+  k.rect(5, 28, 14, 4, "D");
+  k.rect(5, 28, 14, 1, "e");
+  k.ellipse(12, 10, 4, 4, ["d", "e", "E"], [-0.4, -0.8]);
+  k.line(12, 10, 21, 20, "e");
+  k.line(12, 11, 21, 21, "D");
+  k.rect(19, 20, 4, 5, "r");
+  k.px(19, 20, "R");
+  k.px(12, 10, "y");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const HEAD_POST: SpriteSheet = {
+  name: "Head post",
+  palette: PEAK_COLOURS,
+  idle: [headPost()],
+};
+
+/** A slate boulder with a glint of snow. */
+function slateRock(): string[] {
+  const k = new PixelCanvas(20, 14);
+  k.ellipse(10, 8, 9, 5, ["d", "D", "e", "E"], [-0.5, -0.8]);
+  k.rect(5, 4, 5, 1, "w");
+  k.line(8, 6, 12, 9, "d");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const SLATE_ROCK: SpriteSheet = {
+  name: "Slate rock",
+  palette: PEAK_COLOURS,
+  idle: [slateRock()],
+};
+
+/** Ring-scored ground: a few concentric track arcs etched into the stone. */
+function trackScore(): string[] {
+  const k = new PixelCanvas(30, 8);
+  k.ellipse(15, 4, 14, 3, ["d", "D"], [0, -1]);
+  k.ellipse(15, 4, 9, 2, ["D", "d"], [0, -1]);
+  k.ellipse(15, 4, 4, 1, ["d", "D"], [0, -1]);
+  k.px(15, 4, "y");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const TRACK_SCORE: SpriteSheet = {
+  name: "Track score",
+  palette: PEAK_COLOURS,
+  idle: [trackScore()],
+};
+
+/** A platter platform: a disc whose rings are tracks, with the gold read head sitting on one. */
+function platterPlatform(): string[] {
+  const k = new PixelCanvas(74, 20);
+  k.ellipse(37, 13, 35, 6, ["s", "d", "D"], [-0.2, -1]);
+  k.ellipse(37, 9, 33, 7, ["k", "e", "E", "K"], [-0.3, -1]);
+  k.ellipse(37, 9, 25, 5, ["e", "k"], [0, -1]);
+  k.ellipse(37, 9, 16, 3, ["k", "e"], [0, -1]);
+  k.ellipse(37, 9, 5, 1, ["d", "D"], [0, -1]);
+  k.rect(46, 7, 6, 3, "y");
+  k.rect(46, 7, 6, 1, "Y");
+  k.outline("o");
+  return k.toGrid();
+}
+
+export const PLATTER_PLATFORM: SpriteSheet = {
+  name: "Platter platform",
+  palette: PEAK_COLOURS,
+  idle: [platterPlatform()],
+};
+
 /* ------------------------------------------------------------ Backdrops */
 
 /** A prop on the battle ground, placed in stage coordinates by its bottom centre. */
@@ -1527,6 +1705,28 @@ export const SWAPWOOD: Backdrop = {
   ],
 };
 
+export const PLATTER_PEAK: Backdrop = {
+  name: "Platter Peak",
+  sky: [0x0a1628, 0x112440, 0x1a3a5c, 0x2a5578, 0x4a7898, 0x86a8b8, 0xe8b890],
+  specks: { count: 36, color: 0xe8f4ff, kind: "stars" },
+  horizon: PEAK_HORIZON,
+  ground: { base: 0x3a4a5a, stripe: 0x44566a, edge: 0x1c2630 },
+  platform: PLATTER_PLATFORM,
+  props: [
+    { sheet: PLATTER_STACK, x: 100, y: 262, scale: 3 },
+    { sheet: PLATTER_STACK, x: 950, y: 440, scale: 3, flip: true },
+    { sheet: HEAD_POST, x: 40, y: 420, scale: 3 },
+    { sheet: HEAD_POST, x: 520, y: 292, scale: 2, flip: true },
+    { sheet: SLATE_ROCK, x: 340, y: 310, scale: 2 },
+    { sheet: SLATE_ROCK, x: 1080, y: 530, scale: 3, flip: true },
+    { sheet: SLATE_ROCK, x: 880, y: 330, scale: 2 },
+    { sheet: HEAD_POST, x: 520, y: 560, scale: 3 },
+    ...([
+      [220, 300], [420, 360], [620, 420], [680, 350], [800, 390], [440, 540], [700, 520], [860, 500], [1000, 400], [-40, 330],
+    ] as const).map(([x, y], i) => ({ sheet: TRACK_SCORE, x, y, scale: y < 340 ? 2 : 3, flip: i % 2 === 1 })),
+  ],
+};
+
 /**
  * The battle backdrop for each gym, keyed by gym id. Gyms whose own scene
  * hasn't been drawn yet battle in kernel city.
@@ -1539,7 +1739,7 @@ export const BACKDROPS: Record<string, Backdrop> = {
   deadlocks: GRIDLOCK_GYM,
   memory: HEAP_HARBOR,
   virtual: SWAPWOOD,
-  storage: KERNEL_CITY,
+  storage: PLATTER_PEAK,
   interview: KERNEL_CITY,
 };
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GYMS } from "@/content/gyms";
 import { SCENERY } from "@/game/sprites";
-import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, HEAP_HARBOR, KERNEL_CITY, MUTEX_MARSH, SWAPWOOD, backdropFor, type Backdrop } from "@/game/sprites/scenery";
+import { BACKDROPS, CLOCKTOWER, FORK_GROVE, GRIDLOCK_GYM, HEAP_HARBOR, KERNEL_CITY, MUTEX_MARSH, PLATTER_PEAK, SWAPWOOD, backdropFor, type Backdrop } from "@/game/sprites/scenery";
 
 const ALL: Backdrop[] = [...new Set(Object.values(BACKDROPS))];
 const size = (s: { idle: string[][] }) => ({ w: s.idle[0][0].length, h: s.idle[0].length });
@@ -84,6 +84,16 @@ describe("battle backdrops", () => {
     }
     expect(SWAPWOOD.specks.kind).toBe("fireflies");
     expect(new Set(SWAPWOOD.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("Platter Peak has its own scene: platter range, track platform, dawn sky, stars and props", () => {
+    expect(backdropFor("storage")).toBe(PLATTER_PEAK);
+    for (const other of [KERNEL_CITY, FORK_GROVE, CLOCKTOWER, MUTEX_MARSH, GRIDLOCK_GYM, HEAP_HARBOR, SWAPWOOD]) {
+      expect(PLATTER_PEAK.horizon).not.toBe(other.horizon);
+      expect(PLATTER_PEAK.platform).not.toBe(other.platform);
+      expect(PLATTER_PEAK.sky).not.toEqual(other.sky);
+    }
+    expect(new Set(PLATTER_PEAK.props.map((p) => p.sheet)).size).toBeGreaterThanOrEqual(4);
   });
 
   for (const b of ALL)
