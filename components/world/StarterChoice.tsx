@@ -62,8 +62,8 @@ export function StarterChoice() {
       <div className="absolute inset-0 -z-10" style={{ background: `linear-gradient(${SKY.map((c, i) => `${c} ${(i * 100) / SKY.length}% ${((i + 1) * 100) / SKY.length}%`).join(",")})` }} />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-[45%] bg-[#1d1640]" />
 
-      <section className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-        <header className="flex items-center justify-between gap-2">
+      <section className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] land:max-w-none land:grid land:flex-none land:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] land:content-start land:gap-x-6 land:gap-y-2 land:px-[max(1rem,env(safe-area-inset-left))] land:pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+        <header className="flex items-center justify-between gap-2 land:col-span-2">
           <Link href="/" className="flex min-h-11 items-center font-pixel text-[10px] text-[#ffd0dd] pixel-shadow">
             ◀ TITLE
           </Link>
@@ -81,9 +81,9 @@ export function StarterChoice() {
             </p>
           </div>
         ) : (
-          <>
-            <p className="msg-box p-3 font-pixel text-[10px] leading-5 sm:text-[11px] sm:leading-6">Three creatures hatched in the boot sector. Each beats one of the others and loses to the third. Who will you train with?</p>
-            <div className="flex items-end justify-center gap-1 sm:gap-4" role="radiogroup" aria-label="Starters">
+          <div className="flex flex-col gap-4 land:contents">
+            <p className="msg-box p-3 land:col-start-2 land:row-start-2 font-pixel text-[10px] leading-5 sm:text-[11px] sm:leading-6">Three creatures hatched in the boot sector. Each beats one of the others and loses to the third. Who will you train with?</p>
+            <div className="flex items-end justify-center gap-1 sm:gap-4 land:col-start-1 land:row-span-2 land:row-start-2 land:self-start" role="radiogroup" aria-label="Starters">
               {STARTERS.map((st) => {
                 const sel = st.id === s.id;
                 return (
@@ -100,13 +100,13 @@ export function StarterChoice() {
                     }}
                     className={`relative flex flex-col items-center rounded-[6px] px-1 pb-1 pt-2 transition-transform ${sel ? "-translate-y-2 outline-4 outline-[#ffe27a] [outline-style:dashed]" : "opacity-75"}`}
                   >
-                    <span className="hidden sm:block">
+                    <span className="hidden sm:block land:hidden">
                       <OnPlatform s={st} scale={2} />
                     </span>
-                    <span className="hidden min-[360px]:block sm:hidden">
+                    <span className="hidden min-[360px]:block sm:hidden land:hidden">
                       <OnPlatform s={st} scale={1.5} />
                     </span>
-                    <span className="min-[360px]:hidden">
+                    <span className="min-[360px]:hidden land:block">
                       <OnPlatform s={st} scale={1.1} />
                     </span>
                     <span className="mt-1 font-pixel text-[9px] text-white pixel-shadow">{st.name.toUpperCase()}</span>
@@ -114,10 +114,10 @@ export function StarterChoice() {
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
-        <div className="gb-box flex flex-col gap-2 p-3" data-testid="starter-card" aria-live="polite">
+        <div className={`gb-box flex flex-col gap-2 p-3 land:col-start-2 ${chosen ? "land:row-start-2" : "land:row-start-3"}`} data-testid="starter-card" aria-live="polite">
           <div className="flex items-center gap-2">
             <h2 className="flex-1 font-pixel text-[12px] leading-5">{S}</h2>
             <TypeBadge type={s.type} />
