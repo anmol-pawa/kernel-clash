@@ -209,7 +209,7 @@ function LessonReader({
       </div>
 
       {!checking ? (
-        <>
+        <div className="flex flex-col gap-3 land:grid land:grid-cols-[2fr_3fr] land:items-start">
           <div className="overflow-hidden rounded-[6px] border-4 border-[#1f1a3a] shadow-[0_4px_0_#0006]">
             {p.play === "race" ? (
               <InterleavePlay threads={RACE_THREADS} init={{ counter: 5 }} watch="counter" targets={RACE_VALUES} />
@@ -238,7 +238,7 @@ function LessonReader({
               </p>
             ))}
           </article>
-        </>
+        </div>
       ) : (
         <section className="flex flex-col gap-3" data-testid="lesson-check">
           <div className="msg-box flex items-start gap-3 px-4 py-3">
