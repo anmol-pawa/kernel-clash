@@ -618,3 +618,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Added `tests/saveCorruption.test.ts` (non-JSON/non-object input, wrongly-typed fields, number clamping, default round-trip). It found a real gap: `badges` accepted unknown ids and duplicates. `parseSave` now keeps only known gym ids, de-duplicated.
 - Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge, which I did not act on). No UI change. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. a visual pass of every lesson diagram on iPhone).
+
+## 2026-10-23: 4.4 Lesson visual pass (run 76)
+- Main was green locally and no lock was held. Verification-only task, no app code change.
+- Served the `build:pages` output and drove every lesson in all 8 lecture halls at iPhone 14 with Playwright, stepping through every page: no horizontal overflow, no svg/canvas/img/pre/table past the viewport, no console or page errors. I reviewed the disk-scheduling bar chart and the scheduling trainer page screenshots; both read well.
+- Verified: `build:pages` (285 files precached; passes on retry after Next's security nudge). No source change, so lint, typecheck and tests are unchanged from run 75. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. desktop-size visual pass, or battle screen at small iPhone SE width).
