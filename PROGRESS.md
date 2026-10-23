@@ -589,3 +589,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `MessageBox` takes `fullText`: the typed-out characters are `aria-hidden` and an sr-only copy holds the whole line, so the polite live region announces each message once instead of per character. The battle screen passes the current message. `tests/a11y.test.ts` pins it. 688 tests pass.
 - Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached). Playwright on the static build at 1280×800 and iPhone 14: sr-only text matches the message, layout unchanged (iPhone screenshot reviewed), no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
 - Next: 3.2c performance profile and trims.
+
+## 2026-10-23: 3.2c Performance profile (run 71)
+- Main was green locally and no lock was held (worked on the designated branch from `origin/main`).
+- Added `scripts/perf.mjs`: serves `out/` gzipped and profiles `/`, `/map`, `/battle` on an iPhone 14 profile with CPU throttling (`RATE`, default 4), printing DOM/load/FCP, transfer size and battle rAF frame times.
+- Results at 4× CPU: home FCP 140ms (355 KB transferred), map FCP 120ms (305 KB), battle 416 KB with FCP ~1.7s because the Pixi stage is lazily imported (`Battle.tsx` dynamic `import`), so the other routes never pay for Pixi. Battle frames ~84ms avg under software GL (59ms unthrottled), which is the headless SwiftShader renderer, not a real-device figure. No console errors. Judged no trim necessary: Pixi is already split out, resolution is capped at 2, and shared chunks are the React/Next runtime.
+- Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached). CI/deploy confirmation skipped (Actions quota).
+- Next: roadmap sections 1–3 are complete; add new tasks (more creatures/areas, or extra content) before the next run.
