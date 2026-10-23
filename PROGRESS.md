@@ -613,3 +613,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Served the `build:pages` output under `/kernel-clash/` and drove it with Playwright at iPhone 14: loaded `/` online, waited for the service worker, set the context offline, then navigated to `/`, map, dex, daily, interview, review, starter, battle, `learn/basics`, `learn/memory`, `gym/basics` and `gym/interview`. All returned 200 with the right content, no horizontal overflow, no page errors. (`/learn/` alone has no index page, as designed.)
 - Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. save-file migration/corruption tests, or a visual pass of every lesson diagram on iPhone).
+
+## 2026-10-23: 4.3 Save corruption tests (run 75)
+- Main was green locally and no lock was held. Added `tests/saveCorruption.test.ts` (non-JSON/non-object input, wrongly-typed fields, number clamping, default round-trip). It found a real gap: `badges` accepted unknown ids and duplicates. `parseSave` now keeps only known gym ids, de-duplicated.
+- Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge, which I did not act on). No UI change. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. a visual pass of every lesson diagram on iPhone).

@@ -107,3 +107,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 - [x] 4.1 Whole-bank audit test (`tests/bankAudit.test.ts`): unique ids across every gym pool, every generator deterministic and well-formed over 40 seeds.
 - [x] 4.2 Offline-reload Playwright check: after one online load, reload every route (title, map, dex, daily, interview, review, starter, battle, lessons, gyms) with the network off.
+- [x] 4.3 Save-file corruption tests (`tests/saveCorruption.test.ts`); `parseSave` now keeps only known, de-duplicated badges.

@@ -101,7 +101,7 @@ export function parseSave(raw: string | null): SaveData {
     const d = JSON.parse(raw) as Partial<SaveData>;
     return {
       ...DEFAULT_SAVE,
-      badges: Array.isArray(d.badges) ? d.badges.filter((b): b is string => typeof b === "string") : [],
+      badges: Array.isArray(d.badges) ? [...new Set(d.badges.filter((b): b is string => typeof b === "string" && GYMS.some((g) => g.id === b)))] : [],
       lastGym: typeof d.lastGym === "string" ? d.lastGym : null,
       starter: typeof d.starter === "string" && STARTERS.some((s) => s.id === d.starter) ? d.starter : null,
       xp: parseXp(d.xp),
