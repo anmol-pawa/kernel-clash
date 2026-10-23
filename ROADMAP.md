@@ -117,3 +117,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 4.10 Landscape phone lesson pages: mascot/diagram on the left, lesson text on the right (`land` variant). Gym gate and lesson list already fit.
 - [x] 4.11 Landscape phone interview scorecard: verdict and answers on the left, topic bars on the right (`land` variant). The ask screen already fit.
 - [x] 4.12 Landscape phone title screen: title and buttons on the left, mascot on the right (`land` variant), so it fits without scrolling.
+- [x] 4.13 Landscape pass of the gym trainer battle and boss gate (iPhone 14 landscape, portrait, desktop): both already fit with no overflow, so no code change.

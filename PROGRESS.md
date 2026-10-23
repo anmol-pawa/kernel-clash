@@ -665,3 +665,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. At iPhone 14 landscape the title screen cut the mascot off and pushed the buttons below the fold. `app/page.tsx` now uses the `land` variant: title, start and quick-battle buttons and message box in the left column, mascot (0.75x) on the right. Portrait and desktop unchanged. The sprite viewer needed no change.
 - Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build at iPhone 14 landscape, portrait and 1280x800: title and /dev/sprites, no console errors, no horizontal overflow; reviewed landscape and portrait screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. a landscape pass of the gym trainer-battle flow).
+
+## 2026-10-23: 4.13 Landscape gym trainer flow (run 85)
+- Main was green locally and no lock was held. Checked the trainer battle (it reuses `Battle`, so it inherits the 4.6 landscape layout) and the gym gate at iPhone 14 landscape, portrait and 1280×800 with a save holding one badge. No console errors, no horizontal overflow, screenshots reviewed: both fit, so no code change.
+- Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
+- Next: the roadmap is complete and the hardening passes now cover every screen in landscape; a future run could add a new hardening task or content depth (more questions per gym).
