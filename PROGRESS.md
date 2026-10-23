@@ -655,3 +655,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. At iPhone 14 landscape (750x340) the lesson page's mascot stage filled the screen and the text sat below the fold. `LessonReader` now uses the `land` variant: stage/diagram left (40%), text right. The lesson list and gym gate already fit. Portrait and desktop unchanged.
 - Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build at iPhone 14 landscape: lesson list, lesson page, gym gate, no console errors, no horizontal overflow; reviewed the screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. landscape quick-check and interview results screens).
+
+## 2026-10-23: 4.11 Landscape interview scorecard (run 83)
+- Main was green locally and no lock was held. At iPhone 14 landscape the interview question screen already fit; the scorecard was a long single-column scroll. `Card` in `Interview.tsx` now uses the `land` variant: verdict and per-question list on the left, topic bars on the right, buttons across the bottom. Portrait and desktop unchanged.
+- Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright (fake clock to time out all ten questions) at iPhone 14 landscape, portrait and 1280×800: ask and scorecard, no console errors, no horizontal overflow; reviewed landscape and portrait screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. landscape quick-check and trainer-battle screens).

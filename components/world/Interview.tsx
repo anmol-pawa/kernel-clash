@@ -124,8 +124,8 @@ function Ask({ q, index, total, onDone }: { q: Question; index: number; total: n
 function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boolean; onAgain: () => void }) {
   const sc = scorecard(answers);
   return (
-    <div className="flex flex-col gap-3" data-testid="scorecard" data-verdict={sc.verdict}>
-      <div className="gb-box flex flex-col items-center gap-1 p-4 text-center">
+    <div className="flex flex-col gap-3 land:grid land:grid-cols-2 land:items-start" data-testid="scorecard" data-verdict={sc.verdict}>
+      <div className="gb-box flex flex-col items-center gap-1 p-4 text-center land:col-start-1 land:row-start-1">
         <p className="font-pixel text-[9px] text-[#5a5078]">VERDICT</p>
         <p className="font-pixel text-lg" style={{ color: VERDICT_TINT[sc.verdict], textShadow: "2px 2px 0 #1a1430" }} data-testid="verdict">
           {sc.verdict.toUpperCase()}
@@ -137,7 +137,7 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
         {isBest && <p className="font-pixel text-[9px] text-[#b8283e]">NEW BEST!</p>}
       </div>
 
-      <ul className="gb-box flex flex-col gap-2 p-3" aria-label="Topics">
+      <ul className="gb-box flex flex-col gap-2 p-3 land:col-start-2 land:row-span-2 land:row-start-1" aria-label="Topics">
         {sc.topics.map((t) => (
           <li key={t.topic} className="flex flex-col gap-1" data-testid="topic-row" data-correct={t.correct} data-total={t.total}>
             <div className="flex justify-between font-pixel text-[9px]">
@@ -154,7 +154,7 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
         {sc.weakest && <p className="text-[14px]">Weakest topic: {sc.weakest}. Its gym lessons are the place to start.</p>}
       </ul>
 
-      <ol className="gb-box flex flex-col gap-1 p-3" aria-label="Answers">
+      <ol className="gb-box flex flex-col gap-1 p-3 land:col-start-1 land:row-start-2" aria-label="Answers">
         {answers.map((a, i) => (
           <li key={a.id} className="flex items-center justify-between gap-2 font-pixel text-[8px]">
             <span>
@@ -167,7 +167,7 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
         ))}
       </ol>
 
-      <div className="flex gap-2.5">
+      <div className="flex gap-2.5 land:col-span-2 land:row-start-3">
         <button type="button" onClick={onAgain} className={END_BUTTON} data-testid="interview-again">
           ▶ AGAIN
         </button>
