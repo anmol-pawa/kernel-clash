@@ -103,8 +103,11 @@ export function StarterChoice() {
                     <span className="hidden sm:block">
                       <OnPlatform s={st} scale={2} />
                     </span>
-                    <span className="sm:hidden">
+                    <span className="hidden min-[360px]:block sm:hidden">
                       <OnPlatform s={st} scale={1.5} />
+                    </span>
+                    <span className="min-[360px]:hidden">
+                      <OnPlatform s={st} scale={1.1} />
                     </span>
                     <span className="mt-1 font-pixel text-[9px] text-white pixel-shadow">{st.name.toUpperCase()}</span>
                   </button>

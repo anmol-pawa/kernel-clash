@@ -624,3 +624,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Served the `build:pages` output and drove every lesson in all 8 lecture halls at iPhone 14 with Playwright, stepping through every page: no horizontal overflow, no svg/canvas/img/pre/table past the viewport, no console or page errors. I reviewed the disk-scheduling bar chart and the scheduling trainer page screenshots; both read well.
 - Verified: `build:pages` (285 files precached; passes on retry after Next's security nudge). No source change, so lint, typecheck and tests are unchanged from run 75. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. desktop-size visual pass, or battle screen at small iPhone SE width).
+
+## 2026-10-23: 4.5 iPhone SE / desktop pass (run 77)
+- Main was green locally and no lock was held. Every ROADMAP item was ticked, so I added 4.5.
+- Drove battle, map, interview and starter at 320×568 (iPhone SE) and 1280×800: no console errors, no horizontal document overflow. Screenshots showed the starter row clipped on both sides at 320 px (three 1.5x sprites do not fit). `StarterChoice` now uses a 1.1x scale below 360 px; checked at 320, 375 and 390 px (row inside the viewport at all three).
+- Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. landscape iPhone battle layout).
