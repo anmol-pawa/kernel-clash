@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
+import { dayKey, liveStreak, playedToday } from "@/game/engine/daily";
 import { GYMS, MOCK_INTERVIEW_GYM } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
 import { liveDeck } from "@/content/questionBank";
@@ -65,6 +66,19 @@ function InterviewLink({ save }: { save: SaveData }) {
     <Link href="/interview" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="interview-link">
       <span>▶ MOCK INTERVIEW</span>
       <span className="text-[#5a5078]">{best ? `BEST ${best.points}/${best.max}` : "10 Q"}</span>
+    </Link>
+  );
+}
+
+/** Opens the daily challenge, with the current streak. */
+function DailyLink({ save }: { save: SaveData }) {
+  const today = dayKey(new Date());
+  const streak = liveStreak(save.daily, today);
+  const played = playedToday(save.daily, today);
+  return (
+    <Link href="/daily" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="daily-link">
+      <span>▶ DAILY</span>
+      {played ? <span className="text-[#2f7a2a]">DONE · {streak}🔥</span> : <span className="rounded-[2px] bg-[#e8566b] px-1.5 py-0.5 text-white">NEW{streak > 0 ? ` · ${streak}🔥` : ""}</span>}
     </Link>
   );
 }
@@ -158,10 +172,11 @@ export function RegionMap() {
 
         {save.starter && <PartnerCard save={save} />}
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
           <DexLink save={save} />
           <ReviewLink save={save} />
           <InterviewLink save={save} />
+          <DailyLink save={save} />
         </div>
 
         {/* the map */}

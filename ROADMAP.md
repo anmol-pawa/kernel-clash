@@ -96,5 +96,5 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 ## 3. Polish
 
-- [ ] 3.1 Daily challenge (date-seeded) and streaks.
+- [x] 3.1 Daily challenge (date-seeded) and streaks.
 - [ ] 3.2 Accessibility and performance pass on iPhone.

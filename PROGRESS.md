@@ -568,3 +568,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `tests/interviewLink.test.ts`: the constant is the last gym and `/interview` exists.
 - Verified: lint, typecheck, `npm test`, `build:pages` (275 files precached). Playwright on the static build at 1280×800 and iPhone 14 with eight badges: the MOCK button shows on the card, navigates to `/interview`, no console errors, no horizontal overflow. I reviewed the iPhone screenshot. CI/deploy confirmation skipped (Actions quota).
 - Next: 3.1 daily challenge (date-seeded) and streaks.
+
+## 2026-10-23: 3.1 Daily challenge and streaks (run 68)
+- Main was green locally and no lock was held.
+- `game/engine/daily.ts` (pure): local `dayKey`, `previousDay`, FNV `daySeed`, `finishDaily` (streak +1 on consecutive days, reset after a gap, best kept, a second finish the same day is a no-op) and `liveStreak`. `content/daily.ts`: `dailyQuestions(day)` draws 5 distinct cards from the whole bank (`BANK_KEYS`), generators seeded by the day, so everyone gets the same set.
+- `/daily` screen (`components/world/Daily.tsx`): intro with streak, five untimed questions through `AnswerPanel` with explanations, a result card with streak and best; answers feed the Leitner box. A DAILY link on the map shows NEW/DONE and the streak. `lib/save.ts` gains a validated `daily` field.
+- Tests (`tests/daily.test.ts`): date maths across month/year/leap boundaries, streak rules, 60 days of questions (deterministic, five distinct, well-formed, varied), save parsing. 685 tests pass.
+- Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached; first attempt stops on Next's security nudge, passes on retry). Playwright on the static build at 1280×800 and iPhone 14: played all five questions (streak 3 → 4), reviewed the intro, result and map link; fixed an oversized MAP button; no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
+- Next: 3.2 accessibility and performance pass on iPhone.

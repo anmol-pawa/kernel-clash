@@ -14,6 +14,9 @@ for (const q of SAMPLE_QUESTIONS) AUTHORED.set(cardKey(q), { q, from: "Practice"
 for (const g of GYMS) for (const q of [...(GYM_QUESTIONS[g.id] ?? []), ...(POOLS[g.id]?.authored ?? [])]) AUTHORED.set(cardKey(q), { q, from: g.name });
 const GEN = new Map(GENERATORS.map((g) => [g.id, g]));
 
+/** Every card key the bank holds, in a stable order. */
+export const BANK_KEYS: readonly string[] = [...AUTHORED.keys(), ...GEN.keys()].sort();
+
 /** Whether a card key names a question the game still has. */
 export const inBank = (key: string) => AUTHORED.has(key) || GEN.has(key);
 

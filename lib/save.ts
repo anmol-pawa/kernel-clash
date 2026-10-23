@@ -9,6 +9,7 @@ import { DEX_IDS, dexEntry, dexStatus } from "@/content/kerneldex";
 import { LESSON_IDS } from "@/content/lessons";
 import { GYMS } from "@/content/gyms";
 import { START_XP, STARTERS } from "@/content/starters";
+import { NO_DAILY, finishDaily, isDayKey, DAILY_LENGTH, type DailyState } from "@/game/engine/daily";
 import { parseDeck, review, type Deck } from "@/game/engine/leitner";
 import { TRAINER_BATTLES } from "@/game/world/gymBattle";
 
@@ -36,6 +37,8 @@ export interface SaveData {
   trainers: Record<string, number>;
   /** best mock-interview result (null until one is finished) */
   interviewBest: InterviewBest | null;
+  /** daily-challenge streak and last result */
+  daily: DailyState;
 }
 
 export interface InterviewBest {
@@ -47,7 +50,7 @@ export interface InterviewBest {
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [], trainers: {}, interviewBest: null };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [], trainers: {}, interviewBest: null, daily: NO_DAILY };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -80,6 +83,14 @@ function parseInterviewBest(v: unknown): InterviewBest | null {
   return b.total > 0 && b.correct <= b.total && b.points <= b.max ? b : null;
 }
 
+function parseDaily(v: unknown): DailyState {
+  if (!v || typeof v !== "object") return NO_DAILY;
+  const { last, score, streak, best } = v as Record<string, unknown>;
+  const int = (n: unknown, max: number): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= max;
+  if (!isDayKey(last) || !int(score, DAILY_LENGTH) || !int(streak, 100000) || !int(best, 100000) || streak < 1 || best < streak) return NO_DAILY;
+  return { last, score, streak, best };
+}
+
 /** A list of known Kerneldex ids, de-duplicated. */
 const parseDex = (v: unknown): string[] => (Array.isArray(v) ? [...new Set(v.filter((e): e is string => typeof e === "string" && DEX_IDS.has(e)))] : []);
 
@@ -101,6 +112,7 @@ export function parseSave(raw: string | null): SaveData {
       lessons: Array.isArray(d.lessons) ? [...new Set(d.lessons.filter((e): e is string => typeof e === "string" && LESSON_IDS.has(e)))] : [],
       trainers: parseTrainers(d.trainers),
       interviewBest: parseInterviewBest(d.interviewBest),
+      daily: parseDaily(d.daily),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -183,6 +195,15 @@ export function saveInterview(r: InterviewBest): boolean {
   const best = getSave().interviewBest;
   if (best && best.points >= r.points) return false;
   updateSave((s) => ({ ...s, interviewBest: r }));
+  return true;
+}
+
+/** Record a finished daily challenge (once per day). Returns true when it counted. */
+export function saveDaily(today: string, score: number): boolean {
+  const before = getSave().daily;
+  const after = finishDaily(before, today, score);
+  if (after === before) return false;
+  updateSave((s) => ({ ...s, daily: after }));
   return true;
 }
 
