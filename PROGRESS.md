@@ -553,3 +553,11 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/interviewPool.test.ts`, `tests/interview.test.ts`): well-formed, unique ids, right and wrong answers graded for every question; computed answers checked against `roundRobin` (Silberschatz 5.3.4: waits 6, 4, 7), `effectiveAccessTime`, `pagesFor` and plain loops; topic coverage and balance; scoring and verdict thresholds.
 - Verified: lint, typecheck, `npm test` (668 tests), `build:pages` (264 files precached; the first attempt stopped on Next's security-upgrade nudge and passed on retry, Next not upgraded). No UI change, so no screenshots. CI and deploy confirmation skipped (Actions quota).
 - Next: 2.9c the `/interview` screen.
+
+## 2026-10-23: 2.9c The /interview screen (run 66)
+- Main was green and no lock was held.
+- `components/world/Interview.tsx` + `app/interview/page.tsx`: intro with best score, then ten timed questions (countdown bar per `limitFor`, reusing `AnswerPanel`, Gantt chart when a question has one, explanation and NEXT after each answer, time-outs count as wrong), then a scorecard (verdict, points, per-topic bars, weakest topic, per-question marks, AGAIN/MAP). Answers feed the Leitner box via `recordAnswer`.
+- `lib/save.ts`: `interviewBest` (validated in `parseSave`) and `saveInterview` (keeps the higher score). A "MOCK INTERVIEW" link with the best score sits on the map next to Dex/Review.
+- Tests: `tests/interviewSave.test.ts` (parse and reject malformed bests). 671 tests pass.
+- Verified: lint, typecheck, `npm test`, `build:pages` (first attempt hit Next's security-nudge exit, passed on retry; Next not upgraded; 275 files precached). Playwright at 1280×800 and iPhone 14 (fake clock to fast-forward timeouts): played all ten questions on both, scorecard and map reviewed, no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
+- Next: 2.9d link from the Kernel Summit gym card and extra coverage.

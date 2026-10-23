@@ -34,11 +34,20 @@ export interface SaveData {
   lessons: string[];
   /** trainer battles won per gym id (0 to TRAINER_BATTLES; gyms with no wins aren't listed) */
   trainers: Record<string, number>;
+  /** best mock-interview result (null until one is finished) */
+  interviewBest: InterviewBest | null;
+}
+
+export interface InterviewBest {
+  points: number;
+  max: number;
+  correct: number;
+  total: number;
 }
 
 const KEY = "kernel-clash-save-v1";
 
-export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [], trainers: {} };
+export const DEFAULT_SAVE: SaveData = { version: 1, badges: [], lastGym: null, starter: null, xp: {}, evolved: [], seen: [], caught: [], leitner: {}, lessons: [], trainers: {}, interviewBest: null };
 
 let cache: SaveData | null = null;
 const listeners = new Set<() => void>();
@@ -62,6 +71,15 @@ function parseTrainers(v: unknown): Record<string, number> {
   return out;
 }
 
+function parseInterviewBest(v: unknown): InterviewBest | null {
+  if (!v || typeof v !== "object") return null;
+  const { points, max, correct, total } = v as Record<string, unknown>;
+  const ok = [points, max, correct, total].every((n) => typeof n === "number" && Number.isInteger(n) && n >= 0);
+  if (!ok) return null;
+  const b = { points, max, correct, total } as InterviewBest;
+  return b.total > 0 && b.correct <= b.total && b.points <= b.max ? b : null;
+}
+
 /** A list of known Kerneldex ids, de-duplicated. */
 const parseDex = (v: unknown): string[] => (Array.isArray(v) ? [...new Set(v.filter((e): e is string => typeof e === "string" && DEX_IDS.has(e)))] : []);
 
@@ -82,6 +100,7 @@ export function parseSave(raw: string | null): SaveData {
       leitner: parseDeck(d.leitner),
       lessons: Array.isArray(d.lessons) ? [...new Set(d.lessons.filter((e): e is string => typeof e === "string" && LESSON_IDS.has(e)))] : [],
       trainers: parseTrainers(d.trainers),
+      interviewBest: parseInterviewBest(d.interviewBest),
     };
   } catch {
     return { ...DEFAULT_SAVE };
@@ -157,6 +176,14 @@ export const trainerWins = (s: SaveData, gymId: string) => s.trainers[gymId] ?? 
 export function saveTrainerWin(gymId: string): number {
   updateSave((s) => ({ ...s, trainers: { ...s.trainers, [gymId]: Math.min(TRAINER_BATTLES, trainerWins(s, gymId) + 1) } }));
   return trainerWins(getSave(), gymId);
+}
+
+/** Keep a finished mock interview if it beats the best so far (by points). Returns true for a new best. */
+export function saveInterview(r: InterviewBest): boolean {
+  const best = getSave().interviewBest;
+  if (best && best.points >= r.points) return false;
+  updateSave((s) => ({ ...s, interviewBest: r }));
+  return true;
 }
 
 export function resetSave() {

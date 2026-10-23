@@ -58,6 +58,17 @@ function ReviewLink({ save }: { save: SaveData }) {
   );
 }
 
+/** Opens the timed mock interview, with the best score so far. */
+function InterviewLink({ save }: { save: SaveData }) {
+  const best = save.interviewBest;
+  return (
+    <Link href="/interview" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="interview-link">
+      <span>▶ MOCK INTERVIEW</span>
+      <span className="text-[#5a5078]">{best ? `BEST ${best.points}/${best.max}` : "10 Q"}</span>
+    </Link>
+  );
+}
+
 /** The partner's level, HP and XP to the next level; taps through to the partner screen. */
 function PartnerCard({ save }: { save: SaveData }) {
   const st = starterById(save.starter);
@@ -147,9 +158,10 @@ export function RegionMap() {
 
         {save.starter && <PartnerCard save={save} />}
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
           <DexLink save={save} />
           <ReviewLink save={save} />
+          <InterviewLink save={save} />
         </div>
 
         {/* the map */}
