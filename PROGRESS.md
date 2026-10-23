@@ -601,3 +601,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Profiled `/battle` and `/battle?gym=processes` on the static build at iPhone 14 with Chromium CDP 4x CPU throttle: script time is about 0.036 s per second (~3.5% of a core), layout 0.006, JS heap about 12 MB, Pixi canvas ready in about 5 s throttled (1.8 s unthrottled) including the dynamic Pixi import. The main thread is otherwise saturated only by SwiftShader software GL in the sandbox, which says nothing about a real iPhone GPU, so frame rate here (7-10 fps) is not meaningful. Caching the static backdrop as a texture was considered and rejected: it would need a texture wider than 4096 px at 2x resolution (iOS limits) or blur the pixel art at 1x.
 - Verified: lint, typecheck, `npm test` (688 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). No console errors. CI/deploy confirmation skipped (Actions quota).
 - Next: Section 3 is complete; pick the next unchecked ROADMAP item (add new polish tasks if none remain).
+
+## 2026-10-23: 4.1 Whole-bank audit test (run 73)
+- Main was green locally and no lock was held. Every ROADMAP item was already ticked, so I added Section 4 (hardening) and did its first task.
+- `tests/bankAudit.test.ts`: authored ids unique across all gym pools, generator ids unique and not colliding with authored ids, and every generator is deterministic and passes `questionProblems` with an explanation and answer text over 40 seeds. It passed first time, so no content changed. Test-only change, no UI change.
+- Verified: lint, typecheck, `npm test`, `build:pages`. CI/deploy confirmation skipped (Actions quota).
+- Next: pick another hardening task (e.g. check every lesson quick-check answer and every dex entry against the content tests, or offline-reload Playwright check).

@@ -102,3 +102,7 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 3.2b Typewriter message box announces whole lines to screen readers (`MessageBox` `fullText`).
   - [x] 3.2c First-load JS: measured per-route gzip size (Pixi was already a dynamic import); the map no longer bundles the question bank (`ReviewLink` loads it after first paint), 325 KB -> 271 KB gzipped.
   - [x] 3.2d Measured battle frame cost on a 4x CPU-throttled iPhone profile: JS is ~3.5% of a core, so no trim needed (see PROGRESS).
+
+## 4. Hardening
+
+- [x] 4.1 Whole-bank audit test (`tests/bankAudit.test.ts`): unique ids across every gym pool, every generator deterministic and well-formed over 40 seeds.
