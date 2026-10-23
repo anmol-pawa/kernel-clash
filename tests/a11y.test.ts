@@ -15,4 +15,9 @@ describe("accessibility basics", () => {
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline/);
     expect(css).toMatch(/prefers-reduced-motion: reduce/);
   });
+
+  it("the typewriter message box announces whole lines, not characters", () => {
+    expect(read("components/ui/kit.tsx")).toMatch(/aria-hidden="true">\{children\}[\s\S]*sr-only[\s\S]*\{fullText\}/);
+    expect(read("components/battle/Battle.tsx")).toMatch(/<MessageBox fullText=\{msg\.text\}/);
+  });
 });

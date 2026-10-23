@@ -71,9 +71,10 @@ export function HpBox({ name, level, hp, maxHp, xp, type, side = "foe", classNam
 /**
  * The battle message box. Text types out (done by the caller); while
  * `waiting`, a blinking ▼ asks for a tap to continue. The whole box is the
- * tap target.
+ * tap target. With `fullText`, the typed-out children are hidden from
+ * screen readers, which hear the whole line at once instead.
  */
-export function MessageBox({ children, waiting, onTap, className = "" }: { children: ReactNode; waiting?: boolean; onTap?: () => void; className?: string }) {
+export function MessageBox({ children, fullText, waiting, onTap, className = "" }: { children: ReactNode; fullText?: string; waiting?: boolean; onTap?: () => void; className?: string }) {
   return (
     <div
       role={onTap ? "button" : undefined}
@@ -89,7 +90,16 @@ export function MessageBox({ children, waiting, onTap, className = "" }: { child
       aria-live="polite"
       data-testid="message"
     >
-      {children}
+      {fullText === undefined ? (
+        children
+      ) : (
+        <>
+          <span aria-hidden="true">{children}</span>
+          <span className="sr-only" data-testid="message-full">
+            {fullText}
+          </span>
+        </>
+      )}
       {waiting && <span className="blink absolute bottom-2 right-3 font-pixel text-[10px] text-[#e04848]">▼</span>}
     </div>
   );

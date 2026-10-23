@@ -274,7 +274,7 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
 
       <section className="shrink-0 border-t-4 border-[#1f1a3a] bg-[#2a2440] p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
         <div className="mx-auto grid max-w-5xl gap-2.5 lg:grid-cols-2 lg:items-start">
-          <MessageBox waiting={waiting} onTap={tap}>
+          <MessageBox fullText={msg.text} waiting={waiting} onTap={tap}>
             {tw.shown}
           </MessageBox>
           {over && !busy ? (

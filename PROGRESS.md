@@ -583,3 +583,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `tests/a11y.test.ts` pins those pieces. 687 tests pass.
 - Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached), Playwright audit plus a reviewed iPhone battle screenshot (layout unchanged). CI/deploy confirmation skipped (Actions quota).
 - Next: 3.2b performance pass and typewriter announcements.
+
+## 2026-10-23: 3.2b Typewriter announcements (run 70)
+- Main was green locally and no lock was held. Split 3.2b: the screen-reader part is done, the performance measurement became 3.2c.
+- `MessageBox` takes `fullText`: the typed-out characters are `aria-hidden` and an sr-only copy holds the whole line, so the polite live region announces each message once instead of per character. The battle screen passes the current message. `tests/a11y.test.ts` pins it. 688 tests pass.
+- Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached). Playwright on the static build at 1280×800 and iPhone 14: sr-only text matches the message, layout unchanged (iPhone screenshot reviewed), no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
+- Next: 3.2c performance profile and trims.
