@@ -101,6 +101,12 @@ svg[shape-rendering="crispEdges"] {
   animation: pop 0.25s steps(4);
 }
 
+/* Keyboard users get a visible focus ring on every control. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* No 300ms tap delay or double-tap zoom on controls. */
 button,
 a,

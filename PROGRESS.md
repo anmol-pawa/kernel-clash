@@ -576,3 +576,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests (`tests/daily.test.ts`): date maths across month/year/leap boundaries, streak rules, 60 days of questions (deterministic, five distinct, well-formed, varied), save parsing. 685 tests pass.
 - Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached; first attempt stops on Next's security nudge, passes on retry). Playwright on the static build at 1280×800 and iPhone 14: played all five questions (streak 3 → 4), reviewed the intro, result and map link; fixed an oversized MAP button; no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
 - Next: 3.2 accessibility and performance pass on iPhone.
+
+## 2026-10-23: 3.2a Accessibility audit (run 69)
+- Main was green locally and no lock was held (worked from `origin/main`).
+- Audited all routes on the static build at iPhone 14 with Playwright: no controls under 36px, none without an accessible name, no horizontal overflow, no console errors. Gaps found and fixed: the battle screen had no heading and an unlabelled canvas (now an sr-only `h1` and a `role="img"` stage label in `Battle.tsx`), and there was no keyboard focus ring (global `:focus-visible` outline in `globals.css`). Reduced motion and pixel-sprite `role="img"` labels were already in place.
+- `tests/a11y.test.ts` pins those pieces. 687 tests pass.
+- Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached), Playwright audit plus a reviewed iPhone battle screenshot (layout unchanged). CI/deploy confirmation skipped (Actions quota).
+- Next: 3.2b performance pass and typewriter announcements.

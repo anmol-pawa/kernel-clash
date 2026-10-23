@@ -98,3 +98,5 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 
 - [x] 3.1 Daily challenge (date-seeded) and streaks.
 - [ ] 3.2 Accessibility and performance pass on iPhone.
+  - [x] 3.2a Accessibility audit of every route at iPhone size (tap targets, names, landmarks, overflow): battle stage labelled with a heading, keyboard focus ring.
+  - [ ] 3.2b Performance: measure load and battle frame cost on a throttled iPhone profile, trim the first-load JS and Pixi startup, and make the typewriter message box announce whole lines to screen readers.

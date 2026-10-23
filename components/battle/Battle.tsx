@@ -260,7 +260,8 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-[#100e24]">
       <div className="relative min-h-0 flex-1">
-        <div ref={host} className="absolute inset-0" data-testid="stage" />
+        <h1 className="sr-only">{`Battle: ${playerName} versus ${s.foe.name}`}</h1>
+        <div ref={host} className="absolute inset-0" role="img" aria-label={`Battle scene: ${playerName} facing ${s.foe.name}`} data-testid="stage" />
         <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
         <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
         {chart && (
