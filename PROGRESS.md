@@ -607,3 +607,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `tests/bankAudit.test.ts`: authored ids unique across all gym pools, generator ids unique and not colliding with authored ids, and every generator is deterministic and passes `questionProblems` with an explanation and answer text over 40 seeds. It passed first time, so no content changed. Test-only change, no UI change.
 - Verified: lint, typecheck, `npm test`, `build:pages`. CI/deploy confirmation skipped (Actions quota).
 - Next: pick another hardening task (e.g. check every lesson quick-check answer and every dex entry against the content tests, or offline-reload Playwright check).
+
+## 2026-10-23: 4.2 Offline-reload check (run 74)
+- Main was green locally and no lock was held. Verification-only task, no app code change. Lessons and dex were already covered by `lessons.test.ts` and `kerneldex.test.ts`, so I did the other suggested hardening item.
+- Served the `build:pages` output under `/kernel-clash/` and drove it with Playwright at iPhone 14: loaded `/` online, waited for the service worker, set the context offline, then navigated to `/`, map, dex, daily, interview, review, starter, battle, `learn/basics`, `learn/memory`, `gym/basics` and `gym/interview`. All returned 200 with the right content, no horizontal overflow, no page errors. (`/learn/` alone has no index page, as designed.)
+- Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. save-file migration/corruption tests, or a visual pass of every lesson diagram on iPhone).

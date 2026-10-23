@@ -106,3 +106,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 ## 4. Hardening
 
 - [x] 4.1 Whole-bank audit test (`tests/bankAudit.test.ts`): unique ids across every gym pool, every generator deterministic and well-formed over 40 seeds.
+- [x] 4.2 Offline-reload Playwright check: after one online load, reload every route (title, map, dex, daily, interview, review, starter, battle, lessons, gyms) with the network off.
