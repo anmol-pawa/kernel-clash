@@ -660,3 +660,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. At iPhone 14 landscape the interview question screen already fit; the scorecard was a long single-column scroll. `Card` in `Interview.tsx` now uses the `land` variant: verdict and per-question list on the left, topic bars on the right, buttons across the bottom. Portrait and desktop unchanged.
 - Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright (fake clock to time out all ten questions) at iPhone 14 landscape, portrait and 1280×800: ask and scorecard, no console errors, no horizontal overflow; reviewed landscape and portrait screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. landscape quick-check and trainer-battle screens).
+
+## 2026-10-23: 4.12 Landscape title screen (run 84)
+- Main was green locally and no lock was held. At iPhone 14 landscape the title screen cut the mascot off and pushed the buttons below the fold. `app/page.tsx` now uses the `land` variant: title, start and quick-battle buttons and message box in the left column, mascot (0.75x) on the right. Portrait and desktop unchanged. The sprite viewer needed no change.
+- Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build at iPhone 14 landscape, portrait and 1280x800: title and /dev/sprites, no console errors, no horizontal overflow; reviewed landscape and portrait screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. a landscape pass of the gym trainer-battle flow).
