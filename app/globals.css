@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* short landscape phones: battle puts the stage and the answer panel side by side */
+@custom-variant land (@media (orientation: landscape) and (max-height: 500px));
+
 @theme inline {
   --font-pixel: var(--font-pixel), ui-monospace, monospace;
   --font-sans: var(--font-body), system-ui, sans-serif;

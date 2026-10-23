@@ -110,3 +110,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 4.3 Save-file corruption tests (`tests/saveCorruption.test.ts`); `parseSave` now keeps only known, de-duplicated badges.
 - [x] 4.4 Visual pass of every lesson page on iPhone 14 (40 lessons, ~100 pages): no overflow, no console errors, diagrams reviewed.
 - [x] 4.5 Small-phone pass (iPhone SE, 320 px) and desktop of battle, map, interview, starter: fixed the starter row being clipped on both sides at 320 px.
+- [x] 4.6 Landscape phone battle layout: stage and answer panel side by side on short landscape screens (`land` variant in `globals.css`).

@@ -258,12 +258,12 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
   const chart = explaining ? q.gantt : !busy && s.phase === "ask" ? q.chart : undefined;
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-[#100e24]">
+    <main className="flex h-dvh flex-col overflow-hidden bg-[#100e24] land:flex-row">
       <div className="relative min-h-0 flex-1">
         <h1 className="sr-only">{`Battle: ${playerName} versus ${s.foe.name}`}</h1>
         <div ref={host} className="absolute inset-0" role="img" aria-label={`Battle scene: ${playerName} facing ${s.foe.name}`} data-testid="stage" />
-        <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 sm:left-6 sm:w-60" />
-        <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 sm:right-6 sm:w-64" />
+        <HpBox name={s.foe.name} level={s.foe.level} type={s.foe.type} hp={shown.foe} maxHp={s.foe.maxHp} className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] w-44 land:left-2 land:top-2 land:w-44 sm:left-6 sm:w-60 land:sm:w-44" />
+        <HpBox name={playerName} level={level} hp={shown.player} maxHp={maxHp} xp={xpProgress(xp)} side="player" className="absolute bottom-3 right-3 w-48 land:bottom-2 land:right-2 land:w-40 sm:right-6 sm:w-64 land:sm:w-40" />
         {chart && (
           <div className="pointer-events-none absolute inset-x-3 top-1/2 mx-auto max-w-md -translate-y-1/2 border-4 border-[#1a1430] bg-[#2a2440] p-1" data-testid={explaining ? "explain-gantt" : "question-gantt"}>
             <GanttChart gantt={chart} />
@@ -272,7 +272,7 @@ export function Battle({ player, foe, questions: given, dueFirst: due, lines, on
         {overlay}
       </div>
 
-      <section className="shrink-0 border-t-4 border-[#1f1a3a] bg-[#2a2440] p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
+      <section className="shrink-0 border-t-4 border-[#1f1a3a] bg-[#2a2440] p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3 land:w-[52%] land:overflow-y-auto land:border-l-4 land:border-t-0 land:py-2 land:pl-[max(0.625rem,env(safe-area-inset-left))] land:pr-[max(0.625rem,env(safe-area-inset-right))]">
         <div className="mx-auto grid max-w-5xl gap-2.5 lg:grid-cols-2 lg:items-start">
           <MessageBox fullText={msg.text} waiting={waiting} onTap={tap}>
             {tw.shown}

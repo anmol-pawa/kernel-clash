@@ -630,3 +630,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Drove battle, map, interview and starter at 320×568 (iPhone SE) and 1280×800: no console errors, no horizontal document overflow. Screenshots showed the starter row clipped on both sides at 320 px (three 1.5x sprites do not fit). `StarterChoice` now uses a 1.1x scale below 360 px; checked at 320, 375 and 390 px (row inside the viewport at all three).
 - Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. landscape iPhone battle layout).
+
+## 2026-10-23: 4.6 Landscape battle layout (run 78)
+- Main was green locally and no lock was held. At iPhone 14 landscape (750×340) the arena was squeezed to about 100 px by the stacked answer panel, with the HP boxes covering the creatures. Added a `land` Tailwind variant (landscape and max-height 500 px) and used it in `Battle.tsx`: stage on the left, answer panel on the right (scrolls if needed), smaller HP boxes, safe-area padding.
+- Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build: battle at iPhone 14 landscape and portrait, no console errors, no horizontal overflow; I reviewed both screenshots (portrait unchanged). Map, starter and interview scroll vertically in landscape with no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. landscape starter screen, where the confirm bar covers the creature row until scrolled).
