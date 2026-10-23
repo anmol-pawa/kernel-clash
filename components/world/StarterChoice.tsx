@@ -62,7 +62,7 @@ export function StarterChoice() {
       <div className="absolute inset-0 -z-10" style={{ background: `linear-gradient(${SKY.map((c, i) => `${c} ${(i * 100) / SKY.length}% ${((i + 1) * 100) / SKY.length}%`).join(",")})` }} />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-[45%] bg-[#1d1640]" />
 
-      <section className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      <section className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] land:pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
         <header className="flex items-center justify-between gap-2">
           <Link href="/" className="flex min-h-11 items-center font-pixel text-[10px] text-[#ffd0dd] pixel-shadow">
             ◀ TITLE
@@ -144,8 +144,8 @@ export function StarterChoice() {
         </div>
       </section>
 
-      {/* fixed bottom action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-xl gap-2 bg-[#1d1640]/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+      {/* fixed bottom action bar (in the flow on short landscape screens, so it never covers the creatures) */}
+      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-xl land:static gap-2 bg-[#1d1640]/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
         {chosen ? (
           <Link href="/map" onClick={() => sfx.click()} className="gb-box flex min-h-12 flex-1 items-center justify-center font-pixel text-[11px]" style={{ background: "#ffe27a" }} data-testid="starter-to-map">
             ▶ TO THE REGION MAP
