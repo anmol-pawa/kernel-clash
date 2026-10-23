@@ -88,11 +88,11 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
   - [x] 2.8c2 A tap-the-next-track question kind for disk scheduling and one generator using it.
   - [x] 2.8d The storage gym trainer creature (64×64, front + back, idle/attack/hurt), dex entry, trainer battles and gated flow.
   - [x] 2.8e The storage gym battle backdrop in `game/sprites/scenery.ts`.
-- [ ] 2.9 Interview gauntlet: the top OS interview questions (process vs thread, virtual memory, thrashing, mutex vs semaphore, deadlock handling, paging vs segmentation, how `malloc` works, what happens on a page fault, Linux specifics like `epoll` and copy-on-write) as a timed mock interview with a scorecard.
+- [x] 2.9 Interview gauntlet: the top OS interview questions (process vs thread, virtual memory, thrashing, mutex vs semaphore, deadlock handling, paging vs segmentation, how `malloc` works, what happens on a page fault, Linux specifics like `epoll` and copy-on-write) as a timed mock interview with a scorecard.
   - [x] 2.9a Interview question pool: 23 authored questions (`content/interviewQuestions.ts`) + the six boss questions in `POOLS.interview`, answers checked against the simulators.
   - [x] 2.9b Mock-interview engine (`game/engine/interview.ts`, topic tags in `content/interviewTopics.ts`): topic-balanced 10-question draw, per-kind time limits, speed bonus scoring, scorecard and verdict.
   - [x] 2.9c The `/interview` screen: timer bar, one question at a time (reusing `AnswerPanel`), scorecard with per-topic bars, verdict and best score saved.
-  - [ ] 2.9d (map link "MOCK INTERVIEW" already added in 2.9c) Link the interview from the Kernel Summit gym card, add an e2e-style test, and cover the screen with Playwright at desktop and iPhone 14.
+  - [x] 2.9d (map link "MOCK INTERVIEW" already added in 2.9c) Link the interview from the Kernel Summit gym card, add an e2e-style test, and cover the screen with Playwright at desktop and iPhone 14.
 
 ## 3. Polish
 

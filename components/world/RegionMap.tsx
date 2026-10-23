@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PixelSprite } from "@/components/ui/PixelSprite";
 import { Gauge, TypeBadge } from "@/components/ui/kit";
-import { GYMS } from "@/content/gyms";
+import { GYMS, MOCK_INTERVIEW_GYM } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
 import { liveDeck } from "@/content/questionBank";
 import { isEvolved, partnerForm, starterById, starterLevel, starterMaxHp } from "@/content/starters";
@@ -264,6 +264,16 @@ export function RegionMap() {
                 <span className="text-[7px] text-[#5a5078]">
                   {flow.lessons.done}/{flow.lessons.total}
                 </span>
+              </Link>
+            )}
+            {gym.id === MOCK_INTERVIEW_GYM && (
+              <Link
+                href="/interview"
+                onClick={() => sfx.click()}
+                className="flex min-h-12 flex-1 items-center justify-center rounded-[4px] border-4 border-[var(--box-edge)] bg-white px-1 text-center font-pixel text-[9px] leading-3 text-[var(--box-ink)] shadow-[inset_0_-3px_0_#0002] hover:bg-[#f0ecff]"
+                data-testid="gym-interview"
+              >
+                MOCK
               </Link>
             )}
             <Link

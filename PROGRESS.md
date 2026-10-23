@@ -561,3 +561,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Tests: `tests/interviewSave.test.ts` (parse and reject malformed bests). 671 tests pass.
 - Verified: lint, typecheck, `npm test`, `build:pages` (first attempt hit Next's security-nudge exit, passed on retry; Next not upgraded; 275 files precached). Playwright at 1280×800 and iPhone 14 (fake clock to fast-forward timeouts): played all ten questions on both, scorecard and map reviewed, no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
 - Next: 2.9d link from the Kernel Summit gym card and extra coverage.
+
+## 2026-10-23: 2.9d Kernel Summit card links to the mock interview (run 67)
+- Main was green locally and no lock was held. (`main` locally had unrelated history after a force-update upstream; worked from `origin/main` on a fresh branch.)
+- `RegionMap`: the Kernel Summit gym card gets a MOCK button (`gym-interview`) next to CHALLENGE and TRAIN, driven by `MOCK_INTERVIEW_GYM` in `content/gyms.ts`.
+- `tests/interviewLink.test.ts`: the constant is the last gym and `/interview` exists.
+- Verified: lint, typecheck, `npm test`, `build:pages` (275 files precached). Playwright on the static build at 1280×800 and iPhone 14 with eight badges: the MOCK button shows on the card, navigates to `/interview`, no console errors, no horizontal overflow. I reviewed the iPhone screenshot. CI/deploy confirmation skipped (Actions quota).
+- Next: 3.1 daily challenge (date-seeded) and streaks.

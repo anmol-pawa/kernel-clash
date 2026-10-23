@@ -138,3 +138,6 @@ export const GYMS: Gym[] = [
     ramp: ["#5a4410", "#9a7418", "#d8a828", "#fff0a0"],
   },
 ];
+
+/** The gym whose card also links to the timed mock interview (`/interview`). */
+export const MOCK_INTERVIEW_GYM = "interview";
