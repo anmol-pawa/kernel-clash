@@ -100,4 +100,5 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [ ] 3.2 Accessibility and performance pass on iPhone.
   - [x] 3.2a Accessibility audit of every route at iPhone size (tap targets, names, landmarks, overflow): battle stage labelled with a heading, keyboard focus ring.
   - [x] 3.2b Typewriter message box announces whole lines to screen readers (`MessageBox` `fullText`).
-  - [ ] 3.2c Performance: measure load and battle frame cost on a throttled iPhone profile, then trim the first-load JS and Pixi startup.
+  - [x] 3.2c First-load JS: measured per-route gzip size (Pixi was already a dynamic import); the map no longer bundles the question bank (`ReviewLink` loads it after first paint), 325 KB -> 271 KB gzipped.
+  - [ ] 3.2d Measure battle frame cost on a CPU-throttled iPhone profile and trim Pixi startup if it shows.

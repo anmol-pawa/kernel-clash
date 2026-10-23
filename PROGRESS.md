@@ -589,3 +589,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - `MessageBox` takes `fullText`: the typed-out characters are `aria-hidden` and an sr-only copy holds the whole line, so the polite live region announces each message once instead of per character. The battle screen passes the current message. `tests/a11y.test.ts` pins it. 688 tests pass.
 - Verified: lint, typecheck, `npm test`, `build:pages` (278 files precached). Playwright on the static build at 1280×800 and iPhone 14: sr-only text matches the message, layout unchanged (iPhone screenshot reviewed), no console errors, no horizontal overflow. CI/deploy confirmation skipped (Actions quota).
 - Next: 3.2c performance profile and trims.
+
+## 2026-10-23: 3.2c First-load JS trim (run 71)
+- Main was green locally and no lock was held (worked from `origin/main`). Split 3.2c: the load-size part is done, the battle frame-cost measurement became 3.2d.
+- Measured gzip JS per route from the static export: Pixi is already a dynamic import in `Battle.tsx`, but `/map` pulled the whole question bank just for the "N DUE" count. `ReviewLink` in `RegionMap.tsx` now imports `questionBank` after first paint. `/map` first-load JS dropped from about 325 KB to 271 KB gzipped.
+- Verified: lint, typecheck, `npm test` (688 tests), `build:pages` (285 files precached; first attempt stops on Next's security nudge, passes on retry, Next not upgraded). Playwright on the static build at 1280x800 and iPhone 14 with two due cards seeded: the map renders, the review link shows "2 DUE", no console errors, no horizontal overflow. I reviewed the iPhone screenshot. CI/deploy confirmation skipped (Actions quota).
+- Next: 3.2d battle frame cost on a throttled profile.

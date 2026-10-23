@@ -7,7 +7,6 @@ import { Gauge, TypeBadge } from "@/components/ui/kit";
 import { dayKey, liveStreak, playedToday } from "@/game/engine/daily";
 import { GYMS, MOCK_INTERVIEW_GYM } from "@/content/gyms";
 import { dexCounts } from "@/content/kerneldex";
-import { liveDeck } from "@/content/questionBank";
 import { isEvolved, partnerForm, starterById, starterLevel, starterMaxHp } from "@/content/starters";
 import { sfx } from "@/game/audio/synth";
 import { xpForLevel, xpProgress } from "@/game/engine/xp";
@@ -50,7 +49,17 @@ function DexLink({ save }: { save: SaveData }) {
 /** Opens the Leitner box, with how many cards are due. */
 function ReviewLink({ save }: { save: SaveData }) {
   const [now] = useState(() => Date.now());
-  const due = dueKeys(liveDeck(save.leitner), now).length;
+  const [due, setDue] = useState(0);
+  // The question bank is large; load it after first paint so the map opens faster.
+  useEffect(() => {
+    let live = true;
+    void import("@/content/questionBank").then(({ liveDeck }) => {
+      if (live) setDue(dueKeys(liveDeck(save.leitner), now).length);
+    });
+    return () => {
+      live = false;
+    };
+  }, [save.leitner, now]);
   return (
     <Link href="/review" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="review-link">
       <span>▶ REVIEW</span>
