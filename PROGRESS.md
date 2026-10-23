@@ -640,3 +640,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. At iPhone 14 landscape the starter creature row sat below the fold behind the confirm bar. `StarterChoice` now uses the `land` variant: creatures (1.1x) in the left column, intro message and detail card in the right column, header across the top. Portrait and desktop unchanged.
 - Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build at iPhone 14 landscape, portrait and 1280×800: starter and chosen states, no console errors, no horizontal overflow; reviewed the screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. landscape map and interview screens).
+
+## 2026-10-23: 4.8 Landscape map (run 80)
+- Main was green locally and no lock was held. At iPhone 14 landscape (750×340) the fixed bottom gym card covered about 55% of the map. `RegionMap` now uses the `land` variant: the card is a right-hand panel (46% width) and the map sits in the left column. Portrait and desktop unchanged. The interview screen already fit in landscape, so it needed no change.
+- Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build with a starter save, at iPhone 14 landscape and 1280×800: map and interview, no console errors, no horizontal overflow; reviewed the screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. landscape daily/review/dex screens).

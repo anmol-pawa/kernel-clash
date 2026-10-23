@@ -155,7 +155,7 @@ export function RegionMap() {
   const gymIndex = gym.n - 1;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-4 px-4 pb-[calc(13rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] lg:flex-row lg:items-start lg:gap-6 lg:pb-10">
+    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-4 px-4 pb-[calc(13rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] lg:flex-row lg:items-start lg:gap-6 lg:pb-10 land:pb-4 land:pr-[calc(46%+0.5rem)]">
       <div className="flex w-full max-w-[512px] flex-col gap-3 self-center lg:self-start">
         <header className="flex items-center justify-between gap-2">
           <Link href="/" className="flex min-h-11 items-center font-pixel text-[10px] text-[#ffd0dd] pixel-shadow">
@@ -233,7 +233,7 @@ export function RegionMap() {
 
       {/* selected gym card: a fixed bottom sheet on phones, a side panel on desktop */}
       <section
-        className="msg-box fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-20 flex max-h-[13rem] flex-col gap-2 overflow-y-auto p-3 lg:sticky lg:top-4 lg:inset-x-auto lg:max-h-none lg:flex-1 lg:p-5"
+        className="msg-box fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-20 flex max-h-[13rem] flex-col gap-2 overflow-y-auto p-3 lg:sticky lg:top-4 lg:inset-x-auto lg:max-h-none lg:flex-1 lg:p-5 land:inset-x-auto land:right-2 land:top-[max(0.5rem,env(safe-area-inset-top))] land:w-[46%] land:max-h-none"
         aria-live="polite"
         data-testid="gym-card"
       >
