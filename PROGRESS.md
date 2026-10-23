@@ -670,3 +670,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Checked the trainer battle (it reuses `Battle`, so it inherits the 4.6 landscape layout) and the gym gate at iPhone 14 landscape, portrait and 1280×800 with a save holding one badge. No console errors, no horizontal overflow, screenshots reviewed: both fit, so no code change.
 - Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
 - Next: the roadmap is complete and the hardening passes now cover every screen in landscape; a future run could add a new hardening task or content depth (more questions per gym).
+
+## 2026-10-23: 5.1 More interview questions (run 86)
+- Main was green locally and no lock was held. The roadmap was complete, so I opened section 5 (content depth) and added five authored Kernel Summit questions: hard link vs symlink after delete, write-ahead journaling order, non-preemptive SJF average wait (6/8/7/3 -> 7 ms, Silberschatz 5.3.2), SSTF head movement on the textbook queue (236, Silberschatz 10.4.2), and inode capacity with 12 direct + one single-indirect (1036 blocks). Topics are registered in `TOPIC_OF`.
+- Verified: lint, typecheck, `npm test` (698 tests; new ones check SJF, SSTF and inode answers against `sjf`, `scheduleDisk` and `inodeMaxBlocks`, plus the journal order), `build:pages` (285 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. a few more questions per gym pool or more interview questions on synchronization and deadlock.

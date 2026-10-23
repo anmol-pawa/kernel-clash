@@ -6,6 +6,8 @@ import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
 import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
 import { roundRobin } from "@/game/sim/scheduling";
+import { scheduleDisk, DISK_EXAMPLE, inodeMaxBlocks } from "@/game/sim/storage";
+import { sjf } from "@/game/sim/scheduling";
 import { effectiveAccessTime, pagesFor } from "@/game/sim/memory";
 
 const pool = POOLS.interview;
@@ -80,6 +82,24 @@ describe("interview pool", () => {
     expect(pagesFor(2 ** 32, 4096).pages).toBe((find("ivx-ptentries") as NumericQ).answer);
     // counting semaphore: 5 waits on a count of 3 leave 2 blocked
     expect((find("ivx-semaphore") as NumericQ).answer).toBe(Math.max(0, 5 - 3));
+  });
+
+  it("checks the SJF, SSTF and inode answers against the simulators", () => {
+    const jobs = [6, 8, 7, 3].map((burst, i) => ({ name: `P${i + 1}`, arrival: 0, burst }));
+    const s = sjf(jobs);
+    expect(s.waiting).toEqual([3, 16, 9, 0]);
+    expect((find("ivx-sjf") as NumericQ).answer).toBeCloseTo(s.avgWaiting, 6);
+    const d = scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, "sstf");
+    expect(d.order).toEqual([65, 67, 37, 14, 98, 122, 124, 183]);
+    expect((find("ivx-sstf") as NumericQ).answer).toBe(d.movement);
+    expect((find("ivx-inode-blocks") as NumericQ).answer).toBe(inodeMaxBlocks(4096, 4, 12, 1));
+  });
+
+  it("keeps the journaling steps in write-ahead order and the link answer on the hard link", () => {
+    const o = find("ivx-journal") as OrderQ;
+    expect(o.steps[1]).toMatch(/commit/);
+    expect(o.steps[2]).toMatch(/final locations/);
+    expect((find("ivx-links") as McqQ).options[(find("ivx-links") as McqQ).answer]).toMatch(/hard link keeps working/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
