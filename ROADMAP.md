@@ -113,3 +113,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 4.6 Landscape phone battle layout: stage and answer panel side by side on short landscape screens (`land` variant in `globals.css`).
 - [x] 4.7 Landscape phone starter screen: creatures on the left, message and detail card on the right (`land` variant).
 - [x] 4.8 Landscape phone map: the gym card becomes a right-hand side panel and the map scrolls on the left (`land` variant). The interview screen already fit.
+- [x] 4.9 Landscape phone Kerneldex: detail card on the left (sticky, scrolls), creature grid on the right (`land` variant). Daily and Leitner box already fit.

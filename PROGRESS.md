@@ -645,3 +645,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. At iPhone 14 landscape (750×340) the fixed bottom gym card covered about 55% of the map. `RegionMap` now uses the `land` variant: the card is a right-hand panel (46% width) and the map sits in the left column. Portrait and desktop unchanged. The interview screen already fit in landscape, so it needed no change.
 - Verified: lint, typecheck, `npm test`, `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build with a starter save, at iPhone 14 landscape and 1280×800: map and interview, no console errors, no horizontal overflow; reviewed the screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: add another hardening task (e.g. landscape daily/review/dex screens).
+
+## 2026-10-23: 4.9 Landscape Kerneldex (run 81)
+- Main was green locally and no lock was held. At iPhone 14 landscape (750×340) the Kerneldex detail card filled the whole screen and the creature grid was below the fold. `Kerneldex` now uses the `land` variant: sticky, scrollable detail card on the left (46% width, 232 px sprite area), 4-column grid on the right. Daily and Leitner box already fit in landscape, so they needed no change. Portrait and desktop unchanged.
+- Verified: lint, typecheck, `npm test` (696 tests), `build:pages` (285 files precached; passes on retry after Next's security nudge). Playwright on the static build at iPhone 14 landscape, portrait and 1280×800: daily, review and dex, no console errors, no horizontal overflow; reviewed the screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: add another hardening task (e.g. landscape lesson pages and gym flow).

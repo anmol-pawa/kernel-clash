@@ -46,7 +46,7 @@ function Detail({ e, status }: { e: DexEntry; status: DexStatus }) {
   const big = art.boss ? 2 : 3;
   return (
     <div className="gb-box flex flex-col overflow-hidden" data-testid="dex-detail" data-status={status} aria-live="polite">
-      <div className="relative flex h-[244px] items-end justify-center overflow-hidden rounded-t-[2px]" style={{ background: `linear-gradient(${SKY.map((c, i) => `${c} ${(i * 100) / SKY.length}% ${((i + 1) * 100) / SKY.length}%`).join(",")})` }}>
+      <div className="relative flex h-[244px] land:h-[232px] items-end justify-center overflow-hidden rounded-t-[2px]" style={{ background: `linear-gradient(${SKY.map((c, i) => `${c} ${(i * 100) / SKY.length}% ${((i + 1) * 100) / SKY.length}%`).join(",")})` }}>
         <div className="absolute inset-x-0 bottom-0 h-[34%] bg-[#1d1640]" />
         <span className="relative mb-2 flex flex-col items-center">
           <PixelSprite key={`${e.id}-${side}`} sprite={known ? art[side] : art.front} scale={big} still={!known} className="relative z-10 h-auto" style={{ marginBottom: -10 * big, ...(known ? {} : SILHOUETTE) }} />
@@ -120,12 +120,12 @@ export function Kerneldex() {
         </span>
       </p>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-6">
-        <div className="w-full lg:sticky lg:top-4 lg:w-[400px] lg:shrink-0">
+      <div className="flex flex-col gap-3 land:flex-row land:items-start land:gap-4 lg:flex-row lg:items-start lg:gap-6">
+        <div className="w-full land:sticky land:top-2 land:max-h-[calc(100dvh-1rem)] land:w-[46%] land:shrink-0 land:overflow-y-auto lg:sticky lg:top-4 lg:w-[400px] lg:shrink-0">
           <Detail key={sel.id} e={sel} status={dexStatus(sel, save)} />
         </div>
 
-        <ul className="grid flex-1 grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4" aria-label="Creatures">
+        <ul className="grid flex-1 grid-cols-4 gap-2 sm:grid-cols-6 land:grid-cols-4 lg:grid-cols-4" aria-label="Creatures">
           {KERNELDEX.map((e) => {
             const status = dexStatus(e, save);
             const known = status !== "unknown";
