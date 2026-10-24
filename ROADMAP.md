@@ -145,3 +145,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.22 Five more interview questions on virtualization and containers (containers vs VMs, namespaces, cgroups, type 1 vs type 2 hypervisors, nested paging), checked in the pool test.
 - [x] 5.23 Five more interview questions on protection and security (user/kernel mode bit, NX, ASLR, least privilege, ACLs vs capabilities), checked in the pool test.
 - [x] 5.24 Five more interview questions on boot and process lifecycle (bootloader, initramfs, fork bombs, orphans, exec), checked in the pool test.
+- [x] 5.25 Five more interview questions on signals (SIGSTOP/SIGCONT job control, SIGCHLD and zombies, SIGPIPE, async-signal safety, SIGSEGV), checked in the pool test.

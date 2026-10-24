@@ -410,6 +410,14 @@ describe("interview pool", () => {
     expect((find("ivx-exec-fork") as McqQ).options[0]).toMatch(/same PID/);
   });
 
+  it("answers the signal questions: SIGSTOP/SIGCONT, SIGCHLD, SIGPIPE, async-signal safety and SIGSEGV", () => {
+    expect((find("ivx-sigstop-cont") as McqQ).options[0]).toMatch(/SIGCONT resumes/);
+    expect((find("ivx-sigchld") as McqQ).options[0]).toMatch(/Zombie entries/);
+    expect((find("ivx-sigpipe") as McqQ).options[0]).toMatch(/EPIPE/);
+    expect((find("ivx-signal-safe") as McqQ).options[0]).toMatch(/re-entering/);
+    expect((find("ivx-sigsegv") as McqQ).options[0]).toMatch(/no valid mapping/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
