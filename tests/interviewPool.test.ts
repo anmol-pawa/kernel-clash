@@ -9,7 +9,8 @@ import { roundRobin } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, inodeMaxBlocks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
-import { effectiveAccessTime, pagesFor } from "@/game/sim/memory";
+import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
+import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount } from "@/game/sim/paging";
 
 const pool = POOLS.interview;
 const find = (id: string) => INTERVIEW_EXTRA.find((q) => q.id === id)!;
@@ -121,6 +122,22 @@ describe("interview pool", () => {
     expect(o.steps.map((x) => x.split("(")[0])).toEqual(["wait", "wait", "Add the item to the buffer", "signal", "signal"]);
     expect(o.steps[0]).toBe("wait(empty)");
     expect(o.steps[4]).toBe("signal(full)");
+  });
+
+  it("checks the paging and allocation answers against the memory simulators", () => {
+    expect(faultCount(BELADY_EXAMPLE, 3, "fifo")).toBe(9);
+    const bel = find("ivx-belady") as McqQ;
+    expect(bel.options[bel.answer]).toBe(`More faults, ${faultCount(BELADY_EXAMPLE, 4, "fifo")}`);
+    expect((find("ivx-opt-faults") as NumericQ).answer).toBe(faultCount(REFERENCE_EXAMPLE, 3, "opt"));
+    expect([faultCount(REFERENCE_EXAMPLE, 3, "lru"), faultCount(REFERENCE_EXAMPLE, 3, "fifo")]).toEqual([12, 15]);
+    const frag = pagesFor(72766, 2048);
+    expect(frag.pages).toBe(36);
+    expect((find("ivx-internal-frag") as NumericQ).answer).toBe(frag.internalFragmentation);
+    expect((find("ivx-table-size") as NumericQ).answer).toBe(pageTableBytes(32, 4096, 4) / 1024);
+    const fits = (f: "first" | "best" | "worst") => allocate(FIT_EXAMPLE.holes, FIT_EXAMPLE.requests, f).placements.every((p) => p.start !== null);
+    const ff = find("ivx-first-fit") as McqQ;
+    expect(["first", "worst", "best"].map((f) => fits(f as "first"))).toEqual([false, false, true]);
+    expect(ff.options[ff.answer]).toBe("Best-fit");
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
