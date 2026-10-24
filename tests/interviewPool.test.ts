@@ -5,6 +5,7 @@ import { BATTLE_TURNS, POOLS, gymBattleQuestions } from "@/content/pools";
 import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
 import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
+import { BOOT_CHAINS, EVENTS, INSTRUCTIONS } from "@/game/sim/basics";
 import { fcfs, roundRobin, srtf } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes, raidGuaranteedFailures, raidUsableDisks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
@@ -195,6 +196,21 @@ describe("interview pool", () => {
     expect((find("ivx-rr-quantum") as McqQ).options[0]).toBe("It behaves like FCFS");
     expect((find("ivx-convoy") as McqQ).options[0]).toMatch(/behind one long/);
     expect((find("ivx-aging") as McqQ).options[1]).toMatch(/aging/);
+  });
+
+  it("checks the OS-basics answers against the basics tables", () => {
+    const priv = find("ivx-privileged") as MultiQ;
+    const text = (o: string) => INSTRUCTIONS.find((i) => i.text.toLowerCase().includes(o.toLowerCase()))!;
+    const truth = priv.options.map((o) => (o === "Add two registers" ? false : text(o === "Turn off interrupts" ? "turn off interrupts" : o === "Set the timer" ? "timer" : "page-table base").privileged));
+    expect(priv.answers).toEqual(truth.flatMap((t, i) => (t ? [i] : [])));
+    expect(INSTRUCTIONS.find((i) => i.text === "Add two registers")!.privileged).toBe(false);
+    expect(EVENTS.find((e) => /divides by zero/.test(e.text))!.interrupt).toBe(false);
+    expect(EVENTS.find((e) => /disk read/.test(e.text))!.interrupt).toBe(true);
+    expect((find("ivx-trap-vs-int") as McqQ).options[0]).toMatch(/trap is synchronous/);
+    expect((find("ivx-syscall-trap") as McqQ).options[0]).toMatch(/fixed, checked entry points/);
+    expect((find("ivx-microkernel") as McqQ).options[0]).toMatch(/Better isolation/);
+    const boot = find("ivx-boot-order") as OrderQ;
+    expect(boot.steps).toEqual([...BOOT_CHAINS.BIOS]);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

@@ -705,3 +705,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Added five authored Kernel Summit questions under "Scheduling and sync": Round Robin average wait on the 24/3/3 example with a 4 ms quantum (5.67, Silberschatz 5.3.4), SRTF average wait on the 8/4/9/5 example (6.5, 5.3.2), the convoy effect, starvation and aging, and RR with a huge quantum behaving like FCFS.
 - Verified: lint, typecheck, `npm test` (705 tests; the new one checks answers with `roundRobin`, `srtf` and `fcfs`), `build:pages` (285 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or OS-basics (system calls, interrupts) interview questions.
+
+## 2026-10-24: 5.8 OS-basics interview questions (run 93)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.8: five authored Kernel Summit questions under "I/O and Linux": trap vs interrupt (synchronous vs asynchronous), which instructions are privileged (multi-select), why a syscall uses a trap, the BIOS boot order (order question built from `BOOT_CHAINS.BIOS`), and the microkernel trade-off.
+- Verified: lint, typecheck, `npm test` (706 tests; the new one checks answers against `INSTRUCTIONS`, `EVENTS` and `BOOT_CHAINS`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or a new hardening pass.

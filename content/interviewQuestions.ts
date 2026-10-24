@@ -1,3 +1,4 @@
+import { BOOT_CHAINS } from "@/game/sim/basics";
 import type { Question } from "@/game/engine/question";
 import type { MoveType } from "@/game/engine/types";
 
@@ -505,5 +506,46 @@ export const INTERVIEW_EXTRA: Question[] = [
     answer: 0,
     explain: "If the quantum exceeds every burst, each process finishes within its first turn, so the order is simply arrival order: FCFS. A tiny quantum goes the other way, with many context switches and mostly overhead. A good quantum is longer than most CPU bursts.",
     move: mv("Long Slice", "scheduler", 32),
+  },
+  {
+    id: "ivx-trap-vs-int",
+    prompt: "What is the key difference between a trap (exception) and a hardware interrupt?",
+    options: ["A trap is synchronous, caused by the instruction being executed; an interrupt is asynchronous, raised by a device", "A trap runs in user mode; an interrupt runs in kernel mode", "A trap can be ignored; an interrupt cannot", "A trap comes from a device; an interrupt comes from the program"],
+    answer: 0,
+    explain: "A divide-by-zero, a page fault or the syscall instruction is caused by the instruction the CPU is running, so it is synchronous. A keyboard press, a finished disk read or the timer arrives from hardware at any moment, so it is asynchronous. Both switch to kernel mode and jump through the interrupt vector. (Silberschatz, chapter 1.)",
+    move: mv("Trap Door", "process", 32),
+  },
+  {
+    id: "ivx-privileged",
+    kind: "multi",
+    prompt: "Which of these instructions must be privileged (kernel mode only)? Pick all that apply.",
+    options: ["Set the timer", "Turn off interrupts", "Add two registers", "Load the page-table base register"],
+    answers: [0, 1, 3],
+    explain: "If a user program could set the timer, mask interrupts or change the page-table base, it could keep the CPU forever or read other processes' memory. Adding registers is harmless. Running a privileged instruction in user mode traps to the kernel.",
+    move: mv("Ring Zero", "process", 34),
+  },
+  {
+    id: "ivx-syscall-trap",
+    prompt: "Why does a system call use a trap instruction instead of an ordinary function call into the kernel?",
+    options: ["It switches to kernel mode and enters the kernel only at fixed, checked entry points", "It is faster than a call because it skips the stack", "It lets user code jump to any kernel address it likes", "It copies the whole process into kernel memory"],
+    answer: 0,
+    explain: "The trap raises the privilege level and jumps through a table the kernel set up, so a user program can only enter at defined entry points, never at an arbitrary kernel address. The kernel then validates the arguments before acting. A plain call would stay in user mode and could not touch protected state.",
+    move: mv("Syscall Gate", "process", 34),
+  },
+  {
+    id: "ivx-boot-order",
+    kind: "order",
+    prompt: "Put the steps of booting a BIOS machine in order.",
+    steps: BOOT_CHAINS.BIOS.slice(),
+    explain: "Firmware in ROM runs first and does the power-on self-test, then reads the boot block from disk. The boot loader (a bigger program) loads the kernel, the kernel sets up the hardware and root file system, and finally starts init, PID 1, the first user-mode process. (Silberschatz, section 2.10.)",
+    move: mv("Boot Chain", "process", 36),
+  },
+  {
+    id: "ivx-microkernel",
+    prompt: "What is the main trade-off of a microkernel compared with a monolithic kernel?",
+    options: ["Better isolation and reliability, but more message passing and context switches cost speed", "Faster system calls, but drivers can crash the whole system", "It needs no user-mode servers at all", "It can only run on one CPU"],
+    answer: 0,
+    explain: "A microkernel keeps only the minimum (address spaces, scheduling, IPC) in kernel mode and runs file systems and drivers as user-mode servers, so a driver crash does not take the system down. The price is extra IPC and mode switches for every service call. A monolithic kernel like Linux is faster but its drivers run with full privilege.",
+    move: mv("Tiny Core", "process", 32),
   },
 ];
