@@ -318,6 +318,17 @@ describe("interview pool", () => {
     expect((find("ivx-frag-kinds") as McqQ).options[0]).toMatch(/Paging has no external fragmentation/);
   });
 
+  it("answers the disk-scheduling questions with the disk simulator", () => {
+    const run = (policy: "fcfs" | "sstf" | "scan" | "cscan") => scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, policy, DISK_EXAMPLE.cylinders, "up");
+    expect((find("ivx-fcfs-disk") as NumericQ).answer).toBe(run("fcfs").movement);
+    expect((find("ivx-scan-disk") as NumericQ).answer).toBe(run("scan").movement);
+    expect((find("ivx-cscan-disk") as NumericQ).answer).toBe(run("cscan").movement);
+    expect(run("sstf").movement).toBeLessThan(run("fcfs").movement);
+    expect(run("scan").movement).toBeLessThan(run("cscan").movement);
+    expect((find("ivx-sstf-starve") as McqQ).options[0]).toMatch(/starve/);
+    expect((find("ivx-cscan-why") as McqQ).options[0]).toMatch(/uniform wait/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

@@ -135,3 +135,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.12 Five more interview questions on deadlock (refused unsafe Banker request, minimum instances for deadlock freedom, detection count, three-thread lock ring, dining philosophers fix), checked against the deadlock simulator.
 - [x] 5.13 Five more interview questions on scheduling metrics (FCFS turnaround, RR response time, SJF optimality, exponential burst prediction, context-switch overhead), checked against the scheduling simulators.
 - [x] 5.14 Five more interview questions on memory allocation (first-fit unplaced requests, page-table size, TLB effective access time, two-level index bits, internal vs external fragmentation), checked against the memory simulators.
+- [x] 5.15 Five more interview questions on disk scheduling (FCFS, SCAN and C-SCAN head movement on the textbook queue, SSTF starvation, why C-SCAN), checked against the disk simulator.

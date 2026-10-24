@@ -740,3 +740,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.14: five authored Kernel Summit questions under "Memory": first-fit leaves one of the four textbook requests unplaced (1), single-level page-table size for 32-bit/4 KB/4-byte entries (4 MB), effective access time at 98% TLB hits (112 ns), outer-index bits of a two-level table (10), and internal vs external fragmentation.
 - Verified: lint, typecheck, `npm test` (712 tests; the new one checks answers with `allocate`, `pageTableBytes`, `effectiveAccessTime` and `splitAddress`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or disk-scheduling interview questions.
+
+## 2026-10-24: 5.15 Disk-scheduling interview questions (run 100)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.15: five authored Kernel Summit questions under "I/O and Linux": FCFS head movement on the Silberschatz queue (640), SCAN moving up (331), C-SCAN counting the return jump (382), SSTF starvation, and why C-SCAN gives a more uniform wait.
+- Verified: lint, typecheck, `npm test` (713 tests; the new one checks answers with `scheduleDisk`), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or file-system interview questions.
