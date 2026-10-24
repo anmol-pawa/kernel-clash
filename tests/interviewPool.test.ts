@@ -291,6 +291,22 @@ describe("interview pool", () => {
     expect((find("ivx-philosophers") as McqQ).options[0]).toMatch(/right fork first/);
   });
 
+  it("answers the turnaround, response, SJF, burst-prediction and overhead questions with the scheduling simulators", () => {
+    const jobs = [{ name: "P1", arrival: 0, burst: 24 }, { name: "P2", arrival: 0, burst: 3 }, { name: "P3", arrival: 0, burst: 3 }];
+    expect((find("ivx-fcfs-turnaround") as NumericQ).answer).toBe(fcfs(jobs).avgTurnaround);
+    expect(fcfs(jobs).avgWaiting).toBe(17);
+    expect((find("ivx-rr-response") as NumericQ).answer).toBeCloseTo(roundRobin(jobs, 4).avgResponse, 2);
+    const order = [[0, 8], [1, 4], [2, 9], [3, 5]].map(([arrival, burst], i) => ({ name: `P${i + 1}`, arrival, burst }));
+    expect(sjf(order).avgWaiting).toBeLessThanOrEqual(fcfs(order).avgWaiting);
+    expect((find("ivx-sjf-optimal") as McqQ).options[0]).toMatch(/minimum average waiting/);
+    let tau = 10;
+    const taus = [tau];
+    for (const t of [6, 4, 6, 4, 13]) taus.push((tau = 0.5 * t + 0.5 * tau));
+    expect(taus).toEqual([10, 8, 6, 6, 5, 9]);
+    expect((find("ivx-tau-predict") as NumericQ).answer).toBe(tau);
+    expect((find("ivx-ctx-overhead") as NumericQ).answer).toBeCloseTo((10 / 11) * 100, 1);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
