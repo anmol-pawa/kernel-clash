@@ -139,3 +139,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.16 Five more interview questions on RAID and file allocation (RAID 10 and RAID 6 capacity, RAID 5 small-write penalty, where a file name lives, contiguous-allocation drawback), checked against the storage simulator.
 - [x] 5.17 Five more interview questions on Linux practice (epoll vs select, lowest file descriptor, hard-link count, SIGKILL, full pipes), checked in the pool test.
 - [x] 5.18 Five more interview questions on threads and synchronization (thread stacks, dining-philosophers concurrency, compare-and-swap, priority inversion, lost wakeups), checked in the pool test.
+- [x] 5.19 Five more interview questions on paging and address translation (LRU and FIFO faults with 4 frames, page number of an address, inverted page tables, pure demand paging), checked against the paging simulator.

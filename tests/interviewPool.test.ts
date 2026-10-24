@@ -361,6 +361,15 @@ describe("interview pool", () => {
     expect((find("ivx-notify-lost") as McqQ).options[0]).toMatch(/lost wakeup/);
   });
 
+  it("answers the paging and address questions", () => {
+    expect((find("ivx-lru-four") as NumericQ).answer).toBe(faultCount(REFERENCE_EXAMPLE, 4, "lru"));
+    expect((find("ivx-fifo-four") as NumericQ).answer).toBe(faultCount(REFERENCE_EXAMPLE, 4, "fifo"));
+    expect((find("ivx-vpn") as NumericQ).answer).toBe(0x3a7f >> 12);
+    expect(Math.floor(14975 / 4096)).toBe(0x3a7f >> 12);
+    expect((find("ivx-inverted-pt") as McqQ).options[0]).toMatch(/one entry per physical frame/);
+    expect((find("ivx-pure-demand") as McqQ).options[0]).toMatch(/None/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
