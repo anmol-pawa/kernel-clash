@@ -12,7 +12,7 @@ import { sjf } from "@/game/sim/scheduling";
 import { runForks, runForkTree } from "@/game/sim/fork";
 import { IPCS, IPC_CASES, step } from "@/game/sim/processes";
 import { BANKER_EXAMPLE, DETECT_EXAMPLE, canDeadlock, detect, findCycle, isSafeSequence, request, safety } from "@/game/sim/deadlock";
-import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
+import { allocate, effectiveAccessTime, splitAddress, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
 import { CHECK_THEN_FLAG, FLAG_THEN_CHECK, explore, finalValues, increment, runSemaphore } from "@/game/sim/sync";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount, maxFaultRate, workingSet } from "@/game/sim/paging";
 
@@ -305,6 +305,17 @@ describe("interview pool", () => {
     expect(taus).toEqual([10, 8, 6, 6, 5, 9]);
     expect((find("ivx-tau-predict") as NumericQ).answer).toBe(tau);
     expect((find("ivx-ctx-overhead") as NumericQ).answer).toBeCloseTo((10 / 11) * 100, 1);
+  });
+
+  it("answers the fit, fragmentation, page-table and TLB questions with the memory simulators", () => {
+    const unplaced = (fit: "first" | "best") => allocate(FIT_EXAMPLE.holes, FIT_EXAMPLE.requests, fit).placements.filter((p) => p.start === null).length;
+    expect((find("ivx-fit-unplaced") as NumericQ).answer).toBe(unplaced("first"));
+    expect(unplaced("best")).toBe(0);
+    expect((find("ivx-outer-bits") as NumericQ).answer).toBe(splitAddress(32, 4096, 2, 4).levels[0]);
+    expect((find("ivx-pt-size") as NumericQ).answer).toBe(pageTableBytes(32, 4096, 4) / 2 ** 20);
+    expect((find("ivx-eat-98") as NumericQ).answer).toBeCloseTo(effectiveAccessTime(0.98, 10, 100), 6);
+    expect(pagesFor(1, 4096).internalFragmentation).toBeLessThan(4096);
+    expect((find("ivx-frag-kinds") as McqQ).options[0]).toMatch(/Paging has no external fragmentation/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
