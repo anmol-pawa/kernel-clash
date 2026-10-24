@@ -755,3 +755,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.17: five authored Kernel Summit questions under "I/O and Linux": epoll vs select scaling, the lowest-free file descriptor (3), hard-link count after ln, ln, rm (2), SIGKILL being uncatchable, and a full pipe blocking the writer.
 - Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or threads/synchronization interview questions.
+
+## 2026-10-24: 5.18 Threads and synchronization interview questions (run 103)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.18: five authored Kernel Summit questions: per-thread stacks, the most dining philosophers who can eat at once (2), compare-and-swap lock-free updates, priority inversion and priority inheritance, and the lost-wakeup race with condition variables.
+- Verified: lint, typecheck, `npm test` (716 tests; the new one checks the numeric answer by computing it and the MCQ answers), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or boot/kernel-design interview questions.

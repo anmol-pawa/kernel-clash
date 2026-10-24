@@ -350,6 +350,17 @@ describe("interview pool", () => {
     expect((find("ivx-pipe-full") as McqQ).options[0]).toMatch(/blocks/);
   });
 
+  it("answers the thread and synchronization questions", () => {
+    // k eaters need 2k of the 5 forks.
+    let k = 0;
+    while (2 * (k + 1) <= 5) k++;
+    expect((find("ivx-dining-count") as NumericQ).answer).toBe(k);
+    expect((find("ivx-thread-stack") as McqQ).options[0]).toMatch(/own stack/);
+    expect((find("ivx-atomic-cas") as McqQ).options[0]).toMatch(/Lock-free/);
+    expect((find("ivx-priority-inversion") as McqQ).options[0]).toMatch(/priority inheritance/);
+    expect((find("ivx-notify-lost") as McqQ).options[0]).toMatch(/lost wakeup/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
