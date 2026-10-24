@@ -14,7 +14,7 @@ import { IPCS, IPC_CASES, step } from "@/game/sim/processes";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
 import { CHECK_THEN_FLAG, FLAG_THEN_CHECK, explore, finalValues, increment, runSemaphore } from "@/game/sim/sync";
-import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount } from "@/game/sim/paging";
+import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount, maxFaultRate, workingSet } from "@/game/sim/paging";
 
 const pool = POOLS.interview;
 const find = (id: string) => INTERVIEW_EXTRA.find((q) => q.id === id)!;
@@ -247,6 +247,21 @@ describe("interview pool", () => {
     expect(opt("ivx-fifo")).toMatch(/FIFO/);
     expect(IPC_CASES.find((c) => /Ctrl-C/.test(c.text))?.answer).toBe("A signal");
     expect(opt("ivx-sigint")).toMatch(/SIGINT/);
+  });
+
+  it("answers the replacement, working-set and fault-rate questions with the paging simulator", () => {
+    expect((find("ivx-fifo-faults") as NumericQ).answer).toBe(faultCount(REFERENCE_EXAMPLE, 3, "fifo"));
+    const refs = [1, 2, 1, 3, 2, 1, 2, 4, 5, 4, 5, 4];
+    expect((find("ivx-working-set") as NumericQ).answer).toBe(workingSet(refs, 6, 4).length);
+    expect(workingSet(refs, 11, 4)).toEqual([4, 5]);
+    expect((find("ivx-max-fault-rate") as NumericQ).answer).toBe(Math.round(1 / maxFaultRate(200, 8_000_000, 0.1)));
+    for (const id of ["ivx-page-size", "ivx-tlb-switch"]) {
+      const q = find(id) as McqQ;
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+    }
+    expect((find("ivx-page-size") as McqQ).options[0]).toMatch(/smaller page table.*more internal fragmentation/);
+    expect((find("ivx-tlb-switch") as McqQ).options[0]).toMatch(/flushed/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

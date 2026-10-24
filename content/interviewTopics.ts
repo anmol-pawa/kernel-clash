@@ -84,6 +84,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-cow-fork": "Processes",
   "ivx-fifo": "Processes",
   "ivx-sigint": "Processes",
+  "ivx-fifo-faults": "Memory",
+  "ivx-page-size": "Memory",
+  "ivx-tlb-switch": "Memory",
+  "ivx-working-set": "Memory",
+  "ivx-max-fault-rate": "Memory",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

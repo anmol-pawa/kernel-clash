@@ -131,3 +131,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.8 Five more interview questions on OS basics (trap vs interrupt, privileged instructions, why syscalls trap, BIOS boot order, microkernel trade-off), checked against the basics tables.
 - [x] 5.9 Five more interview questions on synchronization primitives (counting semaphore value, lost-update minimum, flag-then-check protocol, spinlock vs mutex, condition-variable while loop), checked against the sync simulators.
 - [x] 5.10 Five more interview questions on threads and IPC (what threads own, cheaper thread switch, copy-on-write fork, FIFO vs pipe, SIGINT), checked against the IPC cases.
+- [x] 5.11 Five more interview questions on virtual memory (FIFO faults on the textbook string, page-size trade-off, TLB flush without ASIDs, working-set size, max fault rate for a 10% slowdown), checked against the paging simulator.

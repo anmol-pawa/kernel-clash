@@ -720,3 +720,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.10: five authored Kernel Summit questions under "Processes": what each thread owns (stack and registers), why a thread switch is cheaper (no page-table switch), copy-on-write on fork-then-exec, FIFO vs anonymous pipe, and Ctrl-C as SIGINT.
 - Verified: lint, typecheck, `npm test` (708 tests; the new one checks shape and answers, and the FIFO and signal answers against `IPC_CASES`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or virtual-memory interview questions.
+
+## 2026-10-24: 5.11 Virtual-memory interview questions (run 96)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.11: five authored Kernel Summit questions under "Memory": FIFO faults on Silberschatz's string (15), the page-size trade-off, TLB flush on a context switch without ASIDs, working-set size (3), and the maximum fault rate for a 10% slowdown (one per 399,990 accesses).
+- Verified: lint, typecheck, `npm test` (709 tests; the new one checks answers with `faultCount`, `workingSet` and `maxFaultRate`), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or file-system interview questions.
