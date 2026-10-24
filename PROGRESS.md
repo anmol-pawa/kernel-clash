@@ -775,3 +775,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.21: five authored Kernel Summit questions: where write() data sits (dirty page in the page cache), read-ahead for sequential reads, what fsync guarantees, average access time at a 99% cache hit rate (100,099 ns), and why databases use O_DIRECT.
 - Verified: lint, typecheck, `npm test`, `build:pages` (see below). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or virtualization/containers interview questions.
+
+## 2026-10-24: 5.22 Virtualization and container interview questions (run 107)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.22: five authored Kernel Summit questions: containers vs VMs (shared host kernel), namespaces, cgroups, type 1 vs type 2 hypervisors, and guest-to-host nested address translation.
+- Verified: lint, typecheck, `npm test` (720 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or security/protection interview questions.

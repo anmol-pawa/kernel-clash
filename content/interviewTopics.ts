@@ -139,6 +139,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-dirty-flush": "I/O and Linux",
   "ivx-eat-disk": "Memory",
   "ivx-buffered-vs-direct": "I/O and Linux",
+  "ivx-container-vs-vm": "Processes",
+  "ivx-namespaces": "Processes",
+  "ivx-cgroups": "Processes",
+  "ivx-type1-hypervisor": "Processes",
+  "ivx-shadow-paging": "Memory",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

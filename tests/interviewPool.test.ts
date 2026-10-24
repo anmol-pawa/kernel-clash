@@ -386,6 +386,14 @@ describe("interview pool", () => {
     expect((find("ivx-buffered-vs-direct") as McqQ).options[0]).toMatch(/own buffer pool/);
   });
 
+  it("answers the virtualization questions: containers vs VMs, namespaces, cgroups, hypervisor types and nested paging", () => {
+    expect((find("ivx-container-vs-vm") as McqQ).options[0]).toMatch(/share the host kernel/);
+    expect((find("ivx-namespaces") as McqQ).options[0]).toMatch(/PIDs, mounts/);
+    expect((find("ivx-cgroups") as McqQ).options[0]).toMatch(/cgroups/);
+    expect((find("ivx-type1-hypervisor") as McqQ).options[0]).toMatch(/directly on the hardware/);
+    expect((find("ivx-shadow-paging") as McqQ).options[0]).toMatch(/guest physical addresses/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

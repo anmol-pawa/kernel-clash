@@ -142,3 +142,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.19 Five more interview questions on paging and address translation (LRU and FIFO faults with 4 frames, page number of an address, inverted page tables, pure demand paging), checked against the paging simulator.
 - [x] 5.20 Five more interview questions on OS basics (trap-based mode switch, interrupt vs trap, loadable kernel modules, PID 1, why privileged instructions), checked in the pool test.
 - [x] 5.21 Five more interview questions on file-system caching (page-cache write-back, read-ahead, fsync, cache-miss effective access time, O_DIRECT), checked in the pool test.
+- [x] 5.22 Five more interview questions on virtualization and containers (containers vs VMs, namespaces, cgroups, type 1 vs type 2 hypervisors, nested paging), checked in the pool test.
