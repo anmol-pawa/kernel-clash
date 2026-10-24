@@ -39,6 +39,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-sjf": "Scheduling and sync",
   "ivx-sstf": "I/O and Linux",
   "ivx-inode-blocks": "I/O and Linux",
+  "ivx-banker-seq": "Scheduling and sync",
+  "ivx-lock-order": "Scheduling and sync",
+  "ivx-coffman": "Scheduling and sync",
+  "ivx-prodcons": "Scheduling and sync",
+  "ivx-rag": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

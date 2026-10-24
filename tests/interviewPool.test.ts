@@ -8,6 +8,7 @@ import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ,
 import { roundRobin } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, inodeMaxBlocks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
+import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { effectiveAccessTime, pagesFor } from "@/game/sim/memory";
 
 const pool = POOLS.interview;
@@ -100,6 +101,26 @@ describe("interview pool", () => {
     expect(o.steps[1]).toMatch(/commit/);
     expect(o.steps[2]).toMatch(/final locations/);
     expect((find("ivx-links") as McqQ).options[(find("ivx-links") as McqQ).answer]).toMatch(/hard link keeps working/);
+  });
+
+  it("checks the Banker sequence, lock-order and resource-graph answers against the deadlock simulator", () => {
+    const b = find("ivx-banker-seq") as McqQ;
+    const seqs = b.options.map((o) => (o.match(/\d/g) ?? []).map(Number));
+    seqs.forEach((seq, i) => expect(isSafeSequence(BANKER_EXAMPLE, seq), b.options[i]).toBe(i === b.answer));
+    expect(canDeadlock([["A", "B"], ["B", "A"]])).toBe(true);
+    expect(canDeadlock([["A", "B"], ["A", "B"]])).toBe(false);
+    expect((find("ivx-lock-order") as McqQ).options[(find("ivx-lock-order") as McqQ).answer]).toMatch(/global order/);
+    expect(findCycle([["P1", "R1"], ["R1", "P2"], ["P2", "R2"], ["R2", "P1"]])).not.toBeNull();
+    expect((find("ivx-rag") as McqQ).options[(find("ivx-rag") as McqQ).answer]).toMatch(/definitely deadlocked/);
+    expect((find("ivx-coffman") as MultiQ).answers).toEqual([0, 1, 3, 4]);
+    expect((find("ivx-coffman") as MultiQ).options[2]).toMatch(/inversion/);
+  });
+
+  it("orders the bounded-buffer producer steps: wait(empty), wait(mutex), add, signal(mutex), signal(full)", () => {
+    const o = find("ivx-prodcons") as OrderQ;
+    expect(o.steps.map((x) => x.split("(")[0])).toEqual(["wait", "wait", "Add the item to the buffer", "signal", "signal"]);
+    expect(o.steps[0]).toBe("wait(empty)");
+    expect(o.steps[4]).toBe("signal(full)");
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
