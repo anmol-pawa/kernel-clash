@@ -745,3 +745,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.15: five authored Kernel Summit questions under "I/O and Linux": FCFS head movement on the Silberschatz queue (640), SCAN moving up (331), C-SCAN counting the return jump (382), SSTF starvation, and why C-SCAN gives a more uniform wait.
 - Verified: lint, typecheck, `npm test` (713 tests; the new one checks answers with `scheduleDisk`), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or file-system interview questions.
+
+## 2026-10-24: 5.16 RAID and file-allocation interview questions (run 101)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.16: five authored Kernel Summit questions under "I/O and Linux": RAID 10 capacity (6 x 2 TB -> 6 TB), RAID 6 capacity (8 x 1 TB -> 6 TB), the RAID 5 small-write penalty (four I/Os), where a file name lives (directory entry, not inode), and the contiguous-allocation drawback.
+- Verified: lint, typecheck, `npm test` (714 tests; the new one checks answers with `raidUsableDisks` and `blockReads`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or Linux-specific (epoll, page cache) interview questions.

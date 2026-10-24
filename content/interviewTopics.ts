@@ -109,6 +109,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-cscan-disk": "I/O and Linux",
   "ivx-sstf-starve": "I/O and Linux",
   "ivx-cscan-why": "I/O and Linux",
+  "ivx-raid10-cap": "I/O and Linux",
+  "ivx-raid6-cap": "I/O and Linux",
+  "ivx-raid5-write": "I/O and Linux",
+  "ivx-inode-name": "I/O and Linux",
+  "ivx-contig-alloc": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

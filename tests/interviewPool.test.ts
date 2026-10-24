@@ -329,6 +329,16 @@ describe("interview pool", () => {
     expect((find("ivx-cscan-why") as McqQ).options[0]).toMatch(/uniform wait/);
   });
 
+  it("answers the RAID and file-allocation questions with the storage simulator", () => {
+    expect((find("ivx-raid10-cap") as NumericQ).answer).toBe(raidUsableDisks(10, 6) * 2);
+    expect((find("ivx-raid6-cap") as NumericQ).answer).toBe(raidUsableDisks(6, 8) * 1);
+    expect(blockReads("contiguous", 9)).toBe(1);
+    expect(blockReads("linked", 9)).toBe(10);
+    expect((find("ivx-raid5-write") as McqQ).options[0]).toMatch(/four I\/Os/);
+    expect((find("ivx-inode-name") as McqQ).options[0]).toMatch(/directory entry/);
+    expect((find("ivx-contig-alloc") as McqQ).options[0]).toMatch(/External fragmentation/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
