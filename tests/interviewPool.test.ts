@@ -5,7 +5,7 @@ import { BATTLE_TURNS, POOLS, gymBattleQuestions } from "@/content/pools";
 import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
 import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
-import { roundRobin } from "@/game/sim/scheduling";
+import { fcfs, roundRobin, srtf } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes, raidGuaranteedFailures, raidUsableDisks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
 import { runForks, runForkTree } from "@/game/sim/fork";
@@ -183,6 +183,18 @@ describe("interview pool", () => {
     expect((find("ivx-shared-offset") as McqQ).options[1]).toMatch(/byte 10/);
     expect((find("ivx-unlink-open") as McqQ).options[1]).toMatch(/last open descriptor/);
     expect((find("ivx-write-durable") as McqQ).options[1]).toMatch(/fsync/);
+  });
+
+  it("checks the round-robin, SRTF and scheduling-concept answers against the simulators", () => {
+    const rr = roundRobin([{ name: "P1", arrival: 0, burst: 24 }, { name: "P2", arrival: 0, burst: 3 }, { name: "P3", arrival: 0, burst: 3 }], 4);
+    expect((find("ivx-rr-wait") as NumericQ).answer).toBeCloseTo(rr.avgWaiting, 2);
+    const jobs = [{ name: "P1", arrival: 0, burst: 8 }, { name: "P2", arrival: 1, burst: 4 }, { name: "P3", arrival: 2, burst: 9 }, { name: "P4", arrival: 3, burst: 5 }];
+    expect((find("ivx-srtf-wait") as NumericQ).answer).toBe(srtf(jobs).avgWaiting);
+    const big = roundRobin(jobs, 1000);
+    expect(big.waiting).toEqual(fcfs(jobs).waiting);
+    expect((find("ivx-rr-quantum") as McqQ).options[0]).toBe("It behaves like FCFS");
+    expect((find("ivx-convoy") as McqQ).options[0]).toMatch(/behind one long/);
+    expect((find("ivx-aging") as McqQ).options[1]).toMatch(/aging/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

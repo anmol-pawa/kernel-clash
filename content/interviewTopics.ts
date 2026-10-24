@@ -64,6 +64,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-shared-offset": "I/O and Linux",
   "ivx-unlink-open": "I/O and Linux",
   "ivx-write-durable": "I/O and Linux",
+  "ivx-rr-wait": "Scheduling and sync",
+  "ivx-srtf-wait": "Scheduling and sync",
+  "ivx-convoy": "Scheduling and sync",
+  "ivx-aging": "Scheduling and sync",
+  "ivx-rr-quantum": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

@@ -700,3 +700,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Added five authored Kernel Summit questions under "I/O and Linux": largest file with 12 direct + single + double indirect (1,049,612 blocks), indexed-allocation reads for block 500 (2), parent/child sharing one file offset after fork, unlink() of an open file, and write() vs fsync() durability.
 - Verified: lint, typecheck, `npm test` (704 tests; the new one checks answers with `inodeMaxBlocks` and `blockReads`), `build:pages` (285 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or scheduling interview questions.
+
+## 2026-10-24: 5.7 Scheduling interview questions (run 92)
+- Main was green locally and no lock was held. Added five authored Kernel Summit questions under "Scheduling and sync": Round Robin average wait on the 24/3/3 example with a 4 ms quantum (5.67, Silberschatz 5.3.4), SRTF average wait on the 8/4/9/5 example (6.5, 5.3.2), the convoy effect, starvation and aging, and RR with a huge quantum behaving like FCFS.
+- Verified: lint, typecheck, `npm test` (705 tests; the new one checks answers with `roundRobin`, `srtf` and `fcfs`), `build:pages` (285 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or OS-basics (system calls, interrupts) interview questions.
