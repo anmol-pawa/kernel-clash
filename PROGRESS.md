@@ -780,3 +780,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.22: five authored Kernel Summit questions: containers vs VMs (shared host kernel), namespaces, cgroups, type 1 vs type 2 hypervisors, and guest-to-host nested address translation.
 - Verified: lint, typecheck, `npm test` (720 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or security/protection interview questions.
+
+## 2026-10-24: 5.23 Protection and security interview questions (run 108)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.23: five authored Kernel Summit questions: the hardware mode bit, NX pages, ASLR, least privilege (bind then drop root), and ACLs vs capability lists.
+- Verified: lint, typecheck, `npm test` (721 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security nudge, which I did not act on). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or boot/init interview questions.

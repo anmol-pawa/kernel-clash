@@ -394,6 +394,14 @@ describe("interview pool", () => {
     expect((find("ivx-shadow-paging") as McqQ).options[0]).toMatch(/guest physical addresses/);
   });
 
+  it("answers the protection questions: mode bit, NX, ASLR, least privilege and ACLs vs capabilities", () => {
+    expect((find("ivx-protection-rings") as McqQ).options[0]).toMatch(/user and kernel modes/);
+    expect((find("ivx-nx-bit") as McqQ).options[0]).toMatch(/stack or heap/);
+    expect((find("ivx-aslr") as McqQ).options[0]).toMatch(/cannot predict/);
+    expect((find("ivx-least-privilege") as McqQ).options[0]).toMatch(/drop to an unprivileged/);
+    expect((find("ivx-acl-vs-capability") as McqQ).options[0]).toMatch(/stored with each object/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
