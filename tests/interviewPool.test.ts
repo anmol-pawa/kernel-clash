@@ -370,6 +370,14 @@ describe("interview pool", () => {
     expect((find("ivx-pure-demand") as McqQ).options[0]).toMatch(/None/);
   });
 
+  it("answers the OS-basics questions: mode switch, interrupts, modules, PID 1 and privilege", () => {
+    expect((find("ivx-mode-switch") as McqQ).options[0]).toMatch(/trap instruction switches the CPU to kernel mode/);
+    expect((find("ivx-trap-vs-irq") as McqQ).options[0]).toMatch(/network card/);
+    expect((find("ivx-lkm") as McqQ).options[0]).toMatch(/without rebooting/);
+    expect((find("ivx-pid1") as McqQ).options[0]).toMatch(/ancestor of all other user processes/);
+    expect((find("ivx-dual-mode") as McqQ).options[0]).toMatch(/take over the machine/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

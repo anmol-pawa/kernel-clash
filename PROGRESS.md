@@ -765,3 +765,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.19: five authored Kernel Summit questions under "Memory": LRU faults with 4 frames on the Silberschatz string (8), FIFO faults with 4 frames (10), the page number of 0x3A7F with 4 KB pages (3), inverted page tables, and pure demand paging.
 - Verified: lint, typecheck, `npm test` (717 tests; the new one checks the numeric answers with `faultCount` and a shift), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or file-system caching interview questions.
+
+## 2026-10-24: 5.20 OS-basics interview questions (run 105)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.20: five authored Kernel Summit questions under "Processes": the trap-based user-to-kernel mode switch, asynchronous interrupt vs synchronous trap, loadable kernel modules in a monolithic kernel, PID 1's role, and why I/O and halt instructions are privileged.
+- Verified: lint, typecheck, `npm test` (718 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or file-system caching interview questions.

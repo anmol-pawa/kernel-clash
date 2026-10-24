@@ -129,6 +129,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-vpn": "Memory",
   "ivx-inverted-pt": "Memory",
   "ivx-pure-demand": "Memory",
+  "ivx-mode-switch": "Processes",
+  "ivx-trap-vs-irq": "Processes",
+  "ivx-lkm": "Processes",
+  "ivx-pid1": "Processes",
+  "ivx-dual-mode": "Processes",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
