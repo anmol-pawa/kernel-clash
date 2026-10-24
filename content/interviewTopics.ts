@@ -149,6 +149,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-aslr": "Memory",
   "ivx-least-privilege": "Processes",
   "ivx-acl-vs-capability": "I/O and Linux",
+  "ivx-boot-bios": "Processes",
+  "ivx-initramfs": "I/O and Linux",
+  "ivx-fork-bomb": "Processes",
+  "ivx-orphan": "Processes",
+  "ivx-exec-fork": "Processes",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

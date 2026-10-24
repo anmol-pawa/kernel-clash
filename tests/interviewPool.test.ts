@@ -402,6 +402,14 @@ describe("interview pool", () => {
     expect((find("ivx-acl-vs-capability") as McqQ).options[0]).toMatch(/stored with each object/);
   });
 
+  it("answers the boot and process-lifecycle questions: bootloader, initramfs, fork bombs, orphans and exec", () => {
+    expect((find("ivx-boot-bios") as McqQ).options[0]).toMatch(/Load the kernel image/);
+    expect((find("ivx-initramfs") as McqQ).options[0]).toMatch(/real root file system/);
+    expect((find("ivx-fork-bomb") as McqQ).options[0]).toMatch(/RLIMIT_NPROC/);
+    expect((find("ivx-orphan") as McqQ).options[0]).toMatch(/adopted by init/);
+    expect((find("ivx-exec-fork") as McqQ).options[0]).toMatch(/same PID/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
