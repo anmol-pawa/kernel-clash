@@ -10,7 +10,7 @@ import { fcfs, roundRobin, srtf } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes, raidGuaranteedFailures, raidUsableDisks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
 import { runForks, runForkTree } from "@/game/sim/fork";
-import { IPCS, step } from "@/game/sim/processes";
+import { IPCS, IPC_CASES, step } from "@/game/sim/processes";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
 import { CHECK_THEN_FLAG, FLAG_THEN_CHECK, explore, finalValues, increment, runSemaphore } from "@/game/sim/sync";
@@ -230,6 +230,23 @@ describe("interview pool", () => {
     expect((find("ivx-flag-first") as McqQ).options[0]).toMatch(/wait for each other forever/);
     expect((find("ivx-spinlock") as McqQ).options[0]).toMatch(/multiprocessor/);
     expect((find("ivx-cv-while") as McqQ).options[0]).toMatch(/spurious/);
+  });
+
+  it("answers the thread, copy-on-write and IPC-choice questions", () => {
+    for (const id of ["ivx-thread-shared", "ivx-thread-switch", "ivx-cow-fork", "ivx-fifo", "ivx-sigint"]) {
+      const q = find(id) as McqQ;
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+    }
+    const opt = (id: string) => { const q = find(id) as McqQ; return q.options[q.answer]; };
+    expect(opt("ivx-thread-shared")).toMatch(/stack and register/);
+    expect(opt("ivx-thread-switch")).toMatch(/no page-table switch/);
+    expect(opt("ivx-cow-fork")).toMatch(/^Copy-on-write/);
+    const fifo = IPC_CASES.find((c) => /by a path name/.test(c.text));
+    expect(fifo?.answer).toBe("A named pipe (FIFO)");
+    expect(opt("ivx-fifo")).toMatch(/FIFO/);
+    expect(IPC_CASES.find((c) => /Ctrl-C/.test(c.text))?.answer).toBe("A signal");
+    expect(opt("ivx-sigint")).toMatch(/SIGINT/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

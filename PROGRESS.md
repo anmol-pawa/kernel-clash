@@ -715,3 +715,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.9: five authored Kernel Summit questions under "Scheduling and sync": counting-semaphore value and blocked process (2 -> -1, C blocks), smallest final value of two `counter++` threads (1), flag-then-check protocol (both can wait forever), spinlock vs mutex, and why `cond_wait` sits in a `while` loop.
 - Verified: lint, typecheck, `npm test` (707 tests; the new one checks answers with `runSemaphore`, `finalValues` and `explore`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or threads/IPC interview questions.
+
+## 2026-10-24: 5.10 Thread and IPC interview questions (run 95)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.10: five authored Kernel Summit questions under "Processes": what each thread owns (stack and registers), why a thread switch is cheaper (no page-table switch), copy-on-write on fork-then-exec, FIFO vs anonymous pipe, and Ctrl-C as SIGINT.
+- Verified: lint, typecheck, `npm test` (708 tests; the new one checks shape and answers, and the FIFO and signal answers against `IPC_CASES`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or virtual-memory interview questions.
