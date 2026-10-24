@@ -690,3 +690,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Added five authored Kernel Summit questions under "I/O and Linux": LOOK head movement on the textbook queue moving down (208; SCAN would be 236), linked-allocation reads to reach block 9 (10), linked data bytes per 4 KB block with a 4-byte pointer (4092), RAID 5 capacity of six 2 TB disks (10 TB) and which RAID level survives two failures (RAID 6).
 - Verified: lint, typecheck, `npm test` (702 tests; the new one checks every answer with `scheduleDisk`, `blockReads`, `linkedDataBytes`, `raidUsableDisks` and `raidGuaranteedFailures`), `build:pages` (285 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. process/IPC interview questions or extra questions per gym pool.
+
+## 2026-10-24: 5.5 Process interview questions (run 90)
+- Main was green locally and no lock was held. Added five authored Kernel Summit questions under "Processes": printed lines from two forks with printfs between (6), process count for `if (fork() == 0) fork();` (3), WAITING goes to READY on I/O completion, what exec() replaces (image, same PID), and shared memory as the IPC with no per-message kernel copy.
+- Verified: lint, typecheck, `npm test` (703 tests; the new one checks answers with `runForks`, `runForkTree`, `step` and `IPCS`), `build:pages` (285 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or file-system/Linux interview questions.

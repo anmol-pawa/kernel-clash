@@ -8,6 +8,8 @@ import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ,
 import { roundRobin } from "@/game/sim/scheduling";
 import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes, raidGuaranteedFailures, raidUsableDisks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
+import { runForks, runForkTree } from "@/game/sim/fork";
+import { IPCS, step } from "@/game/sim/processes";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount } from "@/game/sim/paging";
@@ -152,6 +154,21 @@ describe("interview pool", () => {
     const two = find("ivx-raid-two") as McqQ;
     expect(two.options[two.answer]).toBe("RAID 6");
     expect([0, 1, 5, 6].map((l) => raidGuaranteedFailures(l as 0)).map((f) => f >= 2)).toEqual([false, false, false, true]);
+  });
+
+  it("checks the process, fork and IPC answers against the simulators", () => {
+    expect((find("ivx-fork-prints") as NumericQ).answer).toBe(runForks(["fork", "print", "fork", "print"]).prints);
+    expect(runForks(["fork", "print", "fork", "print"])).toEqual({ processes: 4, prints: 6 });
+    const tree = runForkTree([{ op: "ifChild", body: [{ op: "fork" }] }]);
+    expect((find("ivx-fork-child") as NumericQ).answer).toBe(tree.processes);
+    const wake = find("ivx-wake-state") as McqQ;
+    expect(step("WAITING", "wake")).toBe("READY");
+    expect(step("WAITING", "dispatch")).toBeNull();
+    expect(wake.options[wake.answer]).toMatch(/^READY/);
+    expect((find("ivx-exec") as McqQ).options[(find("ivx-exec") as McqQ).answer]).toMatch(/same PID/);
+    const ipc = find("ivx-ipc-fast") as McqQ;
+    expect(IPCS).toContain("Shared memory");
+    expect(ipc.options[ipc.answer]).toBe("Shared memory");
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

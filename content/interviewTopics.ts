@@ -54,6 +54,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-linked-data": "I/O and Linux",
   "ivx-raid5": "I/O and Linux",
   "ivx-raid-two": "I/O and Linux",
+  "ivx-fork-prints": "Processes",
+  "ivx-fork-child": "Processes",
+  "ivx-wake-state": "Processes",
+  "ivx-exec": "Processes",
+  "ivx-ipc-fast": "Processes",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
