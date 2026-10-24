@@ -141,3 +141,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.18 Five more interview questions on threads and synchronization (thread stacks, dining-philosophers concurrency, compare-and-swap, priority inversion, lost wakeups), checked in the pool test.
 - [x] 5.19 Five more interview questions on paging and address translation (LRU and FIFO faults with 4 frames, page number of an address, inverted page tables, pure demand paging), checked against the paging simulator.
 - [x] 5.20 Five more interview questions on OS basics (trap-based mode switch, interrupt vs trap, loadable kernel modules, PID 1, why privileged instructions), checked in the pool test.
+- [x] 5.21 Five more interview questions on file-system caching (page-cache write-back, read-ahead, fsync, cache-miss effective access time, O_DIRECT), checked in the pool test.

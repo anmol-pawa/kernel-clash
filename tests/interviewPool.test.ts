@@ -378,6 +378,14 @@ describe("interview pool", () => {
     expect((find("ivx-dual-mode") as McqQ).options[0]).toMatch(/take over the machine/);
   });
 
+  it("answers the page-cache questions: write-back, read-ahead, fsync, miss penalty and O_DIRECT", () => {
+    expect((find("ivx-page-cache") as McqQ).options[0]).toMatch(/dirty page/);
+    expect((find("ivx-readahead") as McqQ).options[0]).toMatch(/prefetches the next blocks/);
+    expect((find("ivx-dirty-flush") as McqQ).options[0]).toMatch(/stable storage/);
+    expect((find("ivx-eat-disk") as NumericQ).answer).toBeCloseTo(0.99 * 100 + 0.01 * 10_000_000, 6);
+    expect((find("ivx-buffered-vs-direct") as McqQ).options[0]).toMatch(/own buffer pool/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

@@ -134,6 +134,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-lkm": "Processes",
   "ivx-pid1": "Processes",
   "ivx-dual-mode": "Processes",
+  "ivx-page-cache": "I/O and Linux",
+  "ivx-readahead": "I/O and Linux",
+  "ivx-dirty-flush": "I/O and Linux",
+  "ivx-eat-disk": "Memory",
+  "ivx-buffered-vs-direct": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
