@@ -277,7 +277,7 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Questions can carry a `gantt` (new optional field). The chart shows under a lesson quick check's explanation, and over the battle stage while a battle explanation is up. The FCFS generator now attaches its chart.
 - Five Clocktower lessons (`scheduling-fcfs/-sjf/-priority/-rr/-mlfq`): criteria and FCFS/convoy, SJF/SRTF and burst prediction, priority/starvation/aging, Round Robin and the quantum, MLFQ. Each has a diagram drawn from the simulators' own output (`SCHEDULING_EXAMPLES`): FCFS convoy (avg wait 17 vs 3), SJF (7) and SRTF (6.5), priority (8.2) with/without aging, RR q=4 vs q=30 (switch counts), and a three-queue MLFQ with its chart. Quick checks: maximise-which-criteria (select-all), SJF average wait (numeric, 3.75, from `sjf`), aging (MCQ), RR completion time (numeric, 9, from `roundRobin`), MLFQ favours short/I/O-bound jobs (MCQ). The gym's topics now match the five lessons.
 - Tests: new `tests/gantt.test.ts` (Silberschatz FCFS layout, layout invariants over 200 random workloads × 4 simulators × 2 widths, label spacing and bounds, colours); `tests/lessons.test.ts` checks the scheduling lessons' order/diagrams/move type, every diagram chart against Silberschatz ch. 5, the numbers quoted in the lesson text (10.25, 7.75, 17, 17/3) against the simulators, and each quick check's answer and chart.
-- Verified: lint, typecheck, `npm test`, `build:pages`. Playwright on the static build at 1280×800 and iPhone 14: the Clocktower lecture hall, all five diagrams, and the SJF and RR checks answered with their charts, and a review battle with a due FCFS card showing its chart over the stage during the explanation. No console errors and no horizontal overflow. Fix after review: the priority chart's last two tick labels ran together ("1819") because the end label was nudged inward after the collision check. The layout now computes label positions and checks those.
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). Playwright on the static build at 1280×800 and iPhone 14: the Clocktower lecture hall, all five diagrams, and the SJF and RR checks answered with their charts, and a review battle with a due FCFS card showing its chart over the stage during the explanation. No console errors and no horizontal overflow. Fix after review: the priority chart's last two tick labels ran together ("1819") because the end label was nudged inward after the collision check. The layout now computes label positions and checks those.
 - Next: 2.3c the scheduling question pool and generators (average waiting/turnaround/response per algorithm, which-algorithm-made-this-chart), with charts in their explanations.
 
 
@@ -416,7 +416,7 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green and no lock was held. Split 2.6 into 2.6a–e in `ROADMAP.md`.
 - `game/sim/memory.ts`: `allocate` (first/best/worst fit over an address-ordered free list, ties to the lowest address), `coalesce`, `externalFragmentation`, `compact`, `pagesFor` (internal fragmentation), `translate` (page, offset, frame, physical, or invalid), `splitAddress`/`walkIndices` for multi-level tables, `pageTableBytes`, `invertedLookup`, `effectiveAccessTime`/`hitRatioFor`, and `translateSegment` with limit traps.
 - Tests (`tests/memory.test.ts`, 29): Silberschatz's 100K/500K/200K/300K/600K placement exercise for all three fits (including the holes left over), the 72,766-byte / 2,048-byte-page internal fragmentation, the Figure 9.10 page table, the 10+10+12 split and 4 MB table, the 140 ns and 122 ns TLB examples, the Figure 9.8 segment table (4353, 4052, trap), plus 200 random workloads checking placements never overlap and free space is conserved.
-- Verified: lint, typecheck, `npm test`, `build:pages`. No visual change, so no screenshots this run.
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). No visual change, so no screenshots this run.
 - Next: 2.6b Heap Harbor lessons.
 
 ## 2026-10-22: 2.6b Heap Harbor lessons (run 48)
@@ -462,7 +462,7 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green and no lock was held. Split 2.7 into 2.7a–e in `ROADMAP.md`.
 - `game/sim/paging.ts`: `replacePages` runs a reference string through FIFO, LRU, Optimal or second-chance Clock and returns a per-reference trace (fault, victim, frames); plus `faultCurve`/`beladyAt` for Belady's anomaly, `demandPagingEat`, `maxFaultRate`, `workingSet` and `thrashing`.
 - Tests (`tests/paging.test.ts`, 12): Silberschatz's 20-reference string with 3 frames (FIFO 15, LRU 12, OPT 9), Figure 10.12's first frames, Optimal ≤ every policy, a hand-traced Clock sweep, Belady's string (FIFO 9 → 10 faults going from 3 to 4 frames; LRU/OPT never anomalous), 8199.8 ns EAT, the 2.5e-6 fault-rate bound, working sets and thrashing.
-- Verified: lint, typecheck, `npm test`, `build:pages`. No UI change, so no screenshots.
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). No UI change, so no screenshots.
 - Next: 2.7b the five virtual-memory lessons.
 
 ## 2026-10-22: 2.7b Five Swapwood lessons (run 54)
@@ -476,7 +476,7 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green and no lock was held. Split 2.7c: the pool and generators now, the tap-the-victim question kind is 2.7c2.
 - `content/virtualGenerators.ts`: six seeded generators (fault count per policy, which page is the victim, demand-paging EAT, tolerable fault rate, working-set size, thrashing check), registered in `GENERATORS`. `VIRTUAL_EXTRA` in `content/pools.ts`: 12 authored questions (dirty bit, Clock, stack algorithms, global vs local, minimum frames, PFF, two multi-select, three numeric, a page-fault order question); `POOLS.virtual` joins them to the six boss questions, so Swapwood battles and Leitner review draw from it.
 - Tests (`tests/virtualPool.test.ts`, 13): generator counts and victims agree with plain-loop FIFO/LRU/Optimal, EAT is 8199.8 ns for Silberschatz's 200 ns / 8 ms / 1-in-1000 case, the 2.5-per-million tolerable rate, working sets and thrashing by hand, Belady 9→10 and Optimal 7 on the textbook string. The tests caught a reference-string bug (an undefined page) and showed that Optimal's victim is ambiguous at the end of a string, so those questions now show the future references and require a unique furthest page.
-- Verified: lint, typecheck, `npm test`, `build:pages`. No UI change, so no screenshots.
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). No UI change, so no screenshots.
 - Next: 2.7c2 the tap-the-victim question kind.
 
 ## 2026-10-22: 2.7c2 Tap-the-victim question kind (run 56)
@@ -605,7 +605,7 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 ## 2026-10-23: 4.1 Whole-bank audit test (run 73)
 - Main was green locally and no lock was held. Every ROADMAP item was already ticked, so I added Section 4 (hardening) and did its first task.
 - `tests/bankAudit.test.ts`: authored ids unique across all gym pools, generator ids unique and not colliding with authored ids, and every generator is deterministic and passes `questionProblems` with an explanation and answer text over 40 seeds. It passed first time, so no content changed. Test-only change, no UI change.
-- Verified: lint, typecheck, `npm test`, `build:pages`. CI/deploy confirmation skipped (Actions quota).
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). CI/deploy confirmation skipped (Actions quota).
 - Next: pick another hardening task (e.g. check every lesson quick-check answer and every dex entry against the content tests, or offline-reload Playwright check).
 
 ## 2026-10-23: 4.2 Offline-reload check (run 74)
@@ -750,3 +750,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.16: five authored Kernel Summit questions under "I/O and Linux": RAID 10 capacity (6 x 2 TB -> 6 TB), RAID 6 capacity (8 x 1 TB -> 6 TB), the RAID 5 small-write penalty (four I/Os), where a file name lives (directory entry, not inode), and the contiguous-allocation drawback.
 - Verified: lint, typecheck, `npm test` (714 tests; the new one checks answers with `raidUsableDisks` and `blockReads`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or Linux-specific (epoll, page cache) interview questions.
+
+## 2026-10-24: 5.17 Linux-practice interview questions (run 102)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.17: five authored Kernel Summit questions under "I/O and Linux": epoll vs select scaling, the lowest-free file descriptor (3), hard-link count after ln, ln, rm (2), SIGKILL being uncatchable, and a full pipe blocking the writer.
+- Verified: lint, typecheck, `npm test` (715 tests), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or threads/synchronization interview questions.

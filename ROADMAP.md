@@ -137,3 +137,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.14 Five more interview questions on memory allocation (first-fit unplaced requests, page-table size, TLB effective access time, two-level index bits, internal vs external fragmentation), checked against the memory simulators.
 - [x] 5.15 Five more interview questions on disk scheduling (FCFS, SCAN and C-SCAN head movement on the textbook queue, SSTF starvation, why C-SCAN), checked against the disk simulator.
 - [x] 5.16 Five more interview questions on RAID and file allocation (RAID 10 and RAID 6 capacity, RAID 5 small-write penalty, where a file name lives, contiguous-allocation drawback), checked against the storage simulator.
+- [x] 5.17 Five more interview questions on Linux practice (epoll vs select, lowest file descriptor, hard-link count, SIGKILL, full pipes), checked in the pool test.

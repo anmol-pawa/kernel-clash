@@ -339,6 +339,17 @@ describe("interview pool", () => {
     expect((find("ivx-contig-alloc") as McqQ).options[0]).toMatch(/External fragmentation/);
   });
 
+  it("answers the Linux questions: lowest descriptor, link count, epoll, SIGKILL and pipes", () => {
+    const openFds = new Set([0, 1, 2]);
+    let fd = 0;
+    while (openFds.has(fd)) fd++;
+    expect((find("ivx-lowest-fd") as NumericQ).answer).toBe(fd);
+    expect((find("ivx-hardlink-count") as NumericQ).answer).toBe(1 + 2 - 1);
+    expect((find("ivx-epoll-scale") as McqQ).options[0]).toMatch(/ready descriptors/);
+    expect((find("ivx-sigkill") as McqQ).options[0]).toMatch(/cannot be caught/);
+    expect((find("ivx-pipe-full") as McqQ).options[0]).toMatch(/blocks/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
