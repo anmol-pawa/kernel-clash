@@ -725,3 +725,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.11: five authored Kernel Summit questions under "Memory": FIFO faults on Silberschatz's string (15), the page-size trade-off, TLB flush on a context switch without ASIDs, working-set size (3), and the maximum fault rate for a 10% slowdown (one per 399,990 accesses).
 - Verified: lint, typecheck, `npm test` (709 tests; the new one checks answers with `faultCount`, `workingSet` and `maxFaultRate`), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or file-system interview questions.
+
+## 2026-10-24: 5.12 Deadlock interview questions (run 97)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.12: five authored Kernel Summit questions under "Scheduling and sync": the Banker refusing P0's (0,2,0) after P1's grant (unsafe), the minimum instances that rule out deadlock for 3 processes needing 4 (10), deadlocked-process count in the detection example with P2 requesting one more C (4), a three-thread A/B, B/C, C/A lock ring, and the dining-philosophers fix (reverse one philosopher's order).
+- Verified: lint, typecheck, `npm test` (710 tests; the new one checks answers with `request`, `detect`, `safety` and `canDeadlock`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or CPU-scheduling-metrics interview questions.

@@ -11,7 +11,7 @@ import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes
 import { sjf } from "@/game/sim/scheduling";
 import { runForks, runForkTree } from "@/game/sim/fork";
 import { IPCS, IPC_CASES, step } from "@/game/sim/processes";
-import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
+import { BANKER_EXAMPLE, DETECT_EXAMPLE, canDeadlock, detect, findCycle, isSafeSequence, request, safety } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
 import { CHECK_THEN_FLAG, FLAG_THEN_CHECK, explore, finalValues, increment, runSemaphore } from "@/game/sim/sync";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount, maxFaultRate, workingSet } from "@/game/sim/paging";
@@ -262,6 +262,33 @@ describe("interview pool", () => {
     }
     expect((find("ivx-page-size") as McqQ).options[0]).toMatch(/smaller page table.*more internal fragmentation/);
     expect((find("ivx-tlb-switch") as McqQ).options[0]).toMatch(/flushed/);
+  });
+
+  it("answers the Banker-request, detection, minimum-resource and lock-ring questions with the deadlock simulator", () => {
+    const granted = request(BANKER_EXAMPLE, 1, [1, 0, 2]);
+    if (!granted.granted) throw new Error("P1's request should be granted");
+    expect(granted.state.available).toEqual([2, 3, 0]);
+    expect(request(granted.state, 0, [0, 2, 0])).toEqual({ granted: false, reason: "unsafe" });
+    const b = find("ivx-banker-request") as McqQ;
+    expect(b.options[b.answer]).toMatch(/unsafe/);
+    const stuck = detect([...DETECT_EXAMPLE.available], DETECT_EXAMPLE.allocation, DETECT_EXAMPLE.requests.map((r, i) => (i === 2 ? [0, 0, 1] : r)));
+    expect((find("ivx-detect-count") as NumericQ).answer).toBe(stuck.length);
+    const worst = (instances: number) => ({ available: [instances - 9], allocation: [[3], [3], [3]], max: [[4], [4], [4]] });
+    expect(safety(worst(10)).safe).toBe(true);
+    expect(safety(worst(9)).safe).toBe(false);
+    expect((find("ivx-min-resources") as NumericQ).answer).toBe(10);
+    expect(canDeadlock([["A", "B"], ["B", "C"], ["C", "A"]])).toBe(true);
+    expect(canDeadlock([["A", "B"], ["B", "C"], ["A", "C"]])).toBe(false);
+    const ring = [["f0", "f1"], ["f1", "f2"], ["f2", "f3"], ["f3", "f4"], ["f4", "f0"]];
+    expect(canDeadlock(ring)).toBe(true);
+    expect(canDeadlock([...ring.slice(0, 4), ["f0", "f4"]])).toBe(false);
+    for (const id of ["ivx-banker-request", "ivx-lock-ring", "ivx-philosophers"]) {
+      const q = find(id) as McqQ;
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+    }
+    expect((find("ivx-lock-ring") as McqQ).answer).toBe(1);
+    expect((find("ivx-philosophers") as McqQ).options[0]).toMatch(/right fork first/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

@@ -89,6 +89,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-tlb-switch": "Memory",
   "ivx-working-set": "Memory",
   "ivx-max-fault-rate": "Memory",
+  "ivx-banker-request": "Scheduling and sync",
+  "ivx-min-resources": "Scheduling and sync",
+  "ivx-detect-count": "Scheduling and sync",
+  "ivx-lock-ring": "Scheduling and sync",
+  "ivx-philosophers": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
