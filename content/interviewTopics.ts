@@ -49,6 +49,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-internal-frag": "Memory",
   "ivx-table-size": "Memory",
   "ivx-first-fit": "Memory",
+  "ivx-look": "I/O and Linux",
+  "ivx-linked-reads": "I/O and Linux",
+  "ivx-linked-data": "I/O and Linux",
+  "ivx-raid5": "I/O and Linux",
+  "ivx-raid-two": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

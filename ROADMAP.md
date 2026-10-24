@@ -124,3 +124,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.1 Five more Kernel Summit interview questions (hard vs symbolic links, journaling order, SJF, SSTF, inode capacity), each checked against the simulators.
 - [x] 5.2 Five more interview questions on synchronization and deadlock (Banker safe sequence, lock ordering, Coffman conditions, bounded-buffer producer order, resource-graph cycles), each checked against the simulators.
 - [x] 5.3 Five more interview questions on memory (Belady's anomaly, Optimal faults, internal fragmentation, flat page-table size, first-fit vs best-fit), each checked against the simulators.
+- [x] 5.4 Five more interview questions on storage (LOOK head movement, linked-allocation reads and payload, RAID 5 capacity, RAID 6 fault tolerance), each checked against the simulators.

@@ -6,7 +6,7 @@ import { cardLabel, inBank } from "@/content/questionBank";
 import { cardKey } from "@/game/engine/leitner";
 import { grade, kindOf, questionProblems, type McqQ, type MultiQ, type NumericQ, type OrderQ } from "@/game/engine/question";
 import { roundRobin } from "@/game/sim/scheduling";
-import { scheduleDisk, DISK_EXAMPLE, inodeMaxBlocks } from "@/game/sim/storage";
+import { scheduleDisk, DISK_EXAMPLE, blockReads, inodeMaxBlocks, linkedDataBytes, raidGuaranteedFailures, raidUsableDisks } from "@/game/sim/storage";
 import { sjf } from "@/game/sim/scheduling";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
@@ -138,6 +138,20 @@ describe("interview pool", () => {
     const ff = find("ivx-first-fit") as McqQ;
     expect(["first", "worst", "best"].map((f) => fits(f as "first"))).toEqual([false, false, true]);
     expect(ff.options[ff.answer]).toBe("Best-fit");
+  });
+
+  it("checks the disk, allocation and RAID answers against the storage simulators", () => {
+    const look = scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, "look", DISK_EXAMPLE.cylinders, "down");
+    expect(look.order).toEqual([37, 14, 65, 67, 98, 122, 124, 183]);
+    expect((find("ivx-look") as NumericQ).answer).toBe(look.movement);
+    expect(scheduleDisk(DISK_EXAMPLE.queue, DISK_EXAMPLE.head, "scan", DISK_EXAMPLE.cylinders, "down").movement).toBe(236);
+    expect((find("ivx-linked-reads") as NumericQ).answer).toBe(blockReads("linked", 9));
+    expect([blockReads("contiguous", 9), blockReads("indexed", 9)]).toEqual([1, 2]);
+    expect((find("ivx-linked-data") as NumericQ).answer).toBe(linkedDataBytes(4096, 4));
+    expect((find("ivx-raid5") as NumericQ).answer).toBe(raidUsableDisks(5, 6) * 2);
+    const two = find("ivx-raid-two") as McqQ;
+    expect(two.options[two.answer]).toBe("RAID 6");
+    expect([0, 1, 5, 6].map((l) => raidGuaranteedFailures(l as 0)).map((f) => f >= 2)).toEqual([false, false, false, true]);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
