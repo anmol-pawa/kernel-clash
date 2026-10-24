@@ -695,3 +695,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. Added five authored Kernel Summit questions under "Processes": printed lines from two forks with printfs between (6), process count for `if (fork() == 0) fork();` (3), WAITING goes to READY on I/O completion, what exec() replaces (image, same PID), and shared memory as the IPC with no per-message kernel copy.
 - Verified: lint, typecheck, `npm test` (703 tests; the new one checks answers with `runForks`, `runForkTree`, `step` and `IPCS`), `build:pages` (285 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or file-system/Linux interview questions.
+
+## 2026-10-24: 5.6 File-system and Linux interview questions (run 91)
+- Main was green locally and no lock was held. Added five authored Kernel Summit questions under "I/O and Linux": largest file with 12 direct + single + double indirect (1,049,612 blocks), indexed-allocation reads for block 500 (2), parent/child sharing one file offset after fork, unlink() of an open file, and write() vs fsync() durability.
+- Verified: lint, typecheck, `npm test` (704 tests; the new one checks answers with `inodeMaxBlocks` and `blockReads`), `build:pages` (285 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or scheduling interview questions.

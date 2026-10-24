@@ -171,6 +171,20 @@ describe("interview pool", () => {
     expect(ipc.options[ipc.answer]).toBe("Shared memory");
   });
 
+  it("checks the inode, indexed and file-descriptor answers against the simulators", () => {
+    expect((find("ivx-inode-double") as NumericQ).answer).toBe(inodeMaxBlocks(4096, 4, 12, 2));
+    expect(inodeMaxBlocks(4096, 4, 12, 2) * 4096).toBeGreaterThan(4 * 2 ** 30);
+    expect((find("ivx-indexed-reads") as NumericQ).answer).toBe(blockReads("indexed", 500));
+    expect(blockReads("linked", 500)).toBe(501);
+    for (const id of ["ivx-shared-offset", "ivx-unlink-open", "ivx-write-durable"]) {
+      const q = find(id) as McqQ;
+      expect(q.answer).toBe(1);
+    }
+    expect((find("ivx-shared-offset") as McqQ).options[1]).toMatch(/byte 10/);
+    expect((find("ivx-unlink-open") as McqQ).options[1]).toMatch(/last open descriptor/);
+    expect((find("ivx-write-durable") as McqQ).options[1]).toMatch(/fsync/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

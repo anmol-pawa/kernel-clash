@@ -126,3 +126,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.3 Five more interview questions on memory (Belady's anomaly, Optimal faults, internal fragmentation, flat page-table size, first-fit vs best-fit), each checked against the simulators.
 - [x] 5.4 Five more interview questions on storage (LOOK head movement, linked-allocation reads and payload, RAID 5 capacity, RAID 6 fault tolerance), each checked against the simulators.
 - [x] 5.5 Five more interview questions on processes (fork print count, `if (fork() == 0)` process count, WAITING to READY on I/O completion, exec semantics, shared-memory IPC), checked against the simulators.
+- [x] 5.6 Five more interview questions on file systems and Linux (double-indirect inode reach, indexed-allocation reads, shared fd offset after fork, unlink of an open file, write() durability), checked against the simulators.
