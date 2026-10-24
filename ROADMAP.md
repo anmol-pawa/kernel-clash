@@ -129,3 +129,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.6 Five more interview questions on file systems and Linux (double-indirect inode reach, indexed-allocation reads, shared fd offset after fork, unlink of an open file, write() durability), checked against the simulators.
 - [x] 5.7 Five more interview questions on scheduling (Round Robin and SRTF average waits, convoy effect, starvation and aging, large-quantum RR), checked against the simulators.
 - [x] 5.8 Five more interview questions on OS basics (trap vs interrupt, privileged instructions, why syscalls trap, BIOS boot order, microkernel trade-off), checked against the basics tables.
+- [x] 5.9 Five more interview questions on synchronization primitives (counting semaphore value, lost-update minimum, flag-then-check protocol, spinlock vs mutex, condition-variable while loop), checked against the sync simulators.

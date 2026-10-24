@@ -710,3 +710,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.8: five authored Kernel Summit questions under "I/O and Linux": trap vs interrupt (synchronous vs asynchronous), which instructions are privileged (multi-select), why a syscall uses a trap, the BIOS boot order (order question built from `BOOT_CHAINS.BIOS`), and the microkernel trade-off.
 - Verified: lint, typecheck, `npm test` (706 tests; the new one checks answers against `INSTRUCTIONS`, `EVENTS` and `BOOT_CHAINS`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or a new hardening pass.
+
+## 2026-10-24: 5.9 Synchronization interview questions (run 94)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.9: five authored Kernel Summit questions under "Scheduling and sync": counting-semaphore value and blocked process (2 -> -1, C blocks), smallest final value of two `counter++` threads (1), flag-then-check protocol (both can wait forever), spinlock vs mutex, and why `cond_wait` sits in a `while` loop.
+- Verified: lint, typecheck, `npm test` (707 tests; the new one checks answers with `runSemaphore`, `finalValues` and `explore`), `build:pages` (284 files precached; passes on retry after Next's security nudge). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or threads/IPC interview questions.

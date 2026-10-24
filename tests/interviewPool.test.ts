@@ -13,6 +13,7 @@ import { runForks, runForkTree } from "@/game/sim/fork";
 import { IPCS, step } from "@/game/sim/processes";
 import { BANKER_EXAMPLE, canDeadlock, findCycle, isSafeSequence } from "@/game/sim/deadlock";
 import { allocate, effectiveAccessTime, FIT_EXAMPLE, pagesFor, pageTableBytes } from "@/game/sim/memory";
+import { CHECK_THEN_FLAG, FLAG_THEN_CHECK, explore, finalValues, increment, runSemaphore } from "@/game/sim/sync";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount } from "@/game/sim/paging";
 
 const pool = POOLS.interview;
@@ -211,6 +212,24 @@ describe("interview pool", () => {
     expect((find("ivx-microkernel") as McqQ).options[0]).toMatch(/Better isolation/);
     const boot = find("ivx-boot-order") as OrderQ;
     expect(boot.steps).toEqual([...BOOT_CHAINS.BIOS]);
+  });
+
+  it("answers the semaphore, lost-update and flag-protocol questions as the simulators do", () => {
+    const sem = runSemaphore(2, [{ op: "wait", who: "A" }, { op: "wait", who: "B" }, { op: "wait", who: "C" }]);
+    expect(sem).toMatchObject({ value: -1, blocked: ["C"] });
+    expect((find("ivx-sem-count") as McqQ).options[0]).toBe("Value -1; C is blocked");
+    expect(runSemaphore(2, [{ op: "wait", who: "A" }, { op: "wait", who: "B" }, { op: "wait", who: "C" }, { op: "signal", who: "A" }]).woken).toEqual(["C"]);
+
+    const threads = [{ name: "T1", code: increment("counter", "r1") }, { name: "T2", code: increment("counter", "r2") }];
+    const values = finalValues({ counter: 0 }, threads, "counter");
+    expect(values).toEqual([1, 2]);
+    expect((find("ivx-lost-update") as NumericQ).answer).toBe(values[0]);
+
+    expect(explore(FLAG_THEN_CHECK)).toMatchObject({ mutualExclusion: true, stuck: true });
+    expect(explore(CHECK_THEN_FLAG).mutualExclusion).toBe(false);
+    expect((find("ivx-flag-first") as McqQ).options[0]).toMatch(/wait for each other forever/);
+    expect((find("ivx-spinlock") as McqQ).options[0]).toMatch(/multiprocessor/);
+    expect((find("ivx-cv-while") as McqQ).options[0]).toMatch(/spurious/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {

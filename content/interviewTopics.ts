@@ -74,6 +74,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-syscall-trap": "I/O and Linux",
   "ivx-boot-order": "I/O and Linux",
   "ivx-microkernel": "I/O and Linux",
+  "ivx-sem-count": "Scheduling and sync",
+  "ivx-lost-update": "Scheduling and sync",
+  "ivx-flag-first": "Scheduling and sync",
+  "ivx-spinlock": "Scheduling and sync",
+  "ivx-cv-while": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
