@@ -14,6 +14,7 @@
  *   victim   tap the frame a page-replacement policy evicts
  *   track    tap the cylinder a disk-scheduling policy serves next
  *   bugspot  tap the line(s) of a code snippet that contain the bug
+ *   fill     complete a short program by choosing the code for each blank
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
@@ -191,6 +192,51 @@ export interface BugSpotQ extends Base {
 export const BUGSPOT_MIN_LINES = 8;
 export const BUGSPOT_MAX_LINES = 15;
 
+export interface FillBlank {
+  /** the candidate code for this blank (3–4 distinct choices) */
+  options: readonly string[];
+  /** index into `options` of the right code */
+  answer: number
+}
+
+export interface FillQ extends Base {
+  kind: "fill";
+  /** the program, one string per line; a blank is written `___1___`, `___2___`, ... (numbered from 1) */
+  lines: readonly string[];
+  /** blank n (1-based in the text) is `blanks[n - 1]` */
+  blanks: readonly FillBlank[];
+}
+
+/** Program length and blank-count limits for a code-completion question. */
+export const FILL_MIN_LINES = 5;
+export const FILL_MAX_LINES = 16;
+export const FILL_MAX_BLANKS = 3;
+
+/** One piece of a code line: literal text, or the blank (0-based index) sitting there. */
+export type FillPart = string | { blank: number };
+
+/** Splits a line at its `___n___` markers. */
+export function fillParts(line: string): FillPart[] {
+  const parts: FillPart[] = [];
+  let last = 0;
+  for (const m of line.matchAll(/___(\d+)___/g)) {
+    if (m.index > last) parts.push(line.slice(last, m.index));
+    parts.push({ blank: Number(m[1]) - 1 });
+    last = m.index + m[0].length;
+  }
+  if (last < line.length) parts.push(line.slice(last));
+  return parts;
+}
+
+/** The program with each blank replaced by the code chosen for it (`choices[i]` for blank i). */
+export function fillCode(q: FillQ, choices: readonly number[]): string[] {
+  return q.lines.map((line) =>
+    fillParts(line)
+      .map((part) => (typeof part === "string" ? part : (q.blanks[part.blank]?.options[choices[part.blank]] ?? "___")))
+      .join(""),
+  );
+}
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -200,8 +246,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ | BugSpotQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track" | "bugspot";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ | BugSpotQ | FillQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track" | "bugspot" | "fill";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -226,7 +272,9 @@ export type Response =
   /** the cylinder the player tapped */
   | { kind: "track"; cylinder: number }
   /** the snippet lines (indexes) the player marked as buggy */
-  | { kind: "bugspot"; lines: readonly number[] };
+  | { kind: "bugspot"; lines: readonly number[] }
+  /** the option index chosen for each blank, in blank order */
+  | { kind: "fill"; choices: readonly number[] };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -318,6 +366,10 @@ export function grade(q: Question, r: Response): boolean {
       return r.cylinder === (q as TrackQ).answer;
     case "bugspot":
       return sameSet(r.lines, (q as BugSpotQ).answer);
+    case "fill": {
+      const fq = q as FillQ;
+      return r.choices.length === fq.blanks.length && fq.blanks.every((b, i) => r.choices[i] === b.answer);
+    }
   }
 }
 
@@ -361,6 +413,8 @@ export function answerText(q: Question): string {
         .sort((a, b) => a - b)
         .map((i) => `line ${i + 1}: ${q.lines[i].trim()}`)
         .join("; ");
+    case "fill":
+      return q.blanks.map((b, i) => `(${i + 1}) ${b.options[b.answer]}`).join("; ");
     default:
       return q.options[q.answer];
   }
@@ -389,6 +443,8 @@ export function correctionText(q: Question): string | null {
       return `The next request served is ${answerText(q)}.`;
     case "bugspot":
       return `The bug is at ${answerText(q)}.`;
+    case "fill":
+      return `The blanks are ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -521,6 +577,20 @@ export function questionProblems(q: Question): string[] {
       else if (q.answer.some((i) => !q.lines[i].trim())) p.push("a blank line can't be the bug");
       if (q.lines.some((l) => l.includes("\n"))) p.push("each line must be a single line");
       break;
+    case "fill": {
+      if (q.lines.length < FILL_MIN_LINES || q.lines.length > FILL_MAX_LINES) p.push(`fill needs ${FILL_MIN_LINES}–${FILL_MAX_LINES} lines`);
+      if (q.lines.some((l) => l.includes("\n"))) p.push("each line must be a single line");
+      if (q.blanks.length < 1 || q.blanks.length > FILL_MAX_BLANKS) p.push(`fill needs 1–${FILL_MAX_BLANKS} blanks`);
+      const used = q.lines.flatMap(fillParts).flatMap((x) => (typeof x === "string" ? [] : [x.blank + 1]));
+      if (used.length !== q.blanks.length || q.blanks.some((_, i) => used.filter((u) => u === i + 1).length !== 1)) p.push("blanks must be numbered 1..n, each appearing once");
+      for (const b of q.blanks) {
+        if (b.options.length < 3 || b.options.length > 4) p.push("each blank needs 3–4 options");
+        if (new Set(b.options).size !== b.options.length) p.push("duplicate options in a blank");
+        if (b.options.some((o) => !o.trim() || o.includes("\n"))) p.push("blank options must be non-empty single lines");
+        if (!Number.isInteger(b.answer) || b.answer < 0 || b.answer >= b.options.length) p.push("blank answer out of range");
+      }
+      break;
+    }
     default:
       if (q.options.length !== 4) p.push("mcq needs 4 options");
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) p.push("answer out of range");

@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type BugSpotQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
+import { chartOf, fillParts, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type BugSpotQ, type CycleQ, type FillQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -56,6 +56,8 @@ export function AnswerPanel(p: Props) {
       return <TrackPanel {...p} q={p.q as TrackQ} />;
     case "bugspot":
       return <BugSpotPanel {...p} q={p.q as BugSpotQ} />;
+    case "fill":
+      return <FillPanel {...p} q={p.q as FillQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -716,6 +718,91 @@ function BugSpotPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q:
         >
           ▶ THIS IS THE BUG
         </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Code completion: the program shows tappable slots; tap a slot, then pick its
+ * code from the options below. CONFIRM once every blank is filled. After
+ * answering, right slots turn green and wrong ones red with the right code.
+ */
+function FillPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: FillQ }) {
+  const [picked, setPicked] = useState<(number | null)[]>(() => q.blanks.map(() => null));
+  const [active, setActive] = useState(0);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "fill" ? reveal.response.choices : picked;
+  const done = picked.every((c) => c !== null);
+  const choose = (opt: number) => {
+    sfx.blip();
+    const next = picked.map((c, i) => (i === active ? opt : c));
+    setPicked(next);
+    const open = next.findIndex((c, i) => c === null && i !== active);
+    if (open >= 0) setActive(open);
+  };
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="fill">
+      <div className="gb-box flex flex-col gap-0.5 p-1.5 !text-[var(--box-ink)]" data-testid="fill-code">
+        {q.lines.map((line, i) => (
+          <div key={i} className="flex min-h-5 items-center gap-2 font-mono text-[13px] leading-[1.5]">
+            <span className="w-4 shrink-0 select-none text-right text-[10px] opacity-60">{i + 1}</span>
+            <span className="min-w-0 whitespace-pre-wrap break-words">
+              {fillParts(line).map((part, k) => {
+                if (typeof part === "string") return <span key={k}>{part}</span>;
+                const b = part.blank;
+                const choice = shown[b] ?? null;
+                const right = !!reveal && choice === q.blanks[b].answer;
+                const wrong = !!reveal && !right;
+                const text = choice === null ? `(${b + 1})` : q.blanks[b].options[choice];
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    disabled={locked}
+                    data-testid={`fill-slot-${b}`}
+                    aria-pressed={!reveal && active === b}
+                    onClick={() => (sfx.blip(), setActive(b))}
+                    className={`mx-0.5 inline-flex min-h-7 items-center rounded-[2px] border-2 border-dashed px-1.5 align-middle pointer-coarse:min-h-9 ${right ? "border-[#3a8a2a] bg-[#bfe8a8]" : wrong ? "border-[#b03a2e] bg-[#f0b0a8]" : active === b ? "border-[#7a5a00] bg-[#ffe27a]" : choice === null ? "border-[var(--box-ink)] bg-[#fff6d6]" : "border-[var(--box-ink)] bg-[#e4eefc]"}`}
+                  >
+                    {text}
+                  </button>
+                );
+              })}
+            </span>
+          </div>
+        ))}
+      </div>
+      {reveal &&
+        q.blanks.map((b, i) =>
+          shown[i] === b.answer ? null : (
+            <div key={i} className="text-[12px]" data-testid={`fill-fix-${i}`}>
+              ({i + 1}) should be <code className="font-mono">{b.options[b.answer]}</code>
+            </div>
+          ),
+        )}
+      {!reveal && (
+        <>
+          <div className="grid grid-cols-1 gap-1" data-testid="fill-options">
+            {q.blanks[active].options.map((o, i) => (
+              <MenuChoice key={i} tag={"ABCD"[i]} onClick={() => choose(i)} disabled={locked} state={picked[active] === i ? "right" : undefined}>
+                <code className="font-mono text-[13px]">{o}</code>
+              </MenuChoice>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={CONFIRM}
+            disabled={locked || !done}
+            data-testid="fill-confirm"
+            onClick={() => {
+              sfx.click();
+              onSubmit({ kind: "fill", choices: picked as number[] });
+            }}
+          >
+            ▶ RUN THIS CODE
+          </button>
+        </>
       )}
     </div>
   );

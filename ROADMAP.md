@@ -161,7 +161,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
   - [x] 6.1a The question kind, `BugSpotBoard` widget (touch-friendly, monospaced, 16px+ text), grading and tests.
   - [x] 6.1b Ten snippets: unlocked counter++, check-then-act (TOCTOU), `if` instead of `while` around `cond_wait`, lock-order inversion, missing unlock on early return, double-checked locking without a barrier, signal lost because notify before wait, buffer overflow in a bounded buffer index, fork() without checking -1, closing an fd twice.
 - [ ] 6.2 Code-completion kind `fill`: a short program with 1-3 blanks chosen from tapped options (e.g. which semaphore ops go where in producer-consumer; `while` vs `if`; `pthread_mutex_unlock` placement). Grading by exact blank match, tests per snippet.
-  - [ ] 6.2a The kind and widget.
+  - [x] 6.2a The kind and widget.
   - [ ] 6.2b Classic problems as fills: bounded buffer with semaphores, bounded buffer with mutex + two condition variables, readers-writers (reader preference), dining philosophers with an asymmetric pickup order, barrier with a counter, one-time init with a once flag.
 - [ ] 6.3 Concurrency-coding simulator (`game/sim/threads.ts`): run a small multi-thread program under every interleaving (or a seeded random scheduler) and report deadlock / lost update / starvation, to prove each authored "correct" solution in 6.2 is correct and each buggy one in 6.1 fails. Tests check the solutions, so the content is not just trusted.
 - [ ] 6.4 Lessons for Linux topics that today exist only as questions (five lessons each, with pixel diagrams and tested quick checks):
