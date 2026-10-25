@@ -820,3 +820,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.30: five authored Kernel Summit questions under "I/O and Linux": sendfile zero-copy, the listen() backlog, send-buffer back-pressure from a slow reader, SO_REUSEADDR and TIME_WAIT, and edge-triggered epoll.
 - Verified: lint, typecheck, `npm test` (728 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or scheduler-tuning (nice values, CFS, real-time classes) interview questions.
+
+## 2026-10-25: 5.31 Scheduler-tuning interview questions (run 116)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.31: five authored Kernel Summit questions under "Scheduling and sync": nice values, CFS picking the smallest vruntime, SCHED_FIFO starvation, CPU affinity, and reading load average.
+- Verified: lint, typecheck, `npm test` (729 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or virtualization/container (namespaces, cgroups) interview questions.

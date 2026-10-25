@@ -458,6 +458,14 @@ describe("interview pool", () => {
     expect((find("ivx-epoll-edge") as McqQ).options[0]).toMatch(/until read\(\) returns EAGAIN/);
   });
 
+  it("answers the scheduler-tuning questions: nice values, CFS vruntime, SCHED_FIFO starvation, CPU affinity and load average", () => {
+    expect((find("ivx-nice") as McqQ).options[0]).toMatch(/lowers the process's scheduling priority/);
+    expect((find("ivx-cfs-vruntime") as McqQ).options[0]).toMatch(/smallest virtual runtime/);
+    expect((find("ivx-rt-class") as McqQ).options[0]).toMatch(/runs until it blocks or yields/);
+    expect((find("ivx-affinity") as McqQ).options[0]).toMatch(/warm in that core's caches/);
+    expect((find("ivx-load-avg") as McqQ).options[0]).toMatch(/running or waiting to run/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

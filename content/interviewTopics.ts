@@ -184,6 +184,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-send-block": "I/O and Linux",
   "ivx-reuseaddr": "I/O and Linux",
   "ivx-epoll-edge": "I/O and Linux",
+  "ivx-nice": "Scheduling and sync",
+  "ivx-cfs-vruntime": "Scheduling and sync",
+  "ivx-rt-class": "Scheduling and sync",
+  "ivx-affinity": "Scheduling and sync",
+  "ivx-load-avg": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
