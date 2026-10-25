@@ -810,3 +810,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.28: five authored Kernel Summit questions: data race vs race condition, livelock vs deadlock, the ABA problem, memory reordering without fences, and writer starvation in reader-preference locks.
 - Verified: lint, typecheck, `npm test` (726 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or filesystem-consistency interview questions.
+
+## 2026-10-25: 5.29 File-system consistency interview questions (run 114)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.29: five authored Kernel Summit questions under "I/O and Linux": why fsck is slow without a journal, ordered-mode metadata journaling, copy-on-write file systems, inode exhaustion, and atomic file replacement via fsync + rename.
+- Verified: lint, typecheck, `npm test` (727 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or networking-in-the-kernel (sockets, TCP buffers) interview questions.

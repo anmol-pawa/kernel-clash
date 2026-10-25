@@ -442,6 +442,14 @@ describe("interview pool", () => {
     expect((find("ivx-writer-starve") as McqQ).options[0]).toMatch(/starve a waiting writer/);
   });
 
+  it("answers the file-system consistency questions: fsck, ordered journaling, copy-on-write, inode exhaustion and atomic rename", () => {
+    expect((find("ivx-fsck-scan") as McqQ).options[0]).toMatch(/scan all metadata/);
+    expect((find("ivx-journal-meta") as McqQ).options[0]).toMatch(/stale or garbage data/);
+    expect((find("ivx-cow-fs") as McqQ).options[0]).toMatch(/never overwrites live blocks/);
+    expect((find("ivx-inode-exhaust") as McqQ).options[0]).toMatch(/run out of inodes/);
+    expect((find("ivx-atomic-rename") as McqQ).options[0]).toMatch(/fsync it, then rename/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

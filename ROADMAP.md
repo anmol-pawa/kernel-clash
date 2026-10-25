@@ -149,3 +149,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.26 Five more interview questions on I/O and device drivers (polling vs interrupts, top/bottom halves, block vs character devices, MMIO, non-blocking vs async I/O), checked in the pool test.
 - [x] 5.27 Five more interview questions on CPU caches (AMAT, tag bits, locality, false sharing, write-back vs write-through), checked in the pool test.
 - [x] 5.28 Five more interview questions on concurrency bugs (data race vs race condition, livelock, ABA, memory reordering, writer starvation), checked in the pool test.
+- [x] 5.29 Five more interview questions on file-system consistency (why fsck is slow, ordered-mode journaling, copy-on-write file systems, inode exhaustion, atomic replace via rename), checked in the pool test.

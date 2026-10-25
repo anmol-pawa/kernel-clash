@@ -174,6 +174,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-aba": "Scheduling and sync",
   "ivx-reorder": "Scheduling and sync",
   "ivx-writer-starve": "Scheduling and sync",
+  "ivx-fsck-scan": "I/O and Linux",
+  "ivx-journal-meta": "I/O and Linux",
+  "ivx-cow-fs": "I/O and Linux",
+  "ivx-inode-exhaust": "I/O and Linux",
+  "ivx-atomic-rename": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
