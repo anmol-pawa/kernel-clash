@@ -450,6 +450,14 @@ describe("interview pool", () => {
     expect((find("ivx-atomic-rename") as McqQ).options[0]).toMatch(/fsync it, then rename/);
   });
 
+  it("answers the kernel-networking questions: sendfile, listen backlog, send-buffer back-pressure, SO_REUSEADDR and edge-triggered epoll", () => {
+    expect((find("ivx-sendfile") as McqQ).options[0]).toMatch(/without copying it through a user-space buffer/);
+    expect((find("ivx-listen-backlog") as McqQ).options[0]).toMatch(/queue for accept\(\)/);
+    expect((find("ivx-send-block") as McqQ).options[0]).toMatch(/send buffer is full/);
+    expect((find("ivx-reuseaddr") as McqQ).options[0]).toMatch(/SO_REUSEADDR/);
+    expect((find("ivx-epoll-edge") as McqQ).options[0]).toMatch(/until read\(\) returns EAGAIN/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

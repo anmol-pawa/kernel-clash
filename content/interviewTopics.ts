@@ -179,6 +179,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-cow-fs": "I/O and Linux",
   "ivx-inode-exhaust": "I/O and Linux",
   "ivx-atomic-rename": "I/O and Linux",
+  "ivx-sendfile": "I/O and Linux",
+  "ivx-listen-backlog": "I/O and Linux",
+  "ivx-send-block": "I/O and Linux",
+  "ivx-reuseaddr": "I/O and Linux",
+  "ivx-epoll-edge": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
