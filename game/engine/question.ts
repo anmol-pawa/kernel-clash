@@ -13,6 +13,7 @@
  *   translate  tap the page-table entry a logical address maps through
  *   victim   tap the frame a page-replacement policy evicts
  *   track    tap the cylinder a disk-scheduling policy serves next
+ *   bugspot  tap the line(s) of a code snippet that contain the bug
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
@@ -178,6 +179,18 @@ export function trackSetup(q: Pick<TrackQ, "head" | "queue" | "served">): { at: 
   return { at: q.served.length ? q.served[q.served.length - 1] : q.head, pending: q.queue.filter((c) => !q.served.includes(c)) };
 }
 
+export interface BugSpotQ extends Base {
+  kind: "bugspot";
+  /** the snippet, one string per source line (indentation kept) */
+  lines: readonly string[];
+  /** indexes (into `lines`) of every buggy line; the player must tap exactly these */
+  answer: readonly number[];
+}
+
+/** Snippet length limits for a bug-spotting question (one tap target per line). */
+export const BUGSPOT_MIN_LINES = 8;
+export const BUGSPOT_MAX_LINES = 15;
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -187,8 +200,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ | BugSpotQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track" | "bugspot";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -211,7 +224,9 @@ export type Response =
   /** the frame the player tapped */
   | { kind: "victim"; frame: number }
   /** the cylinder the player tapped */
-  | { kind: "track"; cylinder: number };
+  | { kind: "track"; cylinder: number }
+  /** the snippet lines (indexes) the player marked as buggy */
+  | { kind: "bugspot"; lines: readonly number[] };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -301,6 +316,8 @@ export function grade(q: Question, r: Response): boolean {
       return r.frame === (q as VictimQ).answer;
     case "track":
       return r.cylinder === (q as TrackQ).answer;
+    case "bugspot":
+      return sameSet(r.lines, (q as BugSpotQ).answer);
   }
 }
 
@@ -338,6 +355,12 @@ export function answerText(q: Question): string {
     }
     case "track":
       return `cylinder ${q.answer}`;
+    case "bugspot":
+      return q.answer
+        .slice()
+        .sort((a, b) => a - b)
+        .map((i) => `line ${i + 1}: ${q.lines[i].trim()}`)
+        .join("; ");
     default:
       return q.options[q.answer];
   }
@@ -364,6 +387,8 @@ export function correctionText(q: Question): string | null {
       return `The victim is ${answerText(q)}.`;
     case "track":
       return `The next request served is ${answerText(q)}.`;
+    case "bugspot":
+      return `The bug is at ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -488,6 +513,14 @@ export function questionProblems(q: Question): string[] {
       }
       break;
     }
+    case "bugspot":
+      if (q.lines.length < BUGSPOT_MIN_LINES || q.lines.length > BUGSPOT_MAX_LINES) p.push(`bugspot needs ${BUGSPOT_MIN_LINES}–${BUGSPOT_MAX_LINES} lines`);
+      if (q.answer.length < 1 || q.answer.length > 3) p.push("bugspot needs 1–3 buggy lines");
+      if (new Set(q.answer).size !== q.answer.length) p.push("duplicate buggy lines");
+      if (q.answer.some((i) => !Number.isInteger(i) || i < 0 || i >= q.lines.length)) p.push("buggy line out of range");
+      else if (q.answer.some((i) => !q.lines[i].trim())) p.push("a blank line can't be the bug");
+      if (q.lines.some((l) => l.includes("\n"))) p.push("each line must be a single line");
+      break;
     default:
       if (q.options.length !== 4) p.push("mcq needs 4 options");
       if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) p.push("answer out of range");

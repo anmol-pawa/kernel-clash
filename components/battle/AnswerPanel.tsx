@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
+import { chartOf, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type BugSpotQ, type CycleQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -54,6 +54,8 @@ export function AnswerPanel(p: Props) {
       return <VictimPanel {...p} q={p.q as VictimQ} />;
     case "track":
       return <TrackPanel {...p} q={p.q as TrackQ} />;
+    case "bugspot":
+      return <BugSpotPanel {...p} q={p.q as BugSpotQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -663,6 +665,56 @@ function TrackPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: T
           }}
         >
           ▶ SERVE THIS REQUEST
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Code reading: a numbered snippet whose lines toggle on tap; mark every line
+ * that holds the bug, then CONFIRM. After answering, the keyed lines turn green
+ * and any wrong marks turn red.
+ */
+function BugSpotPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: BugSpotQ }) {
+  const [marked, setMarked] = useState<number[]>([]);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "bugspot" ? reveal.response.lines : marked;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="bugspot">
+      <div className="gb-box flex flex-col gap-0.5 p-1.5 !text-[var(--box-ink)]" data-testid="bugspot-code">
+        {q.lines.map((line, i) => {
+          const on = shown.includes(i);
+          const right = !!reveal && q.answer.includes(i);
+          const wrong = !!reveal && on && !q.answer.includes(i);
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={locked || !line.trim()}
+              data-testid={`bug-line-${i}`}
+              aria-pressed={on}
+              onClick={() => (sfx.blip(), setMarked((m) => (m.includes(i) ? m.filter((x) => x !== i) : [...m, i])))}
+              className={`flex w-full items-center gap-2 rounded-[2px] px-1 text-left font-mono text-[13px] leading-[1.3] ${line.trim() ? "min-h-8 pointer-coarse:min-h-9" : "min-h-3"} ${on ? "outline outline-2 -outline-offset-2" : ""} ${right ? "bg-[#bfe8a8]" : wrong ? "bg-[#f0b0a8]" : on ? "bg-[#ffe27a]" : ""}`}
+            >
+              <span className="w-4 shrink-0 text-right text-[10px] opacity-60">{i + 1}</span>
+              <span className="min-w-0 whitespace-pre-wrap break-words">{line || " "}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || marked.length === 0}
+          data-testid="bugspot-confirm"
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "bugspot", lines: marked });
+          }}
+        >
+          ▶ THIS IS THE BUG
         </button>
       )}
     </div>
