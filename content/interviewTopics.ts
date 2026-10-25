@@ -1,4 +1,5 @@
 import { GYM_QUESTIONS } from "./gymQuestions";
+import { BUGSPOT_QUESTIONS } from "./bugspotQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, type InterviewTopic } from "@/game/engine/interview";
 import type { Question } from "@/game/engine/question";
@@ -189,9 +190,19 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-rt-class": "Scheduling and sync",
   "ivx-affinity": "Scheduling and sync",
   "ivx-load-avg": "Scheduling and sync",
+  "bs-counter": "Scheduling and sync",
+  "bs-toctou": "I/O and Linux",
+  "bs-cond-if": "Scheduling and sync",
+  "bs-lock-order": "Scheduling and sync",
+  "bs-early-return": "Scheduling and sync",
+  "bs-dcl": "Scheduling and sync",
+  "bs-lost-signal": "Scheduling and sync",
+  "bs-ring-index": "Memory",
+  "bs-fork-fail": "Processes",
+  "bs-double-close": "I/O and Linux",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS];
 
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 
