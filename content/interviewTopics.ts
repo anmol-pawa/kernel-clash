@@ -159,6 +159,11 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-sigpipe": "Processes",
   "ivx-signal-safe": "Scheduling and sync",
   "ivx-sigsegv": "Memory",
+  "ivx-polling-irq": "I/O and Linux",
+  "ivx-top-bottom-half": "I/O and Linux",
+  "ivx-block-char": "I/O and Linux",
+  "ivx-mmio": "I/O and Linux",
+  "ivx-blocking-async": "I/O and Linux",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA];

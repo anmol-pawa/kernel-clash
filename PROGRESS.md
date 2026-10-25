@@ -795,3 +795,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.25: five authored Kernel Summit questions: SIGSTOP/SIGCONT and job control, SIGCHLD and zombies, SIGPIPE on a pipe with no readers, async-signal safety in handlers, and SIGSEGV from a bad pointer. (A draft SIGKILL question duplicated `ivx-sigkill`; I replaced it.)
 - Verified: lint, typecheck, `npm test` (723 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security nudge, which I did not act on). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or I/O and device-driver interview questions.
+
+## 2026-10-25: 5.26 I/O and device-driver interview questions (run 111)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.26: five authored Kernel Summit questions under "I/O and Linux": polling vs interrupts, top/bottom half handlers, block vs character devices, memory-mapped I/O, and non-blocking vs asynchronous I/O.
+- Verified: lint, typecheck, `npm test`, `build:pages` (see final summary). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or CPU-cache/memory-hierarchy interview questions.

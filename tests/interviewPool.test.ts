@@ -418,6 +418,14 @@ describe("interview pool", () => {
     expect((find("ivx-sigsegv") as McqQ).options[0]).toMatch(/no valid mapping/);
   });
 
+  it("answers the I/O questions: polling vs interrupts, top/bottom halves, block vs character devices, MMIO and non-blocking vs async", () => {
+    expect((find("ivx-polling-irq") as McqQ).options[0]).toMatch(/very frequent/);
+    expect((find("ivx-top-bottom-half") as McqQ).options[0]).toMatch(/defers longer work/);
+    expect((find("ivx-block-char") as McqQ).options[0]).toMatch(/fixed-size blocks/);
+    expect((find("ivx-mmio") as McqQ).options[0]).toMatch(/load and store/);
+    expect((find("ivx-blocking-async") as McqQ).options[0]).toMatch(/would block/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
