@@ -426,6 +426,14 @@ describe("interview pool", () => {
     expect((find("ivx-blocking-async") as McqQ).options[0]).toMatch(/would block/);
   });
 
+  it("answers the cache questions: AMAT, tag bits, locality, false sharing and write policies", () => {
+    expect((find("ivx-amat") as NumericQ).answer).toBeCloseTo(1 + (1 - 0.95) * 100, 6);
+    expect((find("ivx-cache-tag") as NumericQ).answer).toBe(32 - Math.log2(64) - Math.log2(256));
+    expect((find("ivx-locality") as McqQ).options[0]).toMatch(/Scanning an array/);
+    expect((find("ivx-false-sharing") as McqQ).options[0]).toMatch(/same cache line/);
+    expect((find("ivx-write-policy") as McqQ).options[0]).toMatch(/marks the line dirty/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);

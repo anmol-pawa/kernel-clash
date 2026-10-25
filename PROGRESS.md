@@ -800,3 +800,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.26: five authored Kernel Summit questions under "I/O and Linux": polling vs interrupts, top/bottom half handlers, block vs character devices, memory-mapped I/O, and non-blocking vs asynchronous I/O.
 - Verified: lint, typecheck, `npm test`, `build:pages` (see final summary). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or CPU-cache/memory-hierarchy interview questions.
+
+## 2026-10-25: 5.27 CPU-cache interview questions (run 112)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.27: five authored Kernel Summit questions: average memory access time (6 ns), tag bits of a direct-mapped cache (18), spatial vs temporal locality, false sharing, and write-back vs write-through.
+- Verified: lint, typecheck, `npm test` (725 tests; the new one checks the numeric answers by formula), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or concurrency-bug interview questions.

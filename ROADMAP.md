@@ -147,3 +147,4 @@ The hourly routine works top to bottom: take the first unchecked box. Split big 
 - [x] 5.24 Five more interview questions on boot and process lifecycle (bootloader, initramfs, fork bombs, orphans, exec), checked in the pool test.
 - [x] 5.25 Five more interview questions on signals (SIGSTOP/SIGCONT job control, SIGCHLD and zombies, SIGPIPE, async-signal safety, SIGSEGV), checked in the pool test.
 - [x] 5.26 Five more interview questions on I/O and device drivers (polling vs interrupts, top/bottom halves, block vs character devices, MMIO, non-blocking vs async I/O), checked in the pool test.
+- [x] 5.27 Five more interview questions on CPU caches (AMAT, tag bits, locality, false sharing, write-back vs write-through), checked in the pool test.
