@@ -805,3 +805,8 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Main was green locally and no lock was held. The roadmap was complete, so I added task 5.27: five authored Kernel Summit questions: average memory access time (6 ns), tag bits of a direct-mapped cache (18), spatial vs temporal locality, false sharing, and write-back vs write-through.
 - Verified: lint, typecheck, `npm test` (725 tests; the new one checks the numeric answers by formula), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
 - Next: more content depth, e.g. extra questions per gym pool or concurrency-bug interview questions.
+
+## 2026-10-25: 5.28 Concurrency-bug interview questions (run 113)
+- Main was green locally and no lock was held. The roadmap was complete, so I added task 5.28: five authored Kernel Summit questions: data race vs race condition, livelock vs deadlock, the ABA problem, memory reordering without fences, and writer starvation in reader-preference locks.
+- Verified: lint, typecheck, `npm test` (726 tests; the new one checks the answers in the pool test), `build:pages` (284 files precached; passes on retry after Next's security-advisory network error). Content-only change, so no new screenshots. CI/deploy confirmation skipped (Actions quota).
+- Next: more content depth, e.g. extra questions per gym pool or filesystem-consistency interview questions.

@@ -434,6 +434,14 @@ describe("interview pool", () => {
     expect((find("ivx-write-policy") as McqQ).options[0]).toMatch(/marks the line dirty/);
   });
 
+  it("answers the concurrency-bug questions: data race, livelock, ABA, reordering and writer starvation", () => {
+    expect((find("ivx-data-race") as McqQ).options[0]).toMatch(/unsynchronized concurrent access/);
+    expect((find("ivx-livelock") as McqQ).options[0]).toMatch(/no progress/);
+    expect((find("ivx-aba") as McqQ).options[0]).toMatch(/changed to B and back/);
+    expect((find("ivx-reorder") as McqQ).options[0]).toMatch(/reorder or delay/);
+    expect((find("ivx-writer-starve") as McqQ).options[0]).toMatch(/starve a waiting writer/);
+  });
+
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
     const o = find("ivx-pagefault") as OrderQ;
     expect(o.steps[0]).toMatch(/traps/);
