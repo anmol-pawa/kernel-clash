@@ -57,6 +57,12 @@ export interface Program {
   spurious?: boolean;
   /** give up (and say `truncated`) after this many distinct states */
   maxStates?: number;
+  /**
+   * Also look for a thread that starves under a fair schedule (costs extra
+   * memory). `true` watches every thread; a list of names watches only those,
+   * for programs where some thread is meant to loop forever.
+   */
+  fairness?: boolean | string[];
 }
 
 export interface Counterexample {
@@ -73,6 +79,11 @@ export interface Report {
   failure?: Counterexample;
   /** distinct final shared values over all runs that finished (sorted keys) */
   finals: Record<string, number>[];
+  /**
+   * A thread that never finishes in some run that is fair (every thread that
+   * can move in the repeating part does move). Only set when `fairness` is on.
+   */
+  starvation?: Counterexample;
 }
 
 const CMP: Record<Cmp, (a: number, b: number) => boolean> = {
@@ -152,6 +163,72 @@ export const opText = (o: Op): string => {
     case "label": return `${o.name}:`;
   }
 };
+
+/**
+ * Find a reachable cycle that a fair scheduler can repeat forever while thread
+ * `t` is unfinished. A cycle is fair when every thread that can move somewhere
+ * on it does move on it, so a thread that is merely never picked does not count;
+ * only a thread that cannot finish (spinning on a flag nobody sets, blocked
+ * behind a lock holder that loops forever) does.
+ */
+function findStarvation(
+  edges: Map<string, [number, string][]>,
+  finished: (key: string, t: number) => boolean,
+  nThreads: number,
+): { thread: number; key: string } | null {
+  // iterative Tarjan over the explored graph
+  const index = new Map<string, number>();
+  const low = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  let counter = 0;
+  for (const root of edges.keys()) {
+    if (index.has(root)) continue;
+    const work: [string, number][] = [[root, 0]];
+    index.set(root, counter);
+    low.set(root, counter++);
+    stack.push(root);
+    onStack.add(root);
+    while (work.length) {
+      const top = work[work.length - 1];
+      const [v, i] = top;
+      const out = edges.get(v) ?? [];
+      if (i < out.length) {
+        top[1]++;
+        const w = out[i][1];
+        if (!index.has(w)) {
+          index.set(w, counter);
+          low.set(w, counter++);
+          stack.push(w);
+          onStack.add(w);
+          work.push([w, 0]);
+        } else if (onStack.has(w)) low.set(v, Math.min(low.get(v)!, index.get(w)!));
+        continue;
+      }
+      work.pop();
+      if (work.length) {
+        const parent = work[work.length - 1][0];
+        low.set(parent, Math.min(low.get(parent)!, low.get(v)!));
+      }
+      if (low.get(v) !== index.get(v)) continue;
+      const comp = new Set<string>();
+      for (let w = ""; w !== v; ) {
+        w = stack.pop()!;
+        onStack.delete(w);
+        comp.add(w);
+      }
+      const inside = [...comp].flatMap((k) => (edges.get(k) ?? []).filter(([, to]) => comp.has(to)).map(([t]) => t));
+      if (!inside.length) continue; // a single state with no loop
+      const moves = new Set(inside);
+      const canMove = new Set([...comp].flatMap((k) => (edges.get(k) ?? []).map(([t]) => t)));
+      if ([...canMove].some((t) => !moves.has(t))) continue; // unfair: someone able to move is ignored forever
+      for (let t = 0; t < nThreads; t++) {
+        if (!finished(v, t)) return { thread: t, key: v };
+      }
+    }
+  }
+  return null;
+}
 
 /** Explore every interleaving of `prog`. */
 export function explore(prog: Program): Report {
@@ -265,6 +342,9 @@ export function explore(prog: Program): Report {
   let frontier: [string, State][] = [[rootKey, init]];
   const report: Report = { states: 1, truncated: false, finals: [] };
   const finals = new Map<string, Record<string, number>>();
+  /** transition graph, kept only for the fairness check: key -> [thread, next key][] */
+  const edges = new Map<string, [number, string][]>();
+  const states = new Map<string, State>();
 
   while (frontier.length && !report.failure) {
     const next: [string, State][] = [];
@@ -278,6 +358,10 @@ export function explore(prog: Program): Report {
           }
           any = true;
           const k = keyOf(m.next!);
+          if (prog.fairness) {
+            states.set(key, s);
+            (edges.get(key) ?? edges.set(key, []).get(key)!).push([t, k]);
+          }
           if (seen.has(k)) continue;
           if (seen.size >= limit) {
             report.truncated = true;
@@ -300,6 +384,16 @@ export function explore(prog: Program): Report {
   }
   report.states = seen.size;
   report.finals = [...finals.values()];
+  if (prog.fairness && !report.failure && !report.truncated) {
+    const watched = Array.isArray(prog.fairness) ? prog.fairness : names;
+    const starved = findStarvation(edges, (k, t) => done(states.get(k)!, t) || !watched.includes(names[t]), code.length);
+    if (starved) {
+      report.starvation = {
+        message: `starvation: ${names[starved.thread]} never finishes under a fair schedule`,
+        trace: traceTo(starved.key),
+      };
+    }
+  }
   return report;
 }
 
@@ -308,4 +402,4 @@ export const finalValues = (r: Report, v: string): number[] =>
   [...new Set(r.finals.map((f) => f[v] ?? 0))].sort((a, b) => a - b);
 
 /** No failure, no deadlock, the search was complete, and some run finishes (a spin forever is not safe). */
-export const isSafe = (r: Report): boolean => !r.failure && !r.deadlock && !r.truncated && r.finals.length > 0;
+export const isSafe = (r: Report): boolean => !r.failure && !r.deadlock && !r.truncated && r.finals.length > 0 && !r.starvation;
