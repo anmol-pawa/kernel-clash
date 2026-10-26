@@ -91,3 +91,71 @@ export function memoryMax(maxMB: number, procs: readonly MemProc[], cacheMB: num
   }
   return { reclaimedMB, killed, survivors: live };
 }
+
+/**
+ * overlayfs, as used for container images (Documentation/filesystems/overlayfs.rst):
+ * read-only lower layers (an image's layers, top first) under one writable
+ * upper layer. A lookup takes the topmost layer that has the name; a
+ * whiteout in a higher layer hides the name in every layer below it. The
+ * first write to a lower-layer file copies the whole file up to the upper
+ * layer (copy-up), however small the change; deleting a lower-layer file
+ * leaves a whiteout in the upper layer, it never changes the lower layer.
+ */
+export const WHITEOUT = Symbol("whiteout");
+export interface OverlayFile {
+  data: string;
+  sizeMB: number;
+}
+export type Layer = Map<string, OverlayFile | typeof WHITEOUT>;
+
+export class Overlay {
+  readonly upper: Layer = new Map();
+  /** MB copied up so far */
+  copiedUpMB = 0;
+  /** `lower` lists the image layers, topmost first */
+  constructor(readonly lower: readonly Layer[]) {}
+
+  /** the file a process sees at `path`, or undefined */
+  read(path: string): OverlayFile | undefined {
+    for (const layer of [this.upper, ...this.lower]) {
+      const e = layer.get(path);
+      if (e === WHITEOUT) return undefined;
+      if (e) return e;
+    }
+    return undefined;
+  }
+
+  private inLower(path: string): OverlayFile | undefined {
+    for (const layer of this.lower) {
+      const e = layer.get(path);
+      if (e === WHITEOUT) return undefined;
+      if (e) return e;
+    }
+    return undefined;
+  }
+
+  /** change a file's contents; a lower-layer file is copied up in full first. `sizeMB` is the new size. */
+  write(path: string, data: string, sizeMB?: number): void {
+    const up = this.upper.get(path);
+    if (up && up !== WHITEOUT) {
+      this.upper.set(path, { data, sizeMB: sizeMB ?? up.sizeMB });
+      return;
+    }
+    const low = up === WHITEOUT ? undefined : this.inLower(path);
+    if (low) this.copiedUpMB += low.sizeMB;
+    this.upper.set(path, { data, sizeMB: sizeMB ?? low?.sizeMB ?? 0 });
+  }
+
+  /** rm: a file that exists below gets a whiteout; one only in the upper layer is just removed */
+  remove(path: string): void {
+    if (this.inLower(path)) this.upper.set(path, WHITEOUT);
+    else this.upper.delete(path);
+  }
+
+  /** disk the container's writable layer uses: files and whiteouts (a whiteout is a 0-byte character device) */
+  get upperMB(): number {
+    let mb = 0;
+    for (const e of this.upper.values()) if (e !== WHITEOUT) mb += e.sizeMB;
+    return mb;
+  }
+}

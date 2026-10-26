@@ -16,8 +16,8 @@ import { ANOMALY, DEMAND_CHECK, LRU_CHECK, WSS_CHECK } from "@/content/lessons";
 import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/components/lesson/Diagrams";
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
-import { CPU_MAX_CHECK } from "@/content/lessons";
-import { CGROUP_EXAMPLE, NAMESPACE_EXAMPLE } from "@/components/lesson/Diagrams";
+import { COPY_UP_CHECK, CPU_MAX_CHECK } from "@/content/lessons";
+import { CGROUP_EXAMPLE, DOCKER_RUN_STEPS, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -28,7 +28,7 @@ const DEADLOCK_DIAGRAMS = ["rag", "banker"];
 const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
 const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
 const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
-const CONTAINER_DIAGRAMS = ["namespaces", "cgroups"];
+const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "dockerrun"];
 const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
@@ -573,9 +573,9 @@ describe("storage lessons", () => {
 
 describe("container lessons (Kernel Summit)", () => {
   const ls = lessonsOf("interview");
-  it("start with namespaces and cgroups, each with its own diagram", () => {
-    expect(ls.map((l) => l.id)).toEqual(["containers-namespaces", "containers-cgroups"]);
-    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(["namespaces", "cgroups"]);
+  it("run namespaces, cgroups, overlayfs, containers vs VMs, then docker run, each with its own diagram", () => {
+    expect(ls.map((l) => l.id)).toEqual(["containers-namespaces", "containers-cgroups", "containers-overlayfs", "containers-vms", "containers-run"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(CONTAINER_DIAGRAMS);
   });
 
   it("namespaces check: a PID namespace (pid_namespaces(7)); the other options are wrong", () => {
@@ -606,5 +606,34 @@ describe("container lessons (Kernel Summit)", () => {
     expect(CGROUP_EXAMPLE.throttle.map((t) => t.runUs)).toEqual([12500, 50000]);
     expect(CGROUP_EXAMPLE.mem.fits.killed).toEqual([]);
     expect(CGROUP_EXAMPLE.mem.over.killed).toEqual(["leak"]);
+  });
+
+  it("overlayfs check: one byte written to a 100 MB lower file copies up all 100 MB", () => {
+    expect(COPY_UP_CHECK).toBe(100);
+    const q = lessonById("containers-overlayfs")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "100" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "1" })).toBe(false);
+    expect(grade(q, { kind: "numeric", value: "0" })).toBe(false);
+  });
+
+  it("overlayfs diagram: the write copied up 100 MB, the delete hid the app binary but kept the rest", () => {
+    const { overlay, merged } = OVERLAY_EXAMPLE;
+    expect(overlay.copiedUpMB).toBe(100);
+    expect(merged).toEqual(["/bin/sh", "/db/data", "/etc/motd"]);
+  });
+
+  it("VM and docker-run checks: the keyed option is the only right one", () => {
+    for (const id of ["containers-vms", "containers-run"]) {
+      const q = lessonById(id)!.check;
+      if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+      for (let i = 0; i < q.options.length; i++) expect(grade(q, { kind: "mcq", choice: i })).toBe(i === q.answer);
+    }
+    const run = lessonById("containers-run")!.check;
+    if (run.kind !== undefined && run.kind !== "mcq") throw new Error("expected mcq");
+    expect(run.options[run.answer]).toBe("pivot_root");
+    expect(DOCKER_RUN_STEPS.map((s) => s[0].split(" ")[0])).toEqual(["1", "2", "3", "4", "5", "6"]);
+    expect(DOCKER_RUN_STEPS[3][0]).toMatch(/PIVOT_ROOT/);
+    expect(DOCKER_RUN_STEPS[5][0]).toMatch(/EXECVE/);
   });
 });

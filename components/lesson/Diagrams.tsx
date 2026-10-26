@@ -4,7 +4,7 @@ import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
-import { PidNamespaces, cpuMax, memoryMax } from "@/game/sim/containers";
+import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -2128,6 +2128,124 @@ function Cgroups() {
   );
 }
 
+/** The overlay diagram: an image of two layers, then a write to the 100 MB database file and a delete of the app binary. */
+const ovLayer = (files: Record<string, number>): Layer => new Map(Object.entries(files).map(([k, mb]) => [k, { data: "v1", sizeMB: mb }]));
+const OV_BASE = ovLayer({ "/bin/sh": 1, "/db/data": 100, "/etc/motd": 0 });
+const OV_APP = ovLayer({ "/app/run": 5 });
+export const OVERLAY_EXAMPLE = (() => {
+  const o = new Overlay([OV_APP, OV_BASE]);
+  o.write("/db/data", "v2");
+  o.remove("/app/run");
+  const merged = ["/app/run", "/bin/sh", "/db/data", "/etc/motd"].filter((p) => o.read(p));
+  return { overlay: o, merged };
+})();
+
+function OverlayFs() {
+  const { overlay, merged } = OVERLAY_EXAMPLE;
+  const base = (p: string) => p.slice(p.lastIndexOf("/") + 1).toUpperCase();
+  const size = (p: string, l: Layer) => {
+    const e = l.get(p);
+    return e && e !== WHITEOUT && e.sizeMB > 0 ? ` ${e.sizeMB}M` : "";
+  };
+  const rows: { label: string; layer: Layer; ramp: Ramp }[] = [
+    { label: "UPPER RW", layer: overlay.upper, ramp: GOLD },
+    { label: "APP LAYER", layer: OV_APP, ramp: BLUE },
+    { label: "BASE LAYER", layer: OV_BASE, ramp: STONE },
+  ];
+  return (
+    <>
+      <Night seed={25} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">
+        OVERLAYFS: LAYERS MERGED INTO ONE VIEW
+      </Text>
+      {rows.map((r, i) => {
+        const y = 12 + i * 18;
+        return (
+          <g key={r.label}>
+            <Text x={4} y={y + 9} size={3.5} fill="#cfe4ff">{r.label}</Text>
+            {[...r.layer.keys()].sort().map((p, j) => {
+              const whiteout = r.layer.get(p) === WHITEOUT;
+              return <Card key={p} x={42 + j * 45} y={y} w={43} h={14} ramp={whiteout ? RED : r.ramp} ink="#f8f4e6" size={3.5} lines={[whiteout ? `X ${base(p)}` : base(p) + size(p, r.layer)]} />;
+            })}
+          </g>
+        );
+      })}
+      <Text x={4} y={72} size={3.5} fill="#7cf0c8">MERGED</Text>
+      {merged.map((p, j) => (
+        <Card key={p} x={42 + j * 33} y={66} w={31} h={10} ramp={GREEN} ink="#f8f4e6" size={3} lines={[base(p)]} />
+      ))}
+      <Text x={90} y={88} size={3.5} fill="#f8f4e6" anchor="middle">
+        {`FIRST WRITE COPIES THE WHOLE FILE UP: ${overlay.copiedUpMB}M`}
+      </Text>
+      <Text x={90} y={96} size={3.5} fill="#f8f4e6" anchor="middle">
+        RM LEAVES A WHITEOUT (X) IN THE UPPER LAYER
+      </Text>
+      <Text x={90} y={105} size={3} fill="#7cf0c8" anchor="middle">
+        LOWER LAYERS ARE NEVER CHANGED, SO IMAGES ARE SHARED
+      </Text>
+    </>
+  );
+}
+
+function VmCompare() {
+  return (
+    <>
+      <Night seed={27} />
+      <Text x={46} y={9} size={4} fill="#ffe27a" anchor="middle">CONTAINERS</Text>
+      <Text x={134} y={9} size={4} fill="#ffe27a" anchor="middle">VIRTUAL MACHINES</Text>
+      {["APP A", "APP B", "APP C"].map((a, i) => (
+        <Card key={a} x={4 + i * 29} y={13} w={26} h={16} ramp={TEAL} ink="#f8f4e6" size={3} lines={[a]} />
+      ))}
+      <Card x={4} y={32} w={84} h={14} ramp={PURPLE} ink="#f8f4e6" size={3.5} lines={["ONE SHARED HOST KERNEL"]} />
+      <Card x={4} y={49} w={84} h={12} ramp={STONE} ink="#f8f4e6" size={3.5} lines={["HARDWARE"]} />
+      {["APP A", "APP B"].map((a, i) => (
+        <g key={a}>
+          <Card x={92 + i * 43} y={13} w={41} h={9} ramp={TEAL} ink="#f8f4e6" size={3} lines={[a]} />
+          <Card x={92 + i * 43} y={23} w={41} h={11} ramp={PURPLE} ink="#f8f4e6" size={3} lines={["GUEST KERNEL"]} />
+        </g>
+      ))}
+      <Card x={92} y={37} w={84} h={10} ramp={GOLD} size={3.5} lines={["HYPERVISOR"]} />
+      <Card x={92} y={50} w={84} h={11} ramp={STONE} ink="#f8f4e6" size={3.5} lines={["HARDWARE (VT-X, EPT)"]} />
+      {[
+        ["START: MILLISECONDS", "START: SECONDS (BOOT)"],
+        ["MEMORY: NO GUEST OS", "MEMORY: A KERNEL EACH"],
+        ["BOUNDARY: SYSCALLS", "BOUNDARY: HARDWARE"],
+        ["KERNEL BUG = ESCAPE", "ESCAPE NEEDS HYPERVISOR BUG"],
+      ].map(([l, r], i) => (
+        <g key={l}>
+          <Text x={4} y={72 + i * 8} size={3} fill="#f8f4e6">{l}</Text>
+          <Text x={92} y={72 + i * 8} size={3} fill="#cfe4ff">{r}</Text>
+        </g>
+      ))}
+      <Text x={90} y={108} size={3} fill="#7cf0c8" anchor="middle">SHARED KERNEL: FAST AND DENSE; OWN KERNEL: STRONGER WALL</Text>
+    </>
+  );
+}
+
+export const DOCKER_RUN_STEPS = [
+  ["1 OVERLAYFS", "IMAGE + RW LAYER"],
+  ["2 CLONE", "CLONE_NEW* NAMESPACES"],
+  ["3 CGROUP", "WRITE LIMITS, JOIN IT"],
+  ["4 PIVOT_ROOT", "OVERLAY BECOMES /"],
+  ["5 DROP PRIVILEGES", "CAPABILITIES, SECCOMP"],
+  ["6 EXECVE", "ENTRYPOINT IS PID 1"],
+] as const;
+
+function DockerRun() {
+  return (
+    <>
+      <Night seed={29} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">WHAT DOCKER RUN ASKS THE KERNEL TO DO</Text>
+      {DOCKER_RUN_STEPS.map(([a, b], i) => (
+        <Card key={a} x={4 + Math.floor(i / 3) * 88} y={14 + (i % 3) * 22} w={84} h={18} ramp={i % 3 === 1 ? PURPLE : BLUE} ink="#f8f4e6" size={3.5} lines={[a, b]} />
+      ))}
+      <Text x={90} y={86} size={3.5} fill="#f8f4e6" anchor="middle">STEPS 1-3 BUILD THE BOX, 4-5 LOCK IT DOWN</Text>
+      <Text x={90} y={95} size={3.5} fill="#f8f4e6" anchor="middle">STEP 6 REPLACES RUNC WITH YOUR PROGRAM</Text>
+      <Text x={90} y={105} size={3} fill="#7cf0c8" anchor="middle">NO VM: ONE PROCESS WITH NAMESPACES, CGROUPS, A ROOT</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2175,6 +2293,9 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   disk: { title: "Head movement of six disk-scheduling policies on the textbook queue", draw: DiskSched },
   namespaces: { title: "Two containers and the host each see their own PIDs, with the six namespace kinds", draw: Namespaces },
   cgroups: { title: "cpu.max throttling for four busy threads and one, and memory.max reclaiming cache or OOM-killing", draw: Cgroups },
+  overlay: { title: "Overlayfs: a write copies a 100 MB file up, a delete leaves a whiteout, the container sees the merged view", draw: OverlayFs },
+  vmcompare: { title: "Containers share one host kernel; virtual machines each run a guest kernel on a hypervisor", draw: VmCompare },
+  dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

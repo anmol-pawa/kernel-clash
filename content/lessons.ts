@@ -4,7 +4,7 @@ import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadl
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, pageTableBytes, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk } from "@/game/sim/storage";
-import { cpuMax } from "@/game/sim/containers";
+import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -14,7 +14,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun";
 
 export interface LessonPage {
   heading: string;
@@ -72,6 +72,13 @@ const STMOVE = { name: "Defrag", type: "storage", power: 30 } as const;
 const CMOVE = { name: "Recall", type: "process", power: 30 } as const;
 /** The cgroup quick check: cpu.max "25000 100000" with 8 busy threads on 8 CPUs. */
 export const CPU_MAX_CHECK = cpuMax(25000, 100000, 8, 8).runUs / 1000;
+/** MB of copy-up when a container changes one byte of a 100 MB file that lives in an image layer */
+export const COPY_UP_CHECK = (() => {
+  const image: Layer = new Map([["/db/data", { data: "v1", sizeMB: 100 }]]);
+  const o = new Overlay([image]);
+  o.write("/db/data", "v2");
+  return o.upperMB;
+})();
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1538,6 +1545,97 @@ export const LESSONS: Lesson[] = [
       answer: CPU_MAX_CHECK,
       unit: "ms",
       explain: "The quota is 25 ms of CPU time per period, and 8 threads on 8 CPUs spend it 8 ms per ms: 25 / 8 = 3.125 ms of wall-clock time. The threads then wait for the rest of the 100 ms.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "containers-overlayfs",
+    gym: "interview",
+    title: "Containers: overlayfs",
+    pages: [
+      {
+        heading: "Layers under one view",
+        body: [
+          "A container image is a stack of read-only layers, one per build step. To start a container the runtime mounts them with overlayfs: the layers are the lower directories and a fresh empty directory is the writable upper one. A process sees one merged tree.",
+          "A lookup takes the topmost layer that has the name. Ten containers from the same image share the same lower layers on disk and each adds only its own upper layer, which is why starting a container is cheap.",
+        ],
+      },
+      {
+        heading: "Copy-up and whiteouts",
+        body: [
+          "Writing to a file that lives in a lower layer first copies the whole file up to the upper layer (copy-up), then changes the copy. Changing one byte of a 100 MB file costs 100 MB of the container's layer, and the first write waits for the copy. The lower layer is never touched.",
+          "Deleting a lower-layer file cannot remove it, so overlayfs records a whiteout in the upper layer: a marker that hides that name and everything under it in the layers below. The file still takes space in the image, which is why `rm` in a later Dockerfile step does not shrink the image. Data that changes a lot belongs on a volume, which bypasses overlayfs.",
+        ],
+        diagram: "overlay",
+      },
+    ],
+    check: {
+      id: "lesson-overlayfs",
+      kind: "numeric",
+      prompt: "A database file of 100 MB lives in an image layer. A container appends one byte to it. How many MB does the container's writable layer grow by?",
+      answer: COPY_UP_CHECK,
+      unit: "MB",
+      explain: "overlayfs copies up the whole file before the first write, not just the changed bytes: 100 MB (plus the byte). The image layer is unchanged.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "containers-vms",
+    gym: "interview",
+    title: "Containers vs virtual machines",
+    pages: [
+      {
+        heading: "Shared kernel, own kernel",
+        body: [
+          "A virtual machine runs a complete guest operating system, kernel included, on virtual hardware that a hypervisor provides. A container is a process on the host kernel. That one difference explains most of the trade-offs.",
+          "Start-up: a container is a `clone` and an `exec`, so it starts in milliseconds, while a VM boots a kernel and takes seconds. Memory: there is no guest kernel or its page cache to pay for, so many more containers fit on a host. The catch is that every container uses the host's kernel, so a Linux container needs a Linux kernel and cannot run a different OS or kernel version.",
+        ],
+      },
+      {
+        heading: "How strong is the wall?",
+        body: [
+          "A container's wall is the host kernel's system-call interface, and the kernel is big. A bug in any syscall or driver can let code in a container escape to the host, which is why containers also drop capabilities and filter syscalls with seccomp. A VM's wall is the hypervisor and the CPU's virtualization hardware, a much smaller surface.",
+          "That is why untrusted tenants usually get VMs, or containers wrapped in a micro-VM (Firecracker, Kata) or a user-space kernel (gVisor). Containers suit your own services where density and start-up time matter.",
+        ],
+        diagram: "vmcompare",
+      },
+    ],
+    check: {
+      id: "lesson-vms",
+      prompt: "Why does a container start in milliseconds while a VM takes seconds?",
+      options: ["A container is a process on the running host kernel, so there is no guest kernel to boot", "Containers use faster CPUs than virtual machines", "A container image is smaller than any disk image, whatever it holds", "Containers skip the page tables"],
+      answer: 0,
+      explain: "Starting a container is a clone and an exec on the kernel that is already running. A VM must run firmware, boot a guest kernel and start its init first.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "containers-run",
+    gym: "interview",
+    title: "What docker run does",
+    pages: [
+      {
+        heading: "Six steps, no magic",
+        body: [
+          "`docker run` asks the daemon to start a container; the low-level runtime, runc, does the work with ordinary system calls. First the image's layers are mounted with overlayfs, giving the container its root file system. Then runc calls `clone` with `CLONE_NEWPID`, `CLONE_NEWNET`, `CLONE_NEWNS` and friends, so the new process starts in private namespaces.",
+          "The process is put in a cgroup, a directory under `/sys/fs/cgroup` where `cpu.max` and `memory.max` have been written. In the child, `pivot_root` makes the overlay mount the root directory and detaches the old root. It is used instead of `chroot` because chroot leaves the old root reachable and is easier to escape.",
+        ],
+      },
+      {
+        heading: "Locking down, then your program",
+        body: [
+          "Before your code runs, runc drops Linux capabilities (root inside is not full root), applies a seccomp filter that rejects dangerous syscalls and may set a user-namespace mapping. Finally it calls `execve` on the image's entrypoint. The runtime has turned itself into your program, which is now PID 1 in its namespace.",
+          "So a container is a normal process: it shows up in the host's `ps` with a different PID, and `kill` from the host works. Nothing was virtualized, just restricted and given a private view.",
+        ],
+        diagram: "dockerrun",
+      },
+    ],
+    check: {
+      id: "lesson-dockerrun",
+      prompt: "Which system call makes the image's overlay mount the container's root directory and detaches the old root?",
+      options: ["pivot_root", "chroot", "unshare", "setns"],
+      answer: 0,
+      explain: "`pivot_root` swaps the root mount and lets the old root be unmounted. `chroot` only changes the path lookup root and leaves the old root reachable; `unshare` and `setns` change namespaces.",
       move: CMOVE,
     },
   },
