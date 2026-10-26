@@ -1,0 +1,162 @@
+import type { FillQ } from "@/game/engine/question";
+import type { MoveType } from "@/game/engine/types";
+
+/**
+ * Code-completion questions for the Kernel Summit: the classic synchronization
+ * problems written out in C with 1-3 blanks. Each blank has 3-4 options and
+ * exactly one keeps the program correct; the wrong ones are the textbook
+ * mistakes (swapped semaphores, `if` for `while`, lost wakeups, deadlock).
+ */
+const mv = (name: string, type: MoveType, power: number) => ({ name, type, power });
+
+export const FILL_QUESTIONS: FillQ[] = [
+  {
+    id: "fill-bb-sem",
+    kind: "fill",
+    prompt: "Bounded buffer with semaphores (empty starts at N, full at 0, mutex at 1). Complete producer() so it neither overflows the buffer nor deadlocks.",
+    lines: [
+      "void producer(void) {",
+      "    while (1) {",
+      "        int item = produce();",
+      "        ___1___;",
+      "        sem_wait(&mutex);",
+      "        put(item);",
+      "        sem_post(&mutex);",
+      "        ___2___;",
+      "    }",
+      "}",
+    ],
+    blanks: [
+      { options: ["sem_wait(&empty)", "sem_wait(&full)", "sem_post(&empty)"], answer: 0 },
+      { options: ["sem_post(&full)", "sem_post(&empty)", "sem_wait(&full)"], answer: 0 },
+    ],
+    explain: "The producer must first claim a free slot: sem_wait(&empty) blocks when all N slots are full. After inserting, it announces one more filled slot with sem_post(&full), which wakes a waiting consumer. Waiting on empty while holding the mutex would deadlock, which is why the order is empty, then mutex.",
+    move: mv("Semaphore Gate", "sync", 38),
+  },
+  {
+    id: "fill-bb-cv",
+    kind: "fill",
+    prompt: "Bounded buffer with a mutex and two condition variables (not_full, not_empty). Complete the consumer so it is correct even with spurious wakeups and several consumers.",
+    lines: [
+      "int get(void) {",
+      "    pthread_mutex_lock(&m);",
+      "    ___1___ (count == 0)",
+      "        pthread_cond_wait(&not_empty, &m);",
+      "    int item = buf[out];",
+      "    out = (out + 1) % N;",
+      "    count--;",
+      "    ___2___;",
+      "    pthread_mutex_unlock(&m);",
+      "    return item;",
+      "}",
+    ],
+    blanks: [
+      { options: ["if", "for (;;) if", "while"], answer: 2 },
+      { options: ["pthread_cond_signal(&not_full)", "pthread_cond_signal(&not_empty)", "pthread_cond_wait(&not_full, &m)"], answer: 0 },
+    ],
+    explain: "Use while: after waking, another consumer may already have taken the item, and wakeups can be spurious, so the condition must be re-checked with the mutex held. Having removed an item, the consumer frees a slot, so it signals not_full to wake a blocked producer. Signalling not_empty would wake a consumer for nothing, and waiting here would block with no reason.",
+    move: mv("Condvar Loop", "sync", 40),
+  },
+  {
+    id: "fill-rw",
+    kind: "fill",
+    prompt: "Readers-writers, reader preference. rw guards the data, mutex guards readcount. Complete reader_enter() so that the first reader locks writers out and later readers share.",
+    lines: [
+      "void reader_enter(void) {",
+      "    sem_wait(&mutex);",
+      "    readcount++;",
+      "    if (readcount == ___1___)",
+      "        ___2___;",
+      "    sem_post(&mutex);",
+      "}",
+      "void reader_exit(void) {",
+      "    sem_wait(&mutex);",
+      "    readcount--;",
+      "    if (readcount == 0)",
+      "        sem_post(&rw);",
+      "    sem_post(&mutex);",
+      "}",
+    ],
+    blanks: [
+      { options: ["0", "1", "2"], answer: 1 },
+      { options: ["sem_post(&rw)", "sem_wait(&mutex)", "sem_wait(&rw)"], answer: 2 },
+    ],
+    explain: "After readcount++ the first reader sees 1. Only that reader does sem_wait(&rw), blocking writers for as long as any reader is inside; the last reader out (readcount back to 0) posts rw. Every reader locking rw would serialize readers, and waiting on mutex again would self-deadlock.",
+    move: mv("Shared Lock", "sync", 38),
+  },
+  {
+    id: "fill-philosophers",
+    kind: "fill",
+    prompt: "Dining philosophers: five forks, philosopher i uses forks i and (i+1)%5. Complete the pickup order that breaks the circular wait.",
+    lines: [
+      "void philosopher(int i) {",
+      "    int a = i, b = (i + 1) % 5;",
+      "    while (1) {",
+      "        think();",
+      "        if (___1___) { int t = a; a = b; b = t; }",
+      "        sem_wait(&fork[a]);",
+      "        sem_wait(&fork[b]);",
+      "        eat();",
+      "        ___2___;",
+      "        sem_post(&fork[b]);",
+      "    }",
+      "}",
+    ],
+    blanks: [
+      { options: ["a > b", "a < b", "i == 0"], answer: 0 },
+      { options: ["sem_wait(&fork[a])", "sem_post(&fork[a])", "sem_post(&fork[i + 1])"], answer: 1 },
+    ],
+    explain: "Swapping so that a is always the lower-numbered fork makes every philosopher take the lower fork first (philosopher 4 swaps to forks 0 then 4). A global resource ordering means no cycle of waits can form, so no deadlock. Afterwards both forks must be released, here fork[a] and fork[b].",
+    move: mv("Ordered Forks", "sync", 42),
+  },
+  {
+    id: "fill-barrier",
+    kind: "fill",
+    prompt: "A reusable-once barrier for N threads using a counter and a condition variable. Complete barrier_wait() so no thread leaves before all N have arrived.",
+    lines: [
+      "void barrier_wait(void) {",
+      "    pthread_mutex_lock(&m);",
+      "    arrived++;",
+      "    if (arrived == N) {",
+      "        ___1___;",
+      "    } else {",
+      "        while (arrived < N)",
+      "            ___2___;",
+      "    }",
+      "    pthread_mutex_unlock(&m);",
+      "}",
+    ],
+    blanks: [
+      { options: ["pthread_cond_signal(&all)", "pthread_cond_wait(&all, &m)", "pthread_cond_broadcast(&all)"], answer: 2 },
+      { options: ["pthread_cond_wait(&all, &m)", "pthread_cond_signal(&all)", "pthread_mutex_unlock(&m)"], answer: 0 },
+    ],
+    explain: "The last thread to arrive must wake all N-1 sleepers, so it uses pthread_cond_broadcast; signal would release only one and leave the rest asleep forever. The early arrivals sleep in pthread_cond_wait, which atomically releases the mutex while waiting and re-takes it on wakeup, inside a while loop that re-checks arrived < N.",
+    move: mv("Rally Point", "sync", 40),
+  },
+  {
+    id: "fill-once",
+    kind: "fill",
+    prompt: "One-time initialization shared by many threads. Complete get_config() so init runs exactly once and every caller sees the finished config.",
+    lines: [
+      "static int done = 0;",
+      "static config_t cfg;",
+      "static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;",
+      "",
+      "config_t *get_config(void) {",
+      "    pthread_mutex_lock(&m);",
+      "    if (___1___) {",
+      "        init(&cfg);",
+      "        ___2___;",
+      "    }",
+      "    pthread_mutex_unlock(&m);",
+      "    return &cfg;",
+      "}",
+    ],
+    blanks: [
+      { options: ["done", "!done", "cfg == NULL"], answer: 1 },
+      { options: ["done = 0", "pthread_mutex_unlock(&m)", "done = 1"], answer: 2 },
+    ],
+    explain: "Under the mutex, check that init has not yet happened (!done), run it, then record that with done = 1. Because the check and the update are both inside the critical section, exactly one thread initializes and later callers see done == 1. (pthread_once does the same job without the lock cost on later calls.)",
+    move: mv("Once Only", "sync", 36),
+  },
+];
