@@ -4,6 +4,7 @@ import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
+import { PidNamespaces, cpuMax, memoryMax } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
 import { GanttRows } from "./Gantt";
@@ -2020,6 +2021,113 @@ function DiskSched() {
   );
 }
 
+/* ---- containers: the Linux toolkit under Docker ---- */
+
+/** The namespaces diagram's processes: two host daemons, then container A's init and shell, and B's init. */
+export const NAMESPACE_EXAMPLE = (() => {
+  const ns = new PidNamespaces();
+  ns.fork(0);
+  ns.fork(0);
+  const a = ns.create(0);
+  const b = ns.create(0);
+  return { a: [ns.fork(a), ns.fork(a)], b: [ns.fork(b)], aId: a, bId: b };
+})();
+const NS_KINDS = [["MNT", "MOUNTS"], ["PID", "PROCS"], ["NET", "NICS"], ["UTS", "HOST"], ["IPC", "QUEUES"], ["USER", "UIDS"]];
+
+function Namespaces() {
+  const { a, b, aId, bId } = NAMESPACE_EXAMPLE;
+  const proc = (pids: Map<number, number>, ns: number, name: string) => `${pids.get(ns)} ${name} = HOST ${pids.get(0)}`;
+  return (
+    <>
+      <Night seed={21} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">
+        ONE KERNEL, A PRIVATE VIEW PER CONTAINER
+      </Text>
+      <Block x={4} y={12} w={172} h={50} ramp={STONE}>
+        <Text x={8} y={19} size={3.5} fill="#f8f4e6">
+          HOST: PID NAMESPACE 0 SEES EVERY PROCESS
+        </Text>
+      </Block>
+      <Card x={10} y={23} w={78} h={34} ramp={BLUE} ink="#f8f4e6" size={3.5} lines={["CONTAINER A", proc(a[0], aId, "INIT"), proc(a[1], aId, "SH")]} />
+      <Card x={92} y={23} w={78} h={34} ramp={TEAL} ink="#f8f4e6" size={3.5} lines={["CONTAINER B", proc(b[0], bId, "INIT")]} />
+      {NS_KINDS.map(([k, what], i) => (
+        <Card key={k} x={4 + i * 29} y={68} w={28} h={16} ramp={i === 1 ? GOLD : CREAM} size={3.5} lines={[k, what]} />
+      ))}
+      <Text x={90} y={94} size={3.5} fill="#f8f4e6" anchor="middle">
+        clone(CLONE_NEWPID | CLONE_NEWNET | ...)
+      </Text>
+      <Text x={90} y={103} size={3.5} fill="#7cf0c8" anchor="middle">
+        A NAMESPACE CHANGES WHAT A PROCESS CAN SEE
+      </Text>
+    </>
+  );
+}
+
+const CG_THREADS = [4, 1];
+const CG_MEM = { limit: 512, fits: memoryMax(512, [{ name: "app", anonMB: 400 }], 300), over: memoryMax(512, [{ name: "web", anonMB: 200 }, { name: "leak", anonMB: 450 }], 50) };
+export const CGROUP_EXAMPLE = { throttle: CG_THREADS.map((t) => cpuMax(50000, 100000, t, 8)), mem: CG_MEM };
+
+function Cgroups() {
+  const bar = 100;
+  const scale = 120 / 650;
+  return (
+    <>
+      <Night seed={23} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">
+        CGROUP V2 LIMITS
+      </Text>
+      <Text x={4} y={17} size={3.5} fill="#f8f4e6">
+        cpu.max = 50000 100000 (HALF A CPU)
+      </Text>
+      {CGROUP_EXAMPLE.throttle.map((t, i) => {
+        const y = 20 + i * 12;
+        const run = (t.runUs / 100000) * bar;
+        return (
+          <g key={i}>
+            <Text x={4} y={y + 6} size={3.5} fill="#cfe4ff">{`${CG_THREADS[i]} BUSY`}</Text>
+            <Block x={44} y={y} w={Math.max(run, 3)} h={9} ramp={GREEN} />
+            <Block x={44 + run} y={y} w={bar - run} h={9} ramp={RED} />
+            <Text x={174} y={y + 6} size={3.5} fill="#ffe27a" anchor="end">{`${t.runUs / 1000}MS`}</Text>
+          </g>
+        );
+      })}
+      <Text x={44} y={46} size={3} fill="#7cc24f">RUN</Text>
+      <Text x={60} y={46} size={3} fill="#f87a8a">THROTTLED UNTIL THE PERIOD ENDS</Text>
+      <Text x={4} y={56} size={3.5} fill="#f8f4e6">
+        memory.max = 512M
+      </Text>
+      {[
+        { label: "CACHE", parts: [[400, BLUE], [CG_MEM.fits.reclaimedMB === 0 ? 0 : 300, GOLD]] as [number, Ramp][] },
+        { label: "LEAK", parts: [[200, BLUE], [450, RED], [50, GOLD]] as [number, Ramp][] },
+      ].map((row, i) => {
+        const y = 60 + i * 12;
+        let x = 30;
+        return (
+          <g key={row.label}>
+            <Text x={4} y={y + 6} size={3.5} fill="#cfe4ff">{row.label}</Text>
+            {row.parts.map(([mb, ramp], j) => {
+              const w = Math.max(mb * scale, mb ? 2 : 0);
+              const r = (
+                <g key={j}>{mb > 0 && <Block x={x} y={y} w={w} h={9} ramp={ramp} />}</g>
+              );
+              x += w;
+              return r;
+            })}
+          </g>
+        );
+      })}
+      <rect x={30 + CG_MEM.limit * scale - 0.5} y={59} width={1} height={26} fill="#ffe27a" />
+      <Text x={30 + CG_MEM.limit * scale} y={90} size={3} fill="#ffe27a" anchor="middle">LIMIT</Text>
+      <Text x={90} y={99} size={3.5} fill="#f8f4e6" anchor="middle">
+        OVER: DROP CACHE (GOLD), THEN OOM-KILL THE BIGGEST
+      </Text>
+      <Text x={90} y={107} size={3} fill="#7cf0c8" anchor="middle">
+        CPU IS THROTTLED; MEMORY IS KILLED
+      </Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2065,6 +2173,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   journal: { title: "The four steps of a journaled transaction and what recovery does after a crash", draw: Journal },
   raid: { title: "Usable disks and failure tolerance for RAID 0, 1, 5, 6 and 10 on four disks", draw: Raid },
   disk: { title: "Head movement of six disk-scheduling policies on the textbook queue", draw: DiskSched },
+  namespaces: { title: "Two containers and the host each see their own PIDs, with the six namespace kinds", draw: Namespaces },
+  cgroups: { title: "cpu.max throttling for four busy threads and one, and memory.max reclaiming cache or OOM-killing", draw: Cgroups },
 };
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

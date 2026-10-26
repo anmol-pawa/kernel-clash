@@ -4,6 +4,7 @@ import { BANKER_EXAMPLE, DETECT_EXAMPLE, detect, safety } from "@/game/sim/deadl
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, pageTableBytes, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk } from "@/game/sim/storage";
+import { cpuMax } from "@/game/sim/containers";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -13,7 +14,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups";
 
 export interface LessonPage {
   heading: string;
@@ -68,6 +69,9 @@ export const DETECT_CHECK = detect(DETECT_EXAMPLE.available, DETECT_EXAMPLE.allo
 export const RAG_CHECK_EDGES = [["P1", "R1"], ["R1", "P2"], ["P2", "R2"]] as const;
 const VMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 const STMOVE = { name: "Defrag", type: "storage", power: 30 } as const;
+const CMOVE = { name: "Recall", type: "process", power: 30 } as const;
+/** The cgroup quick check: cpu.max "25000 100000" with 8 busy threads on 8 CPUs. */
+export const CPU_MAX_CHECK = cpuMax(25000, 100000, 8, 8).runUs / 1000;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1474,6 +1478,67 @@ export const LESSONS: Lesson[] = [
       answer: LOOK_CHECK,
       explain: "LOOK goes up from 53 to the highest request, 183 (130 cylinders), then turns round and goes down to the lowest, 14 (169 cylinders): 130 + 169 = 299. SCAN would go on to cylinder 199 first, adding 16 and 16 cylinders: 331.",
       move: STMOVE,
+    },
+  },
+  {
+    id: "containers-namespaces",
+    gym: "interview",
+    title: "Containers: namespaces",
+    pages: [
+      {
+        heading: "A container is a process",
+        body: [
+          "A container is not a small virtual machine. It is an ordinary Linux process (or a group of them) that the kernel has been told to isolate. There is one kernel, shared by the host and every container; Docker and containerd only set up the isolation and start the process.",
+          "The first tool is the namespace. A namespace wraps one global resource so that the processes inside see a private copy of it. You get one with `clone(CLONE_NEWPID)`, `unshare(2)` or `setns(2)`.",
+        ],
+      },
+      {
+        heading: "The namespace kinds",
+        body: [
+          "`mnt` gives a private mount table, so the container sees its own root file system. `pid` gives a private process tree. `net` gives its own network interfaces, routes and ports. `uts` gives its own hostname. `ipc` isolates System V and POSIX message queues and shared memory. `user` maps UIDs, so root inside can be an ordinary user outside. `cgroup` and `time` exist too.",
+          "In a new PID namespace the first process is PID 1 and sees only its descendants. The host still sees the same process, with a larger PID of its own, and can kill it. PID 1 inside is special: if it exits, the kernel kills the whole namespace.",
+        ],
+        diagram: "namespaces",
+      },
+    ],
+    check: {
+      id: "lesson-namespaces",
+      prompt: "Inside a container, `ps` lists only the container's own processes and its main process is PID 1. Which kernel feature does that?",
+      options: ["A PID namespace", "A cgroup", "A virtual machine monitor", "chroot"],
+      answer: 0,
+      explain: "A PID namespace gives its processes a private PID numbering that starts at 1. A cgroup limits resources but hides nothing, chroot only changes the root directory, and containers have no hypervisor.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "containers-cgroups",
+    gym: "interview",
+    title: "Containers: cgroups",
+    pages: [
+      {
+        heading: "Limits and accounting",
+        body: [
+          "Namespaces decide what a process can see; control groups (cgroups) decide how much it can use. In cgroup v2 there is one tree under `/sys/fs/cgroup`. You put processes in a group and write limits to its files; the kernel counts their CPU, memory and I/O together.",
+          "`cpu.max` holds `quota period` in microseconds. `50000 100000` means 50 ms of CPU time in every 100 ms, which is half a CPU, however many CPUs the machine has. `cpu.weight` is a relative share used only when CPUs are contended: weights 100 and 300 split the CPU 1 : 3.",
+        ],
+      },
+      {
+        heading: "Throttled or killed",
+        body: [
+          "The quota is spent across all threads. With four busy threads and `cpu.max = 50000 100000`, they burn 50 ms of CPU in 12.5 ms of wall-clock time and are then throttled until the next period: latency spikes, but nothing dies.",
+          "`memory.max` is a hard limit. When the group goes over it, the kernel first reclaims page cache, which is cheap to drop. If anonymous memory alone still exceeds the limit, the group's OOM killer shoots the biggest process and the container sees exit code 137 (SIGKILL). That is the OOMKilled you see in Kubernetes.",
+        ],
+        diagram: "cgroups",
+      },
+    ],
+    check: {
+      id: "lesson-cgroups",
+      kind: "numeric",
+      prompt: "A container has `cpu.max = 25000 100000` and 8 busy threads on an 8-CPU host. For how many milliseconds of each 100 ms period do its threads run before they are throttled?",
+      answer: CPU_MAX_CHECK,
+      unit: "ms",
+      explain: "The quota is 25 ms of CPU time per period, and 8 threads on 8 CPUs spend it 8 ms per ms: 25 / 8 = 3.125 ms of wall-clock time. The threads then wait for the rest of the 100 ms.",
+      move: CMOVE,
     },
   },
 ];

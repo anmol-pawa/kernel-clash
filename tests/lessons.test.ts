@@ -16,6 +16,8 @@ import { ANOMALY, DEMAND_CHECK, LRU_CHECK, WSS_CHECK } from "@/content/lessons";
 import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/components/lesson/Diagrams";
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
+import { CPU_MAX_CHECK } from "@/content/lessons";
+import { CGROUP_EXAMPLE, NAMESPACE_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -26,7 +28,8 @@ const DEADLOCK_DIAGRAMS = ["rag", "banker"];
 const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
 const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
 const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
-const DIAGRAMS = [...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
+const CONTAINER_DIAGRAMS = ["namespaces", "cgroups"];
+const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -565,5 +568,43 @@ describe("storage lessons", () => {
     expect(numeric("storage-disk").answer).toBe(299);
     expect(LOOK_CHECK).toBe(299);
     expect(DISK_BARS).toEqual({ fcfs: 640, sstf: 236, scan: 331, cscan: 382, look: 299, clook: 322 });
+  });
+});
+
+describe("container lessons (Kernel Summit)", () => {
+  const ls = lessonsOf("interview");
+  it("start with namespaces and cgroups, each with its own diagram", () => {
+    expect(ls.map((l) => l.id)).toEqual(["containers-namespaces", "containers-cgroups"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(["namespaces", "cgroups"]);
+  });
+
+  it("namespaces check: a PID namespace (pid_namespaces(7)); the other options are wrong", () => {
+    const q = lessonById("containers-namespaces")!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/PID namespace/);
+    for (let i = 0; i < q.options.length; i++) expect(grade(q, { kind: "mcq", choice: i })).toBe(i === q.answer);
+  });
+
+  it("namespaces diagram: PID 1 inside, a larger PID on the host", () => {
+    const { a, b, aId, bId } = NAMESPACE_EXAMPLE;
+    expect(a.map((p) => p.get(aId))).toEqual([1, 2]);
+    expect(a.map((p) => p.get(0))).toEqual([3, 4]);
+    expect(b[0].get(bId)).toBe(1);
+    expect(b[0].get(0)).toBe(5);
+  });
+
+  it("cgroups check: 25 ms of quota over 8 busy CPUs is 3.125 ms of wall clock", () => {
+    expect(CPU_MAX_CHECK).toBe(3.125);
+    const q = lessonById("containers-cgroups")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "3.125" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "25" })).toBe(false);
+    expect(grade(q, { kind: "numeric", value: "12.5" })).toBe(false);
+  });
+
+  it("cgroups diagram: half a CPU takes 12.5 ms with four threads, and the OOM killer shoots the leak", () => {
+    expect(CGROUP_EXAMPLE.throttle.map((t) => t.runUs)).toEqual([12500, 50000]);
+    expect(CGROUP_EXAMPLE.mem.fits.killed).toEqual([]);
+    expect(CGROUP_EXAMPLE.mem.over.killed).toEqual(["leak"]);
   });
 });

@@ -43,7 +43,9 @@ describe("gym flow: lessons → trainers → boss", () => {
   });
 
   it("a gym with no trainer and no lessons goes straight to its boss", () => {
-    const g = GYMS.find((x) => !x.trainer && lessonsOf(x.id).length === 0)!;
+    // every real gym has lessons now, so use the last gym under an id that has none
+    const g = { ...GYMS[GYMS.length - 1], id: "no-lessons-gym", trainer: undefined };
+    expect(lessonsOf(g.id)).toHaveLength(0);
     const prior = GYMS.filter((x) => x.n < g.n).map((x) => x.id);
     expect(gymFlow(g, at({ badges: prior }))).toEqual({ state: "open", lessons: { done: 0, total: 0 }, trainers: { won: 0, total: 0 }, bossReady: true, step: "boss" });
   });
