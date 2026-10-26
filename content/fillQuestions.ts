@@ -103,7 +103,7 @@ export const FILL_QUESTIONS: FillQ[] = [
       "}",
     ],
     blanks: [
-      { options: ["a > b", "a < b", "i == 0"], answer: 0 },
+      { options: ["a > b", "a != b", "a == b"], answer: 0 },
       { options: ["sem_wait(&fork[a])", "sem_post(&fork[a])", "sem_post(&fork[i + 1])"], answer: 1 },
     ],
     explain: "Swapping so that a is always the lower-numbered fork makes every philosopher take the lower fork first (philosopher 4 swaps to forks 0 then 4). A global resource ordering means no cycle of waits can form, so no deadlock. Afterwards both forks must be released, here fork[a] and fork[b].",
@@ -153,7 +153,7 @@ export const FILL_QUESTIONS: FillQ[] = [
       "}",
     ],
     blanks: [
-      { options: ["done", "!done", "cfg == NULL"], answer: 1 },
+      { options: ["done", "!done", "done < 0"], answer: 1 },
       { options: ["done = 0", "pthread_mutex_unlock(&m)", "done = 1"], answer: 2 },
     ],
     explain: "Under the mutex, check that init has not yet happened (!done), run it, then record that with done = 1. Because the check and the update are both inside the critical section, exactly one thread initializes and later callers see done == 1. (pthread_once does the same job without the lock cost on later calls.)",

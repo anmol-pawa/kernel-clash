@@ -164,6 +164,9 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
   - [x] 6.2a The kind and widget.
   - [x] 6.2b Classic problems as fills: bounded buffer with semaphores, bounded buffer with mutex + two condition variables, readers-writers (reader preference), dining philosophers with an asymmetric pickup order, barrier with a counter, one-time init with a once flag.
 - [ ] 6.3 Concurrency-coding simulator (`game/sim/threads.ts`): run a small multi-thread program under every interleaving (or a seeded random scheduler) and report deadlock / lost update / starvation, to prove each authored "correct" solution in 6.2 is correct and each buggy one in 6.1 fails. Tests check the solutions, so the content is not just trusted.
+  - [x] 6.3a `game/sim/threads.ts`: exhaustive interleaving explorer (mutexes, semaphores, condvars with lost wakeups and optional spurious wakeups) reporting deadlock, failed asserts, misuse and every final value, with shortest counterexamples.
+  - [x] 6.3b Every 6.2 fill problem as a model in `tests/fillModels.test.ts`: all option combinations run, only the keyed one is safe.
+  - [ ] 6.3c Models for the 6.1 bugspot snippets that are concurrency bugs (unlocked counter++, TOCTOU, `if` around `cond_wait`, lock-order inversion, missing unlock, lost signal): buggy version fails, fixed version is safe. Add a starvation / bounded-waiting check (a thread that can never finish under a fair schedule).
 - [ ] 6.4 Lessons for Linux topics that today exist only as questions (five lessons each, with pixel diagrams and tested quick checks):
   - [ ] 6.4a Containers: namespaces (pid, net, mnt, uts, user), cgroups (cpu.max, memory.max, OOM kills), union file systems, why containers share a kernel vs VMs.
   - [ ] 6.4b Virtualization: trap-and-emulate, hardware-assisted virtualization, shadow vs nested page tables, paravirtual drivers, type 1 vs type 2 hypervisors, live migration.
