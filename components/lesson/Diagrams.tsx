@@ -4,6 +4,7 @@ import { BANKER_EXAMPLE, findCycle, need, safety } from "@/game/sim/deadlock";
 import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFragmentation, invertedLookup, pageTableBytes, pagesFor, splitAddress, translate, translateSegment } from "@/game/sim/memory";
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
+import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
@@ -2246,6 +2247,93 @@ function DockerRun() {
   );
 }
 
+const GUEST_PROGRAM = ["ADD", "MOV CR3", "POPF", "HLT"];
+export const TRAP_EXAMPLE = { old: runGuest(OLD_X86, GUEST_PROGRAM), hw: runGuest(HW_ASSISTED_X86, GUEST_PROGRAM) };
+const OUTCOME_LOOK: Record<Outcome, { ramp: Ramp; label: string }> = {
+  native: { ramp: GREEN, label: "RUNS NATIVELY" },
+  trap: { ramp: GOLD, label: "TRAPS, EMULATED" },
+  leak: { ramp: RED, label: "NO TRAP: WRONG" },
+};
+
+function TrapEmulate() {
+  return (
+    <>
+      <Night seed={31} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">GUEST KERNEL RUNS DEPRIVILEGED</Text>
+      <Text x={62} y={17} size={3.5} fill="#cfe4ff" anchor="middle">BEFORE VT-X</Text>
+      <Text x={143} y={17} size={3.5} fill="#cfe4ff" anchor="middle">WITH VT-X / AMD-V</Text>
+      {TRAP_EXAMPLE.old.map((r, i) => {
+        const y = 20 + i * 14;
+        const hw = TRAP_EXAMPLE.hw[i];
+        return (
+          <g key={r.name}>
+            <Card x={2} y={y} w={30} h={11} ramp={STONE} ink="#f8f4e6" size={3.5} lines={[r.name]} />
+            <Card x={34} y={y} w={56} h={11} ramp={OUTCOME_LOOK[r.outcome].ramp} ink={r.outcome === "trap" ? undefined : "#f8f4e6"} size={3} lines={[OUTCOME_LOOK[r.outcome].label]} />
+            <Card x={108} y={y} w={70} h={11} ramp={OUTCOME_LOOK[hw.outcome].ramp} ink={hw.outcome === "trap" ? undefined : "#f8f4e6"} size={3} lines={[OUTCOME_LOOK[hw.outcome].label]} />
+          </g>
+        );
+      })}
+      <Text x={90} y={82} size={3.5} fill="#f8f4e6" anchor="middle">TRAP: HYPERVISOR EMULATES ON THE VIRTUAL CPU</Text>
+      <Text x={90} y={91} size={3.5} fill="#f8f4e6" anchor="middle">POPF SILENTLY DROPS IRQ FLAG IN USER MODE</Text>
+      <Text x={90} y={100} size={3} fill="#7cf0c8" anchor="middle">POPEK-GOLDBERG: EVERY SENSITIVE INSTRUCTION MUST TRAP</Text>
+      <Text x={90} y={108} size={3} fill="#7cf0c8" anchor="middle">VT-X ADDS A GUEST MODE WHERE THEY ALL DO</Text>
+    </>
+  );
+}
+
+export const NESTED_WALK = nestedWalkRefs(4, 4);
+
+function NestedPt() {
+  // 5 rows (guest levels 4..1, then the data address) x 5 columns (4 nested reads, then the guest entry itself)
+  const cells: { n: number; row: number; col: number }[] = [];
+  let n = 0;
+  for (let row = 0; row < 5; row++) for (let col = 0; col < 5; col++) if (!(row === 4 && col === 4)) cells.push({ n: ++n, row, col });
+  return (
+    <>
+      <Night seed={33} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">NESTED PAGING: ONE TLB MISS, 2-D WALK</Text>
+      {cells.map((c) => (
+        <Card key={c.n} x={4 + c.col * 13} y={12 + c.row * 11} w={12} h={10} ramp={c.col === 4 ? PURPLE : BLUE} ink="#f8f4e6" size={3.5} lines={[String(c.n)]} />
+      ))}
+      <Text x={72} y={21} size={3} fill="#cfe4ff">BLUE: NESTED (EPT)</Text>
+      <Text x={72} y={27} size={3} fill="#cfe4ff">TABLE READS</Text>
+      <Text x={72} y={37} size={3} fill="#c8b8ff">PURPLE: THE GUEST</Text>
+      <Text x={72} y={43} size={3} fill="#c8b8ff">ENTRY ITSELF</Text>
+      <Text x={72} y={55} size={3.5} fill="#f8f4e6">{`4 GUEST LEVELS X 4 NESTED`}</Text>
+      <Text x={72} y={62} size={3.5} fill="#ffe27a">{`= ${NESTED_WALK} READS PER MISS`}</Text>
+      <Text x={72} y={69} size={3.5} fill="#f8f4e6">NATIVE: 4 READS</Text>
+      <Text x={90} y={88} size={3.5} fill="#f8f4e6" anchor="middle">SHADOW TABLES: NATIVE-SPEED MISS,</Text>
+      <Text x={90} y={95} size={3.5} fill="#f8f4e6" anchor="middle">BUT EVERY GUEST PT WRITE IS A VM EXIT</Text>
+      <Text x={90} y={105} size={3} fill="#7cf0c8" anchor="middle">NESTED: NO EXITS; BIG TLBS HIDE THE LONG WALK</Text>
+    </>
+  );
+}
+
+export const MIGRATION_EXAMPLE = preCopy(8192, 250, 1000, 64);
+
+function Migration() {
+  const m = MIGRATION_EXAMPLE;
+  const bar = (mb: number) => Math.max(2, (mb / 8192) * 100);
+  const rows = [...m.rounds.map((r, i) => ({ label: `ROUND ${i + 1}`, mb: r.sentMB, ramp: BLUE })), { label: "PAUSED", mb: m.stopCopyMB, ramp: RED }];
+  return (
+    <>
+      <Night seed={35} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">PRE-COPY LIVE MIGRATION OF AN 8 GB VM</Text>
+      {rows.map((r, i) => (
+        <g key={r.label}>
+          <Text x={4} y={21 + i * 11} size={3.5} fill="#cfe4ff">{r.label}</Text>
+          <Card x={40} y={14 + i * 11} w={bar(r.mb)} h={9} ramp={r.ramp} ink="#f8f4e6" size={3} lines={[]} />
+          <Text x={44 + bar(r.mb)} y={21 + i * 11} size={3.5} fill="#f8f4e6">{`${r.mb} MB`}</Text>
+        </g>
+      ))}
+      <Text x={90} y={78} size={3.5} fill="#f8f4e6" anchor="middle">LINK 1000 MB/S, DIRTY 250 MB/S: ROUNDS SHRINK 4X</Text>
+      <Text x={90} y={86} size={3.5} fill="#f8f4e6" anchor="middle">{`GUEST PAUSED FOR ${Math.round(m.downtimeSec * 1000)} MS, THEN RESUMES ON THE TARGET`}</Text>
+      <Text x={90} y={96} size={3} fill="#7cf0c8" anchor="middle">DIRTY RATE ABOVE LINK SPEED: NEVER CONVERGES</Text>
+      <Text x={90} y={104} size={3} fill="#7cf0c8" anchor="middle">THROTTLE THE GUEST OR USE POST-COPY</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2295,6 +2383,9 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   cgroups: { title: "cpu.max throttling for four busy threads and one, and memory.max reclaiming cache or OOM-killing", draw: Cgroups },
   overlay: { title: "Overlayfs: a write copies a 100 MB file up, a delete leaves a whiteout, the container sees the merged view", draw: OverlayFs },
   vmcompare: { title: "Containers share one host kernel; virtual machines each run a guest kernel on a hypervisor", draw: VmCompare },
+  trapemul: { title: "Trap-and-emulate: ADD runs natively, privileged instructions trap, POPF leaks without hardware support", draw: TrapEmulate },
+  nestedpt: { title: "A TLB miss under nested paging reads 24 locations on a 5 by 5 grid", draw: NestedPt },
+  migration: { title: "Pre-copy live migration: shrinking rounds of dirty pages, then a short pause", draw: Migration },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 

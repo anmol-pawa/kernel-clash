@@ -16,8 +16,8 @@ import { ANOMALY, DEMAND_CHECK, LRU_CHECK, WSS_CHECK } from "@/content/lessons";
 import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/components/lesson/Diagrams";
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
-import { COPY_UP_CHECK, CPU_MAX_CHECK } from "@/content/lessons";
-import { CGROUP_EXAMPLE, DOCKER_RUN_STEPS, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
+import { COPY_UP_CHECK, CPU_MAX_CHECK, MIGRATE_CHECK, NESTED_CHECK } from "@/content/lessons";
+import { CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -29,7 +29,8 @@ const MEMORY_DIAGRAMS = ["fit", "frag", "paging", "ptable", "tlb", "segments"];
 const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
 const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
 const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "dockerrun"];
-const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
+const VIRT_DIAGRAMS = ["trapemul", "nestedpt", "migration"];
+const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -574,8 +575,9 @@ describe("storage lessons", () => {
 describe("container lessons (Kernel Summit)", () => {
   const ls = lessonsOf("interview");
   it("run namespaces, cgroups, overlayfs, containers vs VMs, then docker run, each with its own diagram", () => {
-    expect(ls.map((l) => l.id)).toEqual(["containers-namespaces", "containers-cgroups", "containers-overlayfs", "containers-vms", "containers-run"]);
-    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(CONTAINER_DIAGRAMS);
+    const own = ls.filter((l) => l.id.startsWith("containers-"));
+    expect(own.map((l) => l.id)).toEqual(["containers-namespaces", "containers-cgroups", "containers-overlayfs", "containers-vms", "containers-run"]);
+    expect(own.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(CONTAINER_DIAGRAMS);
   });
 
   it("namespaces check: a PID namespace (pid_namespaces(7)); the other options are wrong", () => {
@@ -635,5 +637,44 @@ describe("container lessons (Kernel Summit)", () => {
     expect(DOCKER_RUN_STEPS.map((s) => s[0].split(" ")[0])).toEqual(["1", "2", "3", "4", "5", "6"]);
     expect(DOCKER_RUN_STEPS[3][0]).toMatch(/PIVOT_ROOT/);
     expect(DOCKER_RUN_STEPS[5][0]).toMatch(/EXECVE/);
+  });
+});
+
+describe("virtualization lessons (Kernel Summit)", () => {
+  const ls = lessonsOf("interview").filter((l) => l.id.startsWith("virt-"));
+  it("follow the containers: trap-and-emulate, paging, hypervisors, each diagram once", () => {
+    expect(ls.map((l) => l.id)).toEqual(["virt-trap", "virt-paging", "virt-hypervisors"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(VIRT_DIAGRAMS);
+  });
+
+  it("trap check: only the POPF option is right", () => {
+    const q = lessonById("virt-trap")!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/POPF/);
+    for (let i = 0; i < q.options.length; i++) expect(grade(q, { kind: "mcq", choice: i })).toBe(i === q.answer);
+  });
+
+  it("trap diagram: the same program leaks once before VT-x and never with it", () => {
+    expect(TRAP_EXAMPLE.old.filter((r) => r.outcome === "leak").map((r) => r.name)).toEqual(["POPF"]);
+    expect(TRAP_EXAMPLE.hw.some((r) => r.outcome === "leak")).toBe(false);
+  });
+
+  it("paging check: 24 reads (Bhargava et al.)", () => {
+    expect(NESTED_CHECK).toBe(24);
+    expect(NESTED_WALK).toBe(24);
+    const q = lessonById("virt-paging")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "24" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "16" })).toBe(false);
+    expect(grade(q, { kind: "numeric", value: "4" })).toBe(false);
+  });
+
+  it("migration check: rounds 8192, 2048, 512, 128 MB, then a 32 ms pause", () => {
+    expect(MIGRATION_EXAMPLE.rounds.map((r) => r.sentMB)).toEqual([8192, 2048, 512, 128]);
+    expect(MIGRATE_CHECK).toBe(32);
+    const q = lessonById("virt-hypervisors")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "32" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "128" })).toBe(false);
   });
 });

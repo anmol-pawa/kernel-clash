@@ -5,6 +5,7 @@ import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, pageTableB
 import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk } from "@/game/sim/storage";
 import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
+import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -14,7 +15,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration";
 
 export interface LessonPage {
   heading: string;
@@ -79,6 +80,9 @@ export const COPY_UP_CHECK = (() => {
   o.write("/db/data", "v2");
   return o.upperMB;
 })();
+/** The virtualization quick checks' answers. */
+export const NESTED_CHECK = nestedWalkRefs(4, 4);
+export const MIGRATE_CHECK = Math.round(preCopy(8192, 250, 1000, 64).downtimeSec * 1000);
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1636,6 +1640,98 @@ export const LESSONS: Lesson[] = [
       options: ["pivot_root", "chroot", "unshare", "setns"],
       answer: 0,
       explain: "`pivot_root` swaps the root mount and lets the old root be unmounted. `chroot` only changes the path lookup root and leaves the old root reachable; `unshare` and `setns` change namespaces.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "virt-trap",
+    gym: "interview",
+    title: "Virtualization: trap-and-emulate",
+    pages: [
+      {
+        heading: "Run the guest kernel deprivileged",
+        body: [
+          "A hypervisor lets a guest operating system believe it owns the machine. The classic trick is trap-and-emulate: the guest kernel runs in user mode, so ordinary instructions run at full speed, but a privileged one (load the page-table base, halt, disable interrupts) traps to the hypervisor, which emulates its effect on the guest's virtual CPU state and resumes it.",
+          "Popek and Goldberg proved when this works: every sensitive instruction (one that reads or changes machine state the host must control) has to be privileged too, so none can slip past the trap. Pre-2005 x86 failed this. `POPF` in user mode silently ignores the interrupt-flag change instead of trapping, so a guest could not be fooled.",
+        ],
+        diagram: "trapemul",
+      },
+      {
+        heading: "Three fixes",
+        body: [
+          "Binary translation (early VMware) rewrote the guest kernel's code on the fly, replacing sensitive instructions with safe calls. Paravirtualization (Xen) modified the guest kernel to call the hypervisor directly with hypercalls instead of executing sensitive instructions. Hardware assistance (Intel VT-x, AMD-V, 2005-2006) added a guest mode in which sensitive instructions cause a VM exit to the hypervisor, so an unmodified guest kernel runs at ring 0 of its own mode.",
+          "Every VM exit costs hundreds to thousands of cycles, so hypervisors work to avoid them: the guest's I/O goes through paravirtual devices (virtio rings shared with the host) instead of emulated hardware registers that trap on each access.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-virt-trap",
+      prompt: "Why could classic x86 (before VT-x) not be virtualized by trap-and-emulate alone?",
+      options: ["Some sensitive instructions, such as POPF, do not trap in user mode", "The CPU had no privileged instructions", "A guest kernel cannot use page tables", "Interrupts cannot be delivered to a user-mode program"],
+      answer: 0,
+      explain: "Popek-Goldberg needs sensitive instructions to be a subset of the privileged ones. POPF changes the interrupt flag only in kernel mode and silently ignores it in user mode, so the hypervisor never sees it.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "virt-paging",
+    gym: "interview",
+    title: "Virtualization: shadow and nested page tables",
+    pages: [
+      {
+        heading: "Two address translations",
+        body: [
+          "A guest thinks it maps virtual addresses to physical ones, but its physical addresses are themselves virtual: the hypervisor maps guest-physical to host-physical memory. Hardware needs the composition, guest-virtual to host-physical.",
+          "Shadow page tables: the hypervisor builds a combined table and points the real page-table register at it. A TLB miss is as cheap as native, but the hypervisor must keep the shadow in sync, so the guest's page-table writes and `MOV CR3` all trap. Fork- and exec-heavy guests suffer.",
+        ],
+      },
+      {
+        heading: "Nested page tables",
+        body: [
+          "Nested paging (Intel EPT, AMD NPT) has the hardware walk both tables. The guest edits its own tables with no exits, but a miss gets longer: every guest-table read, and the final data address, is a guest-physical address that needs its own walk of the nested table.",
+          "With n guest levels and m nested levels a miss reads (n+1)(m+1)-1 locations: 24 for 4 and 4, against 4 natively. Walk caches, large TLBs and huge pages (a 2 MB mapping drops a level) keep the cost tolerable, which is why nested paging replaced shadow tables in practice.",
+        ],
+        diagram: "nestedpt",
+      },
+    ],
+    check: {
+      id: "lesson-virt-paging",
+      kind: "numeric",
+      prompt: "A guest with 4-level page tables runs on a hypervisor with 4-level nested (EPT) tables. How many memory locations does one TLB miss read in the worst case?",
+      answer: NESTED_CHECK,
+      unit: "reads",
+      explain: "(4+1)(4+1)-1 = 24: five rows (four guest levels plus the data address), each needing a 4-read nested walk, plus the four guest entries read in between. Natively it is 4.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "virt-hypervisors",
+    gym: "interview",
+    title: "Hypervisors, virtio and live migration",
+    pages: [
+      {
+        heading: "Types and paravirtual devices",
+        body: [
+          "A type 1 hypervisor runs directly on the hardware (Xen, ESXi, Hyper-V); a type 2 hypervisor is a program on a host operating system (VirtualBox, VMware Workstation). KVM blurs the line: it turns the Linux kernel itself into a type 1 hypervisor, with QEMU as the user-space device model, and each virtual CPU is an ordinary thread.",
+          "Emulating a real network card means a trap on every register access. A paravirtual device such as virtio presents a simple ring buffer shared between guest and host, so the guest queues many requests and rings one doorbell, which is far fewer exits.",
+        ],
+      },
+      {
+        heading: "Moving a running VM",
+        body: [
+          "Pre-copy live migration sends all of memory while the guest keeps running, then resends the pages it dirtied meanwhile, round after round. When the remainder is small enough, the guest is paused, the last pages and the CPU state are sent, and it resumes on the target. The pause (downtime) is milliseconds.",
+          "It converges only if the link is faster than the guest dirties memory. Each round shrinks by the ratio dirty rate over link rate; at 250 MB/s over 1000 MB/s each round is a quarter of the one before. A write-heavy guest is throttled, or moved with post-copy: resume on the target first and fetch pages on demand.",
+        ],
+        diagram: "migration",
+      },
+    ],
+    check: {
+      id: "lesson-virt-migrate",
+      kind: "numeric",
+      prompt: "Pre-copy migration of an 8192 MB VM over a 1000 MB/s link, guest dirtying 250 MB/s. The guest is paused once at most 64 MB remain. How long is the pause, in ms?",
+      answer: MIGRATE_CHECK,
+      unit: "ms",
+      explain: "Rounds send 8192, 2048, 512 and 128 MB, leaving 128 x 0.25 = 32 MB (below 64). Sending 32 MB at 1000 MB/s takes 32 ms.",
       move: CMOVE,
     },
   },
