@@ -2,6 +2,7 @@ import { dueFirst, type Deck } from "@/game/engine/leitner";
 import type { Generator, Question } from "@/game/engine/question";
 import { rng } from "@/lib/rng";
 import { BASICS_GENERATORS } from "./basicsGenerators";
+import { PERF_GENERATORS } from "./perfGenerators";
 import { PROCESS_GENERATORS } from "./processGenerators";
 import { SCHEDULING_GENERATORS } from "./schedulingGenerators";
 import { DEADLOCK_GENERATORS } from "./deadlockGenerators";
@@ -1089,7 +1090,7 @@ export const POOLS: Record<string, Pool> = {
   memory: { authored: [...GYM_QUESTIONS.memory, ...MEMORY_EXTRA], generators: MEMORY_GENERATORS },
   virtual: { authored: [...GYM_QUESTIONS.virtual, ...VIRTUAL_EXTRA], generators: VIRTUAL_GENERATORS },
   storage: { authored: [...GYM_QUESTIONS.storage, ...STORAGE_EXTRA], generators: STORAGE_GENERATORS },
-  interview: { authored: [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS], generators: [] },
+  interview: { authored: [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS], generators: PERF_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */
