@@ -5,7 +5,8 @@ import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
-import { buildInterview, type InterviewTopic } from "@/game/engine/interview";
+import { buildInterview, LOOP_SHAPE, type InterviewTopic, type RoundId, type RoundKind } from "@/game/engine/interview";
+import { rng } from "@/lib/rng";
 import type { Question } from "@/game/engine/question";
 
 /** Which scorecard topic each interview question belongs to. */
@@ -253,3 +254,39 @@ export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 /** The mock interview for `seed`: ten questions across the four topics. */
 export const INTERVIEW_LENGTH = 10;
 export const mockInterview = (seed: number): Question[] => buildInterview(INTERVIEW_QUESTIONS, topicOf, seed, INTERVIEW_LENGTH);
+
+const idsOf = (qs: readonly Question[]) => new Set(qs.map((q) => q.id));
+const CONCURRENCY_IDS = idsOf([...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS]);
+const INCIDENT_IDS = idsOf(INCIDENT_QUESTIONS);
+const DESIGN_IDS = idsOf(DESIGN_QUESTIONS);
+
+/** Which round of the loop asks a question. */
+export const roundOf = (q: Question): RoundKind => (CONCURRENCY_IDS.has(q.id) ? "concurrency" : INCIDENT_IDS.has(q.id) ? "incident" : DESIGN_IDS.has(q.id) ? "design" : "fundamentals");
+
+const ofRound = (r: RoundKind) => INTERVIEW_QUESTIONS.filter((q) => roundOf(q) === r);
+
+/** Design questions come in pairs: `ds-x-steps` then its follow-up. `designs` pairs, in the order drawn. */
+function designPairs(designs: number, seed: number): Question[] {
+  const all = ofRound("design");
+  const pairs: Question[][] = [];
+  for (let i = 0; i + 1 < all.length; i += 2) pairs.push([all[i], all[i + 1]]);
+  return rng(seed).shuffle(pairs).slice(0, designs).flat();
+}
+
+/** The questions for one round (or the whole loop), in the order they are asked. */
+export function buildRound(round: RoundId, seed: number): Question[] {
+  const r = rng(seed);
+  const pick = (kind: RoundKind, n: number) => (kind === "design" ? designPairs(n / 2, seed) : r.shuffle(ofRound(kind)).slice(0, n));
+  if (round === "fundamentals") return buildInterview(ofRound("fundamentals"), topicOf, seed, INTERVIEW_LENGTH);
+  if (round !== "full") return pick(round, ROUND_COUNT[round]);
+  return [
+    ...buildInterview(ofRound("fundamentals"), topicOf, seed, LOOP_SHAPE.fundamentals),
+    ...pick("concurrency", LOOP_SHAPE.concurrency),
+    ...pick("incident", LOOP_SHAPE.incident),
+    ...pick("design", LOOP_SHAPE.design),
+  ];
+}
+
+/** Questions asked by each stand-alone round. */
+export const ROUND_COUNT: Record<RoundKind, number> = { fundamentals: INTERVIEW_LENGTH, concurrency: 4, incident: 2, design: 4 };
+export const roundLength = (round: RoundId): number => (round === "full" ? Object.values(LOOP_SHAPE).reduce((a, b) => a + b, 0) : ROUND_COUNT[round]);

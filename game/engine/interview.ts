@@ -20,6 +20,8 @@ export const POINTS_SPEED = 5;
 export interface Answered {
   id: string;
   topic: InterviewTopic;
+  /** which round of the loop asked it (absent = fundamentals) */
+  round?: RoundKind;
   correct: boolean;
   /** seconds taken; a question left to time out is `limit` and wrong */
   seconds: number;
@@ -85,4 +87,84 @@ export function scorecard(answers: readonly Answered[]): Scorecard {
     verdict: verdictFor(correct, answers.length),
     weakest: missed.length ? missed[0].topic : null,
   };
+}
+
+/** The kinds of interview round; the full loop is one short round of each. */
+export const ROUND_KINDS = ["fundamentals", "concurrency", "incident", "design"] as const;
+export type RoundKind = (typeof ROUND_KINDS)[number];
+export type RoundId = RoundKind | "full";
+
+export const ROUND_INFO: Record<RoundId, { name: string; blurb: string }> = {
+  fundamentals: { name: "Fundamentals", blurb: "Ten timed questions across processes, scheduling and sync, memory, and I/O and Linux." },
+  concurrency: { name: "Concurrency coding", blurb: "Four code questions: spot the bug in a snippet, or fill in the missing line." },
+  incident: { name: "Debugging incident", blurb: "Two production incidents. Read the tool output, find the bottleneck and the root cause." },
+  design: { name: "Design", blurb: "Two \"how would you build it\" designs, each with a follow-up on what breaks without a piece." },
+  full: { name: "Full loop", blurb: "One short round of each kind, nine questions, with a combined scorecard and a hire decision." },
+};
+export const ROUND_IDS = ["fundamentals", "concurrency", "incident", "design", "full"] as const satisfies readonly RoundId[];
+
+/** How many questions each round of a full loop asks. */
+export const LOOP_SHAPE: Record<RoundKind, number> = { fundamentals: 4, concurrency: 2, incident: 1, design: 2 };
+
+export type LoopVerdict = "Hire" | "Lean hire" | "No hire";
+
+export interface RoundResult {
+  round: RoundKind;
+  correct: number;
+  total: number;
+}
+
+export function roundResults(answers: readonly Answered[]): RoundResult[] {
+  return ROUND_KINDS.map((round) => {
+    const mine = answers.filter((a) => (a.round ?? "fundamentals") === round);
+    return { round, correct: mine.filter((a) => a.correct).length, total: mine.length };
+  }).filter((r) => r.total > 0);
+}
+
+/**
+ * The hiring decision for a loop: Hire needs 75% overall and no round under
+ * 50%; Lean hire needs 55% overall and at most one round under 50%.
+ */
+export function loopVerdict(rounds: readonly RoundResult[]): LoopVerdict {
+  const total = rounds.reduce((n, r) => n + r.total, 0);
+  const right = rounds.reduce((n, r) => n + r.correct, 0);
+  if (total === 0) return "No hire";
+  const f = right / total;
+  const weak = rounds.filter((r) => r.correct / r.total < 0.5).length;
+  if (f >= 0.75 && weak === 0) return "Hire";
+  if (f >= 0.55 && weak <= 1) return "Lean hire";
+  return "No hire";
+}
+
+/** The gym whose lessons teach each topic, for the study plan (`/learn/<gym>`). */
+export const TOPIC_GYMS: Record<InterviewTopic, { gym: string; label: string }[]> = {
+  Processes: [{ gym: "processes", label: "Processes and threads" }],
+  "Scheduling and sync": [
+    { gym: "scheduling", label: "CPU scheduling" },
+    { gym: "sync", label: "Synchronization" },
+    { gym: "deadlocks", label: "Deadlocks" },
+  ],
+  Memory: [
+    { gym: "memory", label: "Memory management" },
+    { gym: "virtual", label: "Virtual memory" },
+  ],
+  "I/O and Linux": [
+    { gym: "storage", label: "Storage and I/O" },
+    { gym: "basics", label: "OS basics" },
+  ],
+};
+
+export interface StudyStep {
+  topic: InterviewTopic;
+  correct: number;
+  total: number;
+  gyms: { gym: string; label: string }[];
+}
+
+/** Topics with misses, worst first, each with the lessons to revisit. */
+export function studyPlan(answers: readonly Answered[]): StudyStep[] {
+  return scorecard(answers)
+    .topics.filter((t) => t.correct < t.total)
+    .sort((a, b) => a.correct / a.total - b.correct / b.total || b.total - a.total)
+    .map((t) => ({ ...t, gyms: TOPIC_GYMS[t.topic] }));
 }

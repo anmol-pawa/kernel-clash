@@ -4,14 +4,21 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { AnswerPanel, type Reveal } from "@/components/battle/AnswerPanel";
 import { END_BUTTON } from "@/components/battle/Battle";
 import { GanttChart } from "@/components/lesson/Gantt";
-import { INTERVIEW_LENGTH, mockInterview, topicOf } from "@/content/interviewTopics";
+import { buildRound, roundLength, roundOf, topicOf } from "@/content/interviewTopics";
 import { sfx } from "@/game/audio/synth";
-import { limitFor, pointsFor, scorecard, type Answered, type Verdict } from "@/game/engine/interview";
+import { limitFor, loopVerdict, pointsFor, ROUND_IDS, ROUND_INFO, roundResults, scorecard, studyPlan, type Answered, type LoopVerdict, type RoundId, type Verdict } from "@/game/engine/interview";
 import { correctionText, grade, type Question, type Response } from "@/game/engine/question";
 import { recordAnswer, saveInterview, useSave } from "@/lib/save";
 
 const noSub = () => () => {};
+const freshSeed = (salt: number): number => (Date.now() ^ salt) >>> 0;
 const VERDICT_TINT: Record<Verdict, string> = { "Strong hire": "#7ad66b", Hire: "#5eead4", Maybe: "#ffd34e", "Not yet": "#e8566b" };
+const LOOP_TINT: Record<LoopVerdict, string> = { Hire: "#7ad66b", "Lean hire": "#ffd34e", "No hire": "#e8566b" };
+const LOOP_LINE: Record<LoopVerdict, string> = {
+  Hire: "The panel says hire: strong overall, with no weak round.",
+  "Lean hire": "The panel leans yes, but one round was shaky. Shore it up below.",
+  "No hire": "Not this time. The study plan below says where to start.",
+};
 const VERDICT_LINE: Record<Verdict, string> = {
   "Strong hire": "You'd get the offer. Clear, correct and quick.",
   Hire: "A solid interview. Tighten the topics below and it's a strong one.",
@@ -67,7 +74,7 @@ function Ask({ q, index, total, onDone }: { q: Question; index: number; total: n
   const next = () => {
     sfx.click();
     const correct = reveal?.correct ?? false;
-    onDone({ id: q.id, topic: topicOf(q), correct, seconds: took, limit }, correct);
+    onDone({ id: q.id, topic: topicOf(q), round: roundOf(q), correct, seconds: took, limit }, correct);
   };
 
   const pct = (left / limit) * 100;
@@ -81,7 +88,7 @@ function Ask({ q, index, total, onDone }: { q: Question; index: number; total: n
       <div className="flex flex-col gap-1" data-testid="timer" data-left={Math.ceil(left)}>
         <div className="flex items-baseline justify-between font-pixel text-[9px]">
           <span>
-            Q{index + 1}/{total} · {topicOf(q).toUpperCase()}
+            Q{index + 1}/{total} · {roundOf(q) === "fundamentals" ? topicOf(q).toUpperCase() : ROUND_INFO[roundOf(q)].name.toUpperCase()}
           </span>
           <span className="tabular-nums" style={{ color }}>
             {Math.ceil(left)}s
@@ -121,16 +128,42 @@ function Ask({ q, index, total, onDone }: { q: Question; index: number; total: n
   );
 }
 
-function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boolean; onAgain: () => void }) {
+function StudyPlan({ answers }: { answers: Answered[] }) {
+  const plan = studyPlan(answers);
+  if (plan.length === 0) return null;
+  return (
+    <ul className="gb-box flex flex-col gap-2 p-3 land:col-span-2" aria-label="Study plan" data-testid="study-plan">
+      <li className="font-pixel text-[9px] text-[#5a5078]">STUDY PLAN</li>
+      {plan.map((p) => (
+        <li key={p.topic} className="flex flex-col gap-1 text-[14px]" data-testid="study-step">
+          <span className="font-pixel text-[9px]">
+            {p.topic.toUpperCase()} · {p.correct}/{p.total}
+          </span>
+          <span className="flex flex-wrap gap-2">
+            {p.gyms.map((g) => (
+              <Link key={g.gym} href={`/learn/${g.gym}`} className="flex min-h-11 items-center border-2 border-[#1a1430] bg-[#ffe27a] px-2 py-1 font-pixel text-[8px] pointer-coarse:min-h-12">
+                {g.label.toUpperCase()} ▶
+              </Link>
+            ))}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Card({ answers, round, isBest, onAgain }: { answers: Answered[]; round: RoundId; isBest: boolean; onAgain: () => void }) {
   const sc = scorecard(answers);
+  const rounds = roundResults(answers);
+  const loop = round === "full" ? loopVerdict(rounds) : null;
   return (
     <div className="flex flex-col gap-3 land:grid land:grid-cols-2 land:items-start" data-testid="scorecard" data-verdict={sc.verdict}>
       <div className="gb-box flex flex-col items-center gap-1 p-4 text-center land:col-start-1 land:row-start-1">
-        <p className="font-pixel text-[9px] text-[#5a5078]">VERDICT</p>
-        <p className="font-pixel text-lg" style={{ color: VERDICT_TINT[sc.verdict], textShadow: "2px 2px 0 #1a1430" }} data-testid="verdict">
-          {sc.verdict.toUpperCase()}
+        <p className="font-pixel text-[9px] text-[#5a5078]">{ROUND_INFO[round].name.toUpperCase()} · VERDICT</p>
+        <p className="font-pixel text-lg" style={{ color: loop ? LOOP_TINT[loop] : VERDICT_TINT[sc.verdict], textShadow: "2px 2px 0 #1a1430" }} data-testid="verdict">
+          {(loop ?? sc.verdict).toUpperCase()}
         </p>
-        <p className="text-[15px] leading-snug">{VERDICT_LINE[sc.verdict]}</p>
+        <p className="text-[15px] leading-snug">{loop ? LOOP_LINE[loop] : VERDICT_LINE[sc.verdict]}</p>
         <p className="font-pixel text-[10px]" data-testid="points">
           {sc.points}/{sc.max} PTS · {sc.correct}/{sc.total} RIGHT
         </p>
@@ -152,6 +185,15 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
           </li>
         ))}
         {sc.weakest && <p className="text-[14px]">Weakest topic: {sc.weakest}. Its gym lessons are the place to start.</p>}
+        {round === "full" &&
+          rounds.map((r) => (
+            <div key={r.round} className="flex justify-between font-pixel text-[9px]" data-testid="round-row" data-round={r.round} data-correct={r.correct} data-total={r.total} style={{ color: r.correct / r.total < 0.5 ? "#b8283e" : undefined }}>
+              <span>{ROUND_INFO[r.round].name.toUpperCase()} ROUND</span>
+              <span className="tabular-nums">
+                {r.correct}/{r.total}
+              </span>
+            </div>
+          ))}
       </ul>
 
       <ol className="gb-box flex flex-col gap-1 p-3 land:col-start-1 land:row-start-2" aria-label="Answers">
@@ -167,7 +209,9 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
         ))}
       </ol>
 
-      <div className="flex gap-2.5 land:col-span-2 land:row-start-3">
+      <StudyPlan answers={answers} />
+
+      <div className="flex gap-2.5 land:col-span-2">
         <button type="button" onClick={onAgain} className={END_BUTTON} data-testid="interview-again">
           ▶ AGAIN
         </button>
@@ -179,23 +223,23 @@ function Card({ answers, isBest, onAgain }: { answers: Answered[]; isBest: boole
   );
 }
 
-/** The mock interview: ten timed questions across four topics, then a scorecard. */
+/** The mock interview: pick a round (or the full loop), answer under the clock, then get a scorecard and a study plan. */
 export function Interview() {
   const save = useSave();
   const hydrated = useSyncExternalStore(noSub, () => true, () => false);
-  const [round, setRound] = useState<{ seed: number } | null>(null);
+  const [round, setRound] = useState<{ seed: number; id: RoundId } | null>(null);
   const [n, setN] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [isBest, setIsBest] = useState(false);
-  const questions = useMemo(() => (round ? mockInterview(round.seed) : []), [round]);
+  const questions = useMemo(() => (round ? buildRound(round.id, round.seed) : []), [round]);
   if (!hydrated) return <main className="h-dvh bg-[#100e24]" />;
 
-  const begin = () => {
+  const begin = (id: RoundId) => {
     sfx.click();
     setAnswers([]);
     setN(0);
     setIsBest(false);
-    setRound({ seed: (Date.now() ^ (save.interviewBest?.points ?? 0)) >>> 0 });
+    setRound({ id, seed: freshSeed(save.interviewBest?.points ?? 0) });
   };
   const done = (a: Answered, correct: boolean) => {
     recordAnswer(a.id, correct);
@@ -203,7 +247,7 @@ export function Interview() {
     setAnswers(all);
     if (all.length === questions.length) {
       const sc = scorecard(all);
-      setIsBest(saveInterview({ points: sc.points, max: sc.max, correct: sc.correct, total: sc.total }));
+      if (round?.id === "fundamentals") setIsBest(saveInterview({ points: sc.points, max: sc.max, correct: sc.correct, total: sc.total }));
     } else setN(n + 1);
   };
   const finished = round !== null && answers.length === questions.length;
@@ -222,18 +266,28 @@ export function Interview() {
       {round === null ? (
         <>
           <p className="msg-box p-3 text-[15px] leading-snug">
-            The Kernelord interviews you: {INTERVIEW_LENGTH} questions across processes, scheduling and sync, memory, and I/O and Linux. Each has a time limit, and quick right answers earn bonus points. No hints, no retries.
+            The Kernelord interviews you. Pick a single round, or run the full loop for a hire decision. Every question has a time limit, and quick right answers earn bonus points. No hints, no retries.
           </p>
+          <ul className="flex flex-col gap-2" aria-label="Rounds">
+            {ROUND_IDS.map((id) => (
+              <li key={id}>
+                <button type="button" onClick={() => begin(id)} className={`gb-box flex w-full flex-col gap-1 p-3 text-left active:translate-y-px ${id === "full" ? "bg-[#ffe27a]!" : ""}`} data-testid={`round-${id}`}>
+                  <span className="flex justify-between font-pixel text-[10px]">
+                    <span>▶ {ROUND_INFO[id].name.toUpperCase()}</span>
+                    <span className="text-[#5a5078]">{roundLength(id)} Q</span>
+                  </span>
+                  <span className="text-[14px] leading-snug">{ROUND_INFO[id].blurb}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
           <div className="gb-box flex flex-col gap-1 p-3 font-pixel text-[10px] leading-5" data-testid="interview-best">
-            <p>BEST SCORE</p>
+            <p>BEST FUNDAMENTALS SCORE</p>
             <p className="text-[#5a5078]">{best ? `${best.points}/${best.max} PTS · ${best.correct}/${best.total} RIGHT` : "NONE YET"}</p>
           </div>
-          <button type="button" onClick={begin} className={`${END_BUTTON} flex-none bg-[#ffe27a]! py-3`} data-testid="interview-start">
-            ▶ START INTERVIEW
-          </button>
         </>
       ) : finished ? (
-        <Card answers={answers} isBest={isBest} onAgain={begin} />
+        <Card answers={answers} round={round.id} isBest={isBest} onAgain={() => begin(round.id)} />
       ) : (
         <Ask key={questions[n].id} q={questions[n]} index={n} total={questions.length} onDone={done} />
       )}
