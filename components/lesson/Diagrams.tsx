@@ -6,7 +6,7 @@ import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCu
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
-import { Buddy, FreeListHeap, MMAP_THRESHOLD } from "@/game/sim/allocator";
+import { Buddy, FreeListHeap, MMAP_THRESHOLD, SlabCache, centralLockAcquisitions, leafTableBytes, pagesToMap, slabLeftover, tlbReach } from "@/game/sim/allocator";
 import { alternatingWrites, coherenceMisses, runFutex, writeTime } from "@/game/sim/contention";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
@@ -2527,6 +2527,59 @@ function BuddyDiagram() {
   );
 }
 
+export const SLAB_EXAMPLE = (() => {
+  const c = new SlabCache(4096, 1024);
+  const slots = Array.from({ length: 6 }, () => c.alloc());
+  c.free(0);
+  c.free(0);
+  return { slabs: [...c.slabs], states: c.states, perSlab: c.perSlab, ctor: c.constructorCalls, leftover192: slabLeftover(4096, 192), locks: [centralLockAcquisitions(1000, null), centralLockAcquisitions(1000, 32)], slots };
+})();
+export const HUGE_EXAMPLE = (() => {
+  const GiB = 1024 ** 3;
+  const MiB2 = 2 * 1024 ** 2;
+  return { reachSmall: tlbReach(64, 4096), reachHuge: tlbReach(64, MiB2), pagesSmall: pagesToMap(GiB, 4096), pagesHuge: pagesToMap(GiB, MiB2), tableSmall: leafTableBytes(GiB, 4096), tableHuge: leafTableBytes(GiB, MiB2) };
+})();
+
+function Slab() {
+  const e = SLAB_EXAMPLE;
+  return (
+    <>
+      <Night seed={42} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">SLAB CACHE: 1 KB OBJECTS, 4 PER SLAB</Text>
+      {e.slabs.map((used, s) => (
+        <g key={s}>
+          <Text x={10} y={24 + s * 17} size={3.5} fill="#cfe4ff">{`SLAB ${s}`}</Text>
+          {Array.from({ length: e.perSlab }, (_, i) => (
+            <Card key={i} x={44 + i * 30} y={17 + s * 17} w={28} h={12} ramp={i < used ? BLUE : GREEN} ink="#f8f4e6" size={3.5} lines={[i < used ? "USED" : "FREE"]} />
+          ))}
+        </g>
+      ))}
+      <Text x={90} y={56} size={3.5} fill="#f8f4e6" anchor="middle">{`${e.ctor} CONSTRUCTOR CALLS, ALL AT SLAB CREATION`}</Text>
+      <Text x={90} y={64} size={3.5} fill="#7cf0c8" anchor="middle">ALLOC: PARTIAL SLAB, THEN EMPTY, THEN GROW</Text>
+      <Card x={10} y={71} w={76} h={16} ramp={RED} ink="#f8f4e6" size={3} lines={["192 B IN 256 B BLOCK", "64 B LOST EACH"]} />
+      <Card x={94} y={71} w={76} h={16} ramp={GREEN} ink="#f8f4e6" size={3} lines={["21 PER 4 KB SLAB", `${e.leftover192} B LOST IN ALL`]} />
+      <Text x={90} y={95} size={3} fill="#cfe4ff" anchor="middle">TCACHE: 1000 ALLOCS, BATCH 32 = 32 LOCKS</Text>
+    </>
+  );
+}
+
+function HugePages() {
+  const e = HUGE_EXAMPLE;
+  const kb = (b: number) => (b >= 1024 ** 2 ? `${b / 1024 ** 2} MB` : `${b / 1024} KB`);
+  return (
+    <>
+      <Night seed={43} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">TLB REACH: 64 ENTRIES</Text>
+      <Card x={10} y={16} w={76} h={24} ramp={RED} ink="#f8f4e6" size={3.5} lines={["4 KB PAGES", `REACH ${kb(e.reachSmall)}`, `1 GB = ${e.pagesSmall} PAGES`]} />
+      <Card x={94} y={16} w={76} h={24} ramp={GREEN} ink="#f8f4e6" size={3.5} lines={["2 MB PAGES", `REACH ${e.reachHuge / 1024 ** 2} MB`, `1 GB = ${e.pagesHuge} PAGES`]} />
+      <Text x={90} y={52} size={3.5} fill="#f8f4e6" anchor="middle">{`LEAF TABLES FOR 1 GB: ${kb(e.tableSmall)} VS ${kb(e.tableHuge)}`}</Text>
+      <Text x={90} y={64} size={3.5} fill="#7cf0c8" anchor="middle">FEWER TLB MISSES, SHORTER PAGE WALKS</Text>
+      <Text x={90} y={76} size={3.5} fill="#f87a8a" anchor="middle">NEEDS 2 MB OF CONTIGUOUS PHYSICAL MEMORY</Text>
+      <Text x={90} y={88} size={3.5} fill="#cfe4ff" anchor="middle">LINUX: HUGETLBFS AND TRANSPARENT HUGE PAGES</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2585,6 +2638,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   futex: { title: "A futex mutex: lock and unlock in user space, system calls only to wait and wake", draw: Futex },
   freelist: { title: "A free-list heap: split on malloc, coalesce on free, and the fragmentation that remains", draw: FreeList },
   buddy: { title: "The buddy system: halving a 256 KB segment for a 21 KB request", draw: BuddyDiagram },
+  slab: { title: "A slab cache: equal slots in slabs, constructed once, filled partial-first", draw: Slab },
+  hugepages: { title: "Huge pages: the same 64 TLB entries reach 128 MB instead of 256 KB", draw: HugePages },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 

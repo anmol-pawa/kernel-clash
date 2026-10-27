@@ -7,7 +7,7 @@ import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk
 import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
-import { Buddy, FreeListHeap } from "@/game/sim/allocator";
+import { Buddy, FreeListHeap, slabObjects, tlbReach } from "@/game/sim/allocator";
 import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
@@ -18,7 +18,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy" | "slab" | "hugepages";
 
 export interface LessonPage {
   heading: string;
@@ -104,6 +104,8 @@ export const HEAP_CHECK = (() => {
   return h.largestHole;
 })();
 export const BUDDY_CHECK = new Buddy(256).alloc("A", 21)!.wasted;
+export const SLAB_CHECK = slabObjects(4096, 192);
+export const HUGE_CHECK = tlbReach(64, 2 * 1024 ** 2) / 1024 ** 2;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1938,6 +1940,68 @@ export const LESSONS: Lesson[] = [
       answer: BUDDY_CHECK,
       unit: "KB",
       explain: "21 KB rounds up to the next power of two, 32 KB, so 32 − 21 = 11 KB inside the block is unused.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "alloc-slab",
+    gym: "interview",
+    title: "Slab allocation",
+    pages: [
+      {
+        heading: "One cache per object type",
+        body: [
+          "The kernel allocates the same few structures constantly: inodes, task structs, socket buffers. The slab allocator keeps a cache per object type. A cache owns slabs (one or more pages) cut into equal slots, and each slab is full, partial or empty.",
+          "Alloc takes a slot from a partial slab first, then an empty one, and only then asks the page (buddy) allocator for a new slab. Free just marks the slot free. Objects are initialized once when the slab is created and stay constructed while free, so reuse skips the constructor cost.",
+        ],
+        diagram: "slab",
+      },
+      {
+        heading: "Why slabs beat rounding up",
+        body: [
+          "A 192-byte object through a power-of-two allocator would take a 256-byte block: 64 bytes lost on every object. A slab of 4 KB holds 21 of them in 4032 bytes and loses 64 bytes in total for the whole slab.",
+          "Same-type objects also share cache lines and TLB entries, and a cache can be shrunk by releasing empty slabs. Linux today uses SLUB, a simplified descendant with the same idea; user space `malloc` reaches the same effect with size classes.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-slab",
+      kind: "numeric",
+      prompt: "A slab cache stores 192-byte objects in 4096-byte slabs. How many objects fit in one slab?",
+      answer: SLAB_CHECK,
+      unit: "objects",
+      explain: "floor(4096 / 192) = 21 objects use 4032 bytes, leaving 64 bytes unused in the slab.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "alloc-hugepages",
+    gym: "interview",
+    title: "Thread caches and huge pages",
+    pages: [
+      {
+        heading: "Do not take the lock",
+        body: [
+          "A shared heap needs a lock, and with many threads that lock becomes the bottleneck. tcmalloc and jemalloc give each thread a private cache of free objects per size class. A thread allocates and frees from its own cache with no locking, and only touches the shared central lists to refill or flush a whole batch.",
+          "With a batch of 32, a thousand allocations need about 32 central-lock acquisitions instead of a thousand. The cost is some memory held idle in caches, and objects freed by a different thread than the one that allocated them need extra handling.",
+        ],
+      },
+      {
+        heading: "Huge pages and TLB reach",
+        body: [
+          "TLB reach is the memory the TLB can map without a page walk: entries × page size. 64 entries of 4 KB pages reach only 256 KB. Using 2 MB huge pages the same 64 entries reach 128 MB, so big heaps (databases, JVMs) miss far less.",
+          "Mapping 1 GB takes 262,144 small pages but only 512 huge pages, and the leaf page tables shrink from 2 MB to 4 KB. The price: a huge page must be 2 MB of contiguous physical memory, so fragmentation can prevent it, and a sparsely used huge page wastes memory. Linux offers explicit `hugetlbfs` pages and Transparent Huge Pages (which can add latency spikes when compacting).",
+        ],
+        diagram: "hugepages",
+      },
+    ],
+    check: {
+      id: "lesson-hugepages",
+      kind: "numeric",
+      prompt: "A TLB has 64 entries. With 2 MB huge pages, how many MB of memory can it map (its reach)?",
+      answer: HUGE_CHECK,
+      unit: "MB",
+      explain: "Reach is entries × page size: 64 × 2 MB = 128 MB, against 64 × 4 KB = 256 KB with small pages.",
       move: MMOVE,
     },
   },

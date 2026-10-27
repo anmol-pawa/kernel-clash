@@ -142,3 +142,69 @@ export class Buddy {
     return [...this.free].flatMap(([size, addrs]) => addrs.map((a) => [a, size] as [number, number])).sort((a, b) => a[0] - b[0]);
   }
 }
+
+/**
+ * Slab allocation (Bonwick 1994; Silberschatz §10.8.2): a cache holds objects of
+ * one size in slabs (one or more contiguous pages). Objects are constructed when
+ * a slab is created and stay constructed while free, so alloc/free only flip a
+ * flag. Alloc prefers a partial slab, then an empty one, then grows the cache.
+ */
+export const slabObjects = (slabBytes: number, objBytes: number) => Math.floor(slabBytes / objBytes);
+
+/** Bytes lost per slab because the slab size is not a multiple of the object size. */
+export const slabLeftover = (slabBytes: number, objBytes: number) => slabBytes - slabObjects(slabBytes, objBytes) * objBytes;
+
+export class SlabCache {
+  /** Used-object count per slab. */
+  slabs: number[] = [];
+  /** Constructor calls made so far (one per object, when its slab is created). */
+  constructorCalls = 0;
+  readonly perSlab: number;
+
+  constructor(readonly slabBytes: number, readonly objBytes: number) {
+    this.perSlab = slabObjects(slabBytes, objBytes);
+    if (this.perSlab < 1) throw new Error("object larger than a slab");
+  }
+
+  /** Allocates one object; returns the slab index it came from. */
+  alloc(): number {
+    let at = this.slabs.findIndex((u) => u > 0 && u < this.perSlab);
+    if (at < 0) at = this.slabs.findIndex((u) => u === 0);
+    if (at < 0) {
+      this.slabs.push(0);
+      at = this.slabs.length - 1;
+      this.constructorCalls += this.perSlab;
+    }
+    this.slabs[at]++;
+    return at;
+  }
+
+  free(slab: number): void {
+    if (!(this.slabs[slab] > 0)) throw new Error("slab has no used objects");
+    this.slabs[slab]--;
+  }
+
+  get states() {
+    return {
+      full: this.slabs.filter((u) => u === this.perSlab).length,
+      partial: this.slabs.filter((u) => u > 0 && u < this.perSlab).length,
+      empty: this.slabs.filter((u) => u === 0).length,
+    };
+  }
+}
+
+/**
+ * Thread-local caches (the tcmalloc / jemalloc tcache idea): each thread serves
+ * allocations from a private list and only takes the shared central lock to
+ * refill `batch` objects at a time. Returns central-lock acquisitions.
+ */
+export const centralLockAcquisitions = (allocs: number, batch: number | null): number => (batch === null ? allocs : Math.ceil(allocs / batch));
+
+/** Bytes of address space the TLB covers: entries × page size. */
+export const tlbReach = (entries: number, pageBytes: number) => entries * pageBytes;
+
+/** Pages (hence TLB entries and PTEs) needed to map `bytes`. */
+export const pagesToMap = (bytes: number, pageBytes: number) => Math.ceil(bytes / pageBytes);
+
+/** Bytes of leaf page-table entries (8 bytes each on x86-64) to map `bytes`. */
+export const leafTableBytes = (bytes: number, pageBytes: number) => pagesToMap(bytes, pageBytes) * 8;

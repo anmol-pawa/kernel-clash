@@ -17,7 +17,7 @@ import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/c
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
 import { COPY_UP_CHECK, CPU_MAX_CHECK, MIGRATE_CHECK, NESTED_CHECK } from "@/content/lessons";
-import { BUDDY_EXAMPLE, HEAP_EXAMPLE, FALSE_SHARING_EXAMPLE, FUTEX_EXAMPLE, ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
+import { SLAB_EXAMPLE, HUGE_EXAMPLE, BUDDY_EXAMPLE, HEAP_EXAMPLE, FALSE_SHARING_EXAMPLE, FUTEX_EXAMPLE, ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -31,7 +31,7 @@ const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
 const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "dockerrun"];
 const VIRT_DIAGRAMS = ["trapemul", "nestedpt", "migration"];
 const ATOMIC_DIAGRAMS = ["cas", "ordering", "falseshare", "futex"];
-const ALLOCATOR_DIAGRAMS = ["freelist", "buddy"];
+const ALLOCATOR_DIAGRAMS = ["freelist", "buddy", "slab", "hugepages"];
 const DIAGRAMS = [...ALLOCATOR_DIAGRAMS, ...CONTAINER_DIAGRAMS, ...ATOMIC_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
@@ -729,8 +729,8 @@ describe("atomics lessons (Kernel Summit)", () => {
 
 describe("allocator lessons (Kernel Summit)", () => {
   const ls = lessonsOf("interview").filter((l) => l.id.startsWith("alloc-"));
-  it("cover free lists and the buddy system, each diagram once", () => {
-    expect(ls.map((l) => l.id)).toEqual(["alloc-freelist", "alloc-buddy"]);
+  it("cover free lists, buddy, slab and huge pages, each diagram once", () => {
+    expect(ls.map((l) => l.id)).toEqual(["alloc-freelist", "alloc-buddy", "alloc-slab", "alloc-hugepages"]);
     expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(ALLOCATOR_DIAGRAMS);
   });
 
@@ -751,5 +751,25 @@ describe("allocator lessons (Kernel Summit)", () => {
     expect(q.kind).toBe("numeric");
     expect(grade(q, { kind: "numeric", value: "11" })).toBe(true);
     expect(grade(q, { kind: "numeric", value: "32" })).toBe(false);
+  });
+
+  it("slab check: 21 objects of 192 B fit a 4 KB slab with 64 B left", () => {
+    expect(SLAB_EXAMPLE.leftover192).toBe(64);
+    expect(SLAB_EXAMPLE.slabs).toEqual([2, 2]);
+    expect(SLAB_EXAMPLE.states).toEqual({ full: 0, partial: 2, empty: 0 });
+    expect(SLAB_EXAMPLE.ctor).toBe(8);
+    expect(SLAB_EXAMPLE.locks).toEqual([1000, 32]);
+    const q = lessonById("alloc-slab")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "21" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "22" })).toBe(false);
+  });
+
+  it("huge-page check: 64 entries reach 128 MB with 2 MB pages", () => {
+    expect(HUGE_EXAMPLE).toMatchObject({ reachSmall: 262144, reachHuge: 134217728, pagesSmall: 262144, pagesHuge: 512, tableSmall: 2097152, tableHuge: 4096 });
+    const q = lessonById("alloc-hugepages")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "128" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "256" })).toBe(false);
   });
 });
