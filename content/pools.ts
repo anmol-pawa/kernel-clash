@@ -19,6 +19,7 @@ import { FILL_QUESTIONS } from "./fillQuestions";
 import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
+import { CONTAINER_QUESTIONS } from "./containerQuestions";
 
 /**
  * Each gym's question pool: its six boss questions, more authored questions
@@ -1093,7 +1094,7 @@ export const POOLS: Record<string, Pool> = {
   memory: { authored: [...GYM_QUESTIONS.memory, ...MEMORY_EXTRA], generators: MEMORY_GENERATORS },
   virtual: { authored: [...GYM_QUESTIONS.virtual, ...VIRTUAL_EXTRA], generators: VIRTUAL_GENERATORS },
   storage: { authored: [...GYM_QUESTIONS.storage, ...STORAGE_EXTRA], generators: STORAGE_GENERATORS },
-  interview: { authored: [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS], generators: PERF_GENERATORS },
+  interview: { authored: [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS], generators: PERF_GENERATORS },
 };
 
 /** How many questions a boss battle asks (the balance tests assume six). */

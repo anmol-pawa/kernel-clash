@@ -4,6 +4,7 @@ import { FILL_QUESTIONS } from "./fillQuestions";
 import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
+import { CONTAINER_QUESTIONS } from "./containerQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, LOOP_SHAPE, type InterviewTopic, type Tier, type RoundId, type RoundKind } from "@/game/engine/interview";
 import { tierOfId } from "./interviewTiers";
@@ -246,9 +247,19 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ds-shell-eof": "Processes",
   "ds-chat-steps": "I/O and Linux",
   "ds-chat-select": "I/O and Linux",
+  "ct-cpu-throttle": "Scheduling and sync",
+  "ct-throttle-latency": "Scheduling and sync",
+  "ct-memory-max": "Memory",
+  "ct-copy-up": "I/O and Linux",
+  "ct-whiteout": "I/O and Linux",
+  "ct-pid1": "Processes",
+  "ct-trap-emulate": "Processes",
+  "ct-nested-walk": "Memory",
+  "ct-precopy": "I/O and Linux",
+  "ct-numa-first-touch": "Memory",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS];
 
 export const tierOf = (q: Question): Tier => tierOfId(q.id);
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];

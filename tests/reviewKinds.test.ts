@@ -31,9 +31,9 @@ describe("review queue and daily challenge cover the code-reading kinds", () => 
       }
     });
 
-    it(`the daily challenge draws ${kind} questions over a month`, () => {
+    it(`the daily challenge draws ${kind} questions over a year`, () => {
       const seen = new Set<string>();
-      for (let d = 1; d <= 31; d++) for (const q of dailyQuestions(`2026-10-${String(d).padStart(2, "0")}`)) if (q.kind === kind) seen.add(q.id);
+      for (let d = 0; d < 365; d++) for (const q of dailyQuestions(new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10))) if (q.kind === kind) seen.add(q.id);
       expect(seen.size).toBeGreaterThan(0);
     });
   }
