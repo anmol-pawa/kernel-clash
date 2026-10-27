@@ -3,6 +3,7 @@ import { BUGSPOT_QUESTIONS } from "./bugspotQuestions";
 import { FILL_QUESTIONS } from "./fillQuestions";
 import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
+import { DESIGN_QUESTIONS } from "./designQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, type InterviewTopic } from "@/game/engine/interview";
 import type { Question } from "@/game/engine/question";
@@ -229,9 +230,23 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "tk-ulimit": "I/O and Linux",
   "tk-free-avail": "Memory",
   "tk-triage": "I/O and Linux",
+  "ds-lru-steps": "Scheduling and sync",
+  "ds-lru-lock": "Scheduling and sync",
+  "ds-rate-steps": "Scheduling and sync",
+  "ds-rate-cap": "Scheduling and sync",
+  "ds-pool-steps": "Scheduling and sync",
+  "ds-pool-bound": "Scheduling and sync",
+  "ds-sched-steps": "Scheduling and sync",
+  "ds-sched-preempt": "Scheduling and sync",
+  "ds-malloc-steps": "Memory",
+  "ds-malloc-coalesce": "Memory",
+  "ds-shell-steps": "Processes",
+  "ds-shell-eof": "Processes",
+  "ds-chat-steps": "I/O and Linux",
+  "ds-chat-select": "I/O and Linux",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS];
 
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 
