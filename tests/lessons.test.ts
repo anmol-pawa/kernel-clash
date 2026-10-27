@@ -17,7 +17,7 @@ import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/c
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
 import { COPY_UP_CHECK, CPU_MAX_CHECK, MIGRATE_CHECK, NESTED_CHECK } from "@/content/lessons";
-import { CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
+import { ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -30,7 +30,8 @@ const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
 const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
 const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "dockerrun"];
 const VIRT_DIAGRAMS = ["trapemul", "nestedpt", "migration"];
-const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
+const ATOMIC_DIAGRAMS = ["cas", "ordering"];
+const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...ATOMIC_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -676,5 +677,34 @@ describe("virtualization lessons (Kernel Summit)", () => {
     expect(q.kind).toBe("numeric");
     expect(grade(q, { kind: "numeric", value: "32" })).toBe(true);
     expect(grade(q, { kind: "numeric", value: "128" })).toBe(false);
+  });
+});
+
+describe("atomics lessons (Kernel Summit)", () => {
+  const ls = lessonsOf("interview").filter((l) => l.id.startsWith("atomics-"));
+  it("cover CAS/ABA and memory ordering, each diagram once", () => {
+    expect(ls.map((l) => l.id)).toEqual(["atomics-cas", "atomics-order"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(ATOMIC_DIAGRAMS);
+  });
+
+  it("CAS check: only the pop-pop-push-back interleaving is right", () => {
+    const q = lessonById("atomics-cas")!.check;
+    if (q.kind !== undefined && q.kind !== "mcq") throw new Error("expected mcq");
+    expect(q.options[q.answer]).toMatch(/pushes A back/);
+    for (let i = 0; i < q.options.length; i++) expect(grade(q, { kind: "mcq", choice: i })).toBe(i === q.answer);
+  });
+
+  it("ABA diagram data: untagged corrupts, tagged fails safely", () => {
+    expect(ABA_EXAMPLE.untagged.corrupt).toBe(true);
+    expect(ABA_EXAMPLE.tagged.stack).toEqual(["A", "C"]);
+  });
+
+  it("ordering check: 4 outcomes on TSO, 3 sequentially consistent", () => {
+    expect(SB_EXAMPLE.sc).toHaveLength(3);
+    expect(SB_EXAMPLE.tso).toHaveLength(4);
+    const q = lessonById("atomics-order")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "4" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "3" })).toBe(false);
   });
 });

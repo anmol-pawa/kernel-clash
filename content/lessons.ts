@@ -6,6 +6,7 @@ import { BELADY_EXAMPLE, beladyAt, demandPagingEat, faultCount, faultCurve, work
 import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk } from "@/game/sim/storage";
 import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
+import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -15,7 +16,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering";
 
 export interface LessonPage {
   heading: string;
@@ -82,6 +83,7 @@ export const COPY_UP_CHECK = (() => {
 })();
 /** The virtualization quick checks' answers. */
 export const NESTED_CHECK = nestedWalkRefs(4, 4);
+export const TSO_OUTCOMES = outcomes(STORE_BUFFERING, "tso", ["x", "y"]).length;
 export const MIGRATE_CHECK = Math.round(preCopy(8192, 250, 1000, 64).downtimeSec * 1000);
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
@@ -1732,6 +1734,67 @@ export const LESSONS: Lesson[] = [
       answer: MIGRATE_CHECK,
       unit: "ms",
       explain: "Rounds send 8192, 2048, 512 and 128 MB, leaving 128 x 0.25 = 32 MB (below 64). Sending 32 MB at 1000 MB/s takes 32 ms.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "atomics-cas",
+    gym: "interview",
+    title: "Atomics: compare-and-swap and ABA",
+    pages: [
+      {
+        heading: "Lock-free with one instruction",
+        body: [
+          "Compare-and-swap, `CAS(addr, expected, new)`, atomically writes `new` only if the location still holds `expected`, and reports whether it did (`cmpxchg` on x86, load-linked/store-conditional on ARM). A retry loop turns it into any read-modify-write: read the old value, compute, CAS, and try again if another thread got in first.",
+          "A lock-free stack (Treiber) pops with `CAS(head, old, old.next)`. No thread ever blocks holding a lock, so a stalled thread cannot stop the others: some thread always makes progress. The price is that every pop must be correct for any interleaving.",
+        ],
+      },
+      {
+        heading: "The ABA problem",
+        body: [
+          "CAS only checks that the value is equal, not that nothing happened. Thread 1 reads head = A and A.next = B, then stalls. Thread 2 pops A, pops B and frees it, then pushes A back, so the stack is A then C. Thread 1's CAS sees head = A again and succeeds, making the freed B the head.",
+          "Fixes: pair the pointer with a version counter that every change bumps (a double-width CAS), so the stale CAS fails; or never reuse a node while any thread might still hold it (hazard pointers, epoch-based reclamation, garbage collection).",
+        ],
+        diagram: "cas",
+      },
+    ],
+    check: {
+      id: "lesson-atomics-cas",
+      prompt: "A lock-free stack's pop does CAS(head, A, A.next) and has no version tag. Which interleaving corrupts it?",
+      options: ["Another thread pops A and B, frees B, and pushes A back before the CAS runs", "Two threads push at the same time", "A thread pops from an empty stack", "A thread is preempted after the CAS succeeds"],
+      answer: 0,
+      explain: "The CAS sees head == A again and succeeds even though A.next is no longer B. That is the ABA problem; a version tag or safe memory reclamation prevents it.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "atomics-order",
+    gym: "interview",
+    title: "Memory ordering and why volatile is not enough",
+    pages: [
+      {
+        heading: "Store buffers reorder",
+        body: [
+          "A core does not wait for a store to reach the cache: it parks it in a store buffer and carries on. Its own later loads see the buffered value, but other cores do not yet. In the store-buffering test (each thread stores 1 to its variable, then loads the other's), x86-TSO allows both loads to read 0, which no interleaving of the four instructions can produce.",
+          "A full fence (`mfence`, or sequentially consistent atomics) between the store and the load drains the buffer and forbids the 0, 0 result. ARM and POWER reorder far more: even two stores can become visible out of order.",
+        ],
+        diagram: "ordering",
+      },
+      {
+        heading: "Acquire, release and volatile",
+        body: [
+          "A release store makes every write before it visible to a thread whose acquire load reads that value. Write the data, then release-store the flag; the reader acquire-loads the flag, and if it sees 1, it sees the data. Relaxed atomics give atomicity only, with no ordering.",
+          "In C and C++, `volatile` only stops the compiler from caching or dropping accesses. It makes nothing atomic and orders nothing for the CPU, so it is not synchronization (Java's `volatile` is different: it is a sequentially consistent atomic). Use `atomic` types, or a mutex, which includes the fences.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-atomics-order",
+      kind: "numeric",
+      prompt: "In the store-buffering test (T0: x=1; r1=y. T1: y=1; r2=x), how many different (r1, r2) results are possible on x86-TSO?",
+      answer: TSO_OUTCOMES,
+      unit: "outcomes",
+      explain: "Sequential consistency gives (0,1), (1,0) and (1,1). Store buffers add (0,0), where each load runs before the other thread's store is visible: 4 results.",
       move: CMOVE,
     },
   },

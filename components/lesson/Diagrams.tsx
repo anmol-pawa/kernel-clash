@@ -5,6 +5,7 @@ import { FIT_EXAMPLE, SEGMENT_EXAMPLE, allocate, effectiveAccessTime, externalFr
 import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCurve, workingSet } from "@/game/sim/paging";
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
+import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
@@ -2334,6 +2335,61 @@ function Migration() {
   );
 }
 
+export const ABA_EXAMPLE = { untagged: abaScenario(false), tagged: abaScenario(true) };
+export const SB_EXAMPLE = { sc: outcomes(STORE_BUFFERING, "sc", ["x", "y"]), tso: outcomes(STORE_BUFFERING, "tso", ["x", "y"]) };
+
+function Cas() {
+  const { untagged, tagged } = ABA_EXAMPLE;
+  const chain = (y: number, names: string[], ramps: Ramp[]) =>
+    names.map((n, i) => <Card key={n + i} x={74 + i * 22} y={y} w={16} h={11} ramp={ramps[i]} ink="#f8f4e6" size={4} lines={[n]} />);
+  return (
+    <>
+      <Night seed={36} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">ABA: A STALE CAS THAT STILL SUCCEEDS</Text>
+      <Text x={3} y={24} size={3.5} fill="#cfe4ff">START</Text>
+      {chain(17, ["A", "B", "C"], [BLUE, BLUE, BLUE])}
+      <Text x={3} y={39} size={3.5} fill="#cfe4ff">T2: POP A,</Text>
+      <Text x={3} y={45} size={3.5} fill="#cfe4ff">POP B, PUSH A</Text>
+      {chain(36, ["A", "C"], [BLUE, BLUE])}
+      <Card x={122} y={36} w={40} h={11} ramp={RED} ink="#f8f4e6" size={3} lines={["B FREED"]} />
+      <Text x={3} y={68} size={3.5} fill="#cfe4ff">T1: CAS(HEAD, A, B)</Text>
+      <Card x={2} y={72} w={86} h={13} ramp={RED} ink="#f8f4e6" size={3} lines={[untagged.casSucceeded ? `NO TAG: HEAD = ${untagged.head} (FREED)` : "NO TAG: FAILS"]} />
+      <Card x={92} y={72} w={86} h={13} ramp={GREEN} ink="#f8f4e6" size={3} lines={[tagged.casSucceeded ? "TAGGED: OK" : "TAG 0 != 3: CAS FAILS"]} />
+      <Text x={90} y={96} size={3} fill="#7cf0c8" anchor="middle">FIX: VERSION TAG NEXT TO THE POINTER, OR</Text>
+      <Text x={90} y={104} size={3} fill="#7cf0c8" anchor="middle">HAZARD POINTERS / EPOCHS FOR SAFE RECLAMATION</Text>
+    </>
+  );
+}
+
+function Ordering() {
+  const row = (label: string, list: string[], y: number, ramp: Ramp) => (
+    <g>
+      <Text x={3} y={y + 6} size={3.5} fill="#cfe4ff">{label}</Text>
+      {["r1=0 r2=0", "r1=0 r2=1", "r1=1 r2=0", "r1=1 r2=1"].map((o, i) => {
+        const has = list.includes(o);
+        return <Card key={o} x={44 + i * 34} y={y} w={32} h={10} ramp={has ? (o === "r1=0 r2=0" ? RED : ramp) : STONE} ink="#f8f4e6" size={3} lines={[has ? o.replace("r1=", "").replace(" r2=", ",") : "NEVER"]} />;
+      })}
+    </g>
+  );
+  return (
+    <>
+      <Night seed={37} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">STORE BUFFERING: (R1, R2) RESULTS</Text>
+      <Text x={90} y={17} size={3.5} fill="#f8f4e6" anchor="middle">T0: X=1; R1=Y    T1: Y=1; R2=X</Text>
+      <Text x={44} y={28} size={3} fill="#cfe4ff">0,0</Text>
+      <Text x={78} y={28} size={3} fill="#cfe4ff">0,1</Text>
+      <Text x={112} y={28} size={3} fill="#cfe4ff">1,0</Text>
+      <Text x={146} y={28} size={3} fill="#cfe4ff">1,1</Text>
+      {row("SEQ CST", SB_EXAMPLE.sc, 31, GREEN)}
+      {row("X86-TSO", SB_EXAMPLE.tso, 45, GREEN)}
+      {row("WITH FENCE", SB_EXAMPLE.sc, 59, GREEN)}
+      <Text x={90} y={80} size={3.5} fill="#f8f4e6" anchor="middle">THE STORE WAITS IN A BUFFER; THE LOAD RUNS FIRST</Text>
+      <Text x={90} y={90} size={3} fill="#7cf0c8" anchor="middle">RELEASE STORE + ACQUIRE LOAD: DATA BEFORE THE FLAG</Text>
+      <Text x={90} y={98} size={3} fill="#7cf0c8" anchor="middle">VOLATILE IN C: NO ATOMICITY, NO CPU ORDERING</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2386,6 +2442,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   trapemul: { title: "Trap-and-emulate: ADD runs natively, privileged instructions trap, POPF leaks without hardware support", draw: TrapEmulate },
   nestedpt: { title: "A TLB miss under nested paging reads 24 locations on a 5 by 5 grid", draw: NestedPt },
   migration: { title: "Pre-copy live migration: shrinking rounds of dirty pages, then a short pause", draw: Migration },
+  cas: { title: "ABA on a lock-free stack: the stale CAS succeeds without a version tag and fails with one", draw: Cas },
+  ordering: { title: "Store buffering: x86-TSO allows the 0,0 result that sequential consistency and a fence forbid", draw: Ordering },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 
