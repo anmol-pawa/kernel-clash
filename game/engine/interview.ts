@@ -10,7 +10,7 @@ export const INTERVIEW_TOPICS = ["Processes", "Scheduling and sync", "Memory", "
 export type InterviewTopic = (typeof INTERVIEW_TOPICS)[number];
 
 /** Seconds each kind of question is allowed. */
-export const TIME_LIMIT: Partial<Record<QuestionKind, number>> = { mcq: 45, multi: 60, numeric: 90, order: 75, bugspot: 90, fill: 90 };
+export const TIME_LIMIT: Partial<Record<QuestionKind, number>> = { mcq: 45, multi: 60, numeric: 90, order: 75, bugspot: 90, fill: 90, incident: 150 };
 export const DEFAULT_LIMIT = 60;
 export const limitFor = (q: Question): number => TIME_LIMIT[kindOf(q)] ?? DEFAULT_LIMIT;
 

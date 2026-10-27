@@ -1,6 +1,7 @@
 import { GYM_QUESTIONS } from "./gymQuestions";
 import { BUGSPOT_QUESTIONS } from "./bugspotQuestions";
 import { FILL_QUESTIONS } from "./fillQuestions";
+import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, type InterviewTopic } from "@/game/engine/interview";
 import type { Question } from "@/game/engine/question";
@@ -207,9 +208,10 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "fill-philosophers": "Scheduling and sync",
   "fill-barrier": "Scheduling and sync",
   "fill-once": "Scheduling and sync",
+  "inc-io-wait": "I/O and Linux",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS];
 
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 

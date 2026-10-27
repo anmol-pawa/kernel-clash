@@ -15,6 +15,7 @@
  *   track    tap the cylinder a disk-scheduling policy serves next
  *   bugspot  tap the line(s) of a code snippet that contain the bug
  *   fill     complete a short program by choosing the code for each blank
+ *   incident read printed tool output, then answer chained diagnosis questions
  *
  * Generated problems come from a `Generator`, which builds a question from a
  * seed, so the same seed always gives the same question and answer.
@@ -237,6 +238,39 @@ export function fillCode(q: FillQ, choices: readonly number[]): string[] {
   );
 }
 
+/** One tool run shown in an incident's output panel. */
+export interface IncidentOutput {
+  /** the command line, e.g. `vmstat 1 3` */
+  cmd: string;
+  /** what it printed, verbatim */
+  text: string;
+}
+
+/** One question in an incident's chain. */
+export interface IncidentStep {
+  ask: string;
+  /** 3–4 options */
+  options: readonly string[];
+  /** index into `options` */
+  answer: number;
+  /** why the answer follows from the printed output */
+  why: string;
+}
+
+export interface IncidentQ extends Base {
+  kind: "incident";
+  /** `prompt` is the story; these are the tool outputs the player reads */
+  outputs: readonly IncidentOutput[];
+  /** 2–3 chained questions, answered in order */
+  steps: readonly IncidentStep[];
+}
+
+/** Size limits for a production-incident question. */
+export const INCIDENT_MIN_STEPS = 2;
+export const INCIDENT_MAX_STEPS = 3;
+export const INCIDENT_MAX_OUTPUTS = 3;
+export const INCIDENT_MAX_OUTPUT_LINES = 14;
+
 /** Most processes a banker question may have (one tap each). */
 export const MAX_BANKER_PROCESSES = 6;
 
@@ -246,8 +280,8 @@ export const MAX_INTERLEAVE_STEPS = 12;
 /** Longest chart a build question may ask for: one tap per unit, so keep it short. */
 export const MAX_GANTT_UNITS = 24;
 
-export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ | BugSpotQ | FillQ;
-export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track" | "bugspot" | "fill";
+export type Question = McqQ | MultiQ | NumericQ | OrderQ | GanttQ | InterleaveQ | BankerQ | CycleQ | TranslateQ | VictimQ | TrackQ | BugSpotQ | FillQ | IncidentQ;
+export type QuestionKind = "mcq" | "multi" | "numeric" | "order" | "gantt" | "interleave" | "banker" | "cycle" | "translate" | "victim" | "track" | "bugspot" | "fill" | "incident";
 
 export const kindOf = (q: Question): QuestionKind => q.kind ?? "mcq";
 
@@ -274,7 +308,9 @@ export type Response =
   /** the snippet lines (indexes) the player marked as buggy */
   | { kind: "bugspot"; lines: readonly number[] }
   /** the option index chosen for each blank, in blank order */
-  | { kind: "fill"; choices: readonly number[] };
+  | { kind: "fill"; choices: readonly number[] }
+  /** the option index chosen for each chained step, in step order */
+  | { kind: "incident"; choices: readonly number[] };
 
 /**
  * Where an interleaving leaves the goal variable, or null if the schedule
@@ -370,6 +406,10 @@ export function grade(q: Question, r: Response): boolean {
       const fq = q as FillQ;
       return r.choices.length === fq.blanks.length && fq.blanks.every((b, i) => r.choices[i] === b.answer);
     }
+    case "incident": {
+      const iq = q as IncidentQ;
+      return r.choices.length === iq.steps.length && iq.steps.every((s, i) => r.choices[i] === s.answer);
+    }
   }
 }
 
@@ -415,6 +455,8 @@ export function answerText(q: Question): string {
         .join("; ");
     case "fill":
       return q.blanks.map((b, i) => `(${i + 1}) ${b.options[b.answer]}`).join("; ");
+    case "incident":
+      return q.steps.map((s, i) => `(${i + 1}) ${s.options[s.answer]}`).join("; ");
     default:
       return q.options[q.answer];
   }
@@ -445,6 +487,8 @@ export function correctionText(q: Question): string | null {
       return `The bug is at ${answerText(q)}.`;
     case "fill":
       return `The blanks are ${answerText(q)}.`;
+    case "incident":
+      return `The diagnosis is ${answerText(q)}.`;
     default:
       return `The answer: ${answerText(q)}.`;
   }
@@ -588,6 +632,21 @@ export function questionProblems(q: Question): string[] {
         if (new Set(b.options).size !== b.options.length) p.push("duplicate options in a blank");
         if (b.options.some((o) => !o.trim() || o.includes("\n"))) p.push("blank options must be non-empty single lines");
         if (!Number.isInteger(b.answer) || b.answer < 0 || b.answer >= b.options.length) p.push("blank answer out of range");
+      }
+      break;
+    }
+    case "incident": {
+      if (q.steps.length < INCIDENT_MIN_STEPS || q.steps.length > INCIDENT_MAX_STEPS) p.push(`incident needs ${INCIDENT_MIN_STEPS}–${INCIDENT_MAX_STEPS} steps`);
+      if (q.outputs.length < 1 || q.outputs.length > INCIDENT_MAX_OUTPUTS) p.push(`incident needs 1–${INCIDENT_MAX_OUTPUTS} tool outputs`);
+      for (const o of q.outputs) {
+        if (!o.cmd.trim() || !o.text.trim()) p.push("tool output needs a command and text");
+        if (o.text.split("\n").length > INCIDENT_MAX_OUTPUT_LINES) p.push(`tool output over ${INCIDENT_MAX_OUTPUT_LINES} lines`);
+      }
+      for (const s of q.steps) {
+        if (!s.ask.trim() || !s.why.trim()) p.push("each step needs a question and a justification");
+        if (s.options.length < 3 || s.options.length > 4) p.push("each step needs 3–4 options");
+        if (new Set(s.options).size !== s.options.length) p.push("duplicate options in a step");
+        if (!Number.isInteger(s.answer) || s.answer < 0 || s.answer >= s.options.length) p.push("step answer out of range");
       }
       break;
     }

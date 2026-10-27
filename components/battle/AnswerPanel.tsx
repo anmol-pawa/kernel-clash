@@ -6,7 +6,7 @@ import { rampFor } from "@/components/lesson/Gantt";
 import { BankerBoard } from "@/components/lesson/BankerBoard";
 import { RagBoard } from "@/components/lesson/RagBoard";
 import { InterleaveBoard } from "@/components/lesson/Interleave";
-import { chartOf, fillParts, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type BugSpotQ, type CycleQ, type FillQ, type GanttQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
+import { chartOf, fillParts, interleaveResult, kindOf, scrambled, unitsOf, type BankerQ, type BugSpotQ, type CycleQ, type FillQ, type GanttQ, type IncidentQ, type InterleaveQ, type MultiQ, type NumericQ, type OrderQ, type Question, type Response, type TrackQ, type TranslateQ, type VictimQ, trackSetup, victimSetup } from "@/game/engine/question";
 
 /** What the panel shows once an answer is in: the player's response and whether it was right. */
 export interface Reveal {
@@ -58,6 +58,8 @@ export function AnswerPanel(p: Props) {
       return <BugSpotPanel {...p} q={p.q as BugSpotQ} />;
     case "fill":
       return <FillPanel {...p} q={p.q as FillQ} />;
+    case "incident":
+      return <IncidentPanel {...p} q={p.q as IncidentQ} />;
     default:
       return <McqPanel {...p} />;
   }
@@ -803,6 +805,83 @@ function FillPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: Fi
             ▶ RUN THIS CODE
           </button>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A production incident: the tool output is printed in monospaced panels, then
+ * the chained questions are answered one after another (each answer is kept
+ * on screen while the next is asked). SUBMIT once every step has an answer.
+ * After answering, each step is marked and justified from the output.
+ */
+function IncidentPanel({ q, disabled, reveal, onSubmit }: Omit<Props, "q"> & { q: IncidentQ }) {
+  const [picked, setPicked] = useState<number[]>([]);
+  const locked = disabled || !!reveal;
+  const shown = reveal?.response.kind === "incident" ? reveal.response.choices : picked;
+  const done = picked.length === q.steps.length;
+  const current = reveal ? q.steps.length : picked.length;
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="menu" data-kind="incident">
+      <div className="flex flex-col gap-1" data-testid="incident-outputs">
+        {q.outputs.map((o, i) => (
+          <div key={i} className="gb-box min-w-0 p-1.5 !text-[var(--box-ink)]">
+            <div className="font-mono text-[12px] font-bold">$ {o.cmd}</div>
+            <pre className="overflow-x-auto font-mono text-[10px] leading-[1.35] sm:text-[11px]">{o.text}</pre>
+          </div>
+        ))}
+      </div>
+      {q.steps.slice(0, Math.min(current + 1, q.steps.length)).map((s, i) => {
+        const choice = shown[i];
+        const active = !reveal && i === picked.length;
+        const right = !!reveal && choice === s.answer;
+        return (
+          <div key={i} className="flex flex-col gap-1" data-testid={`incident-step-${i}`}>
+            <div className="text-[13px]">
+              <span className="font-pixel text-[10px]">{i + 1}/{q.steps.length}</span> {s.ask}
+            </div>
+            {active ? (
+              <div className="grid grid-cols-1 gap-1" data-testid="incident-options">
+                {s.options.map((o, k) => (
+                  <MenuChoice key={k} tag={"ABCD"[k]} onClick={() => (sfx.blip(), setPicked([...picked, k]))} disabled={locked}>
+                    {o}
+                  </MenuChoice>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className={`gb-box p-1.5 text-[13px] !text-[var(--box-ink)] ${reveal ? (right ? "!bg-[#bfe8a8]" : "!bg-[#f0b0a8]") : ""}`} data-testid={`incident-pick-${i}`}>
+                  {s.options[choice]}
+                </div>
+                {reveal && (
+                  <div className="text-[12px]" data-testid={`incident-why-${i}`}>
+                    {!right && (
+                      <div>
+                        Right answer: <b>{s.options[s.answer]}</b>
+                      </div>
+                    )}
+                    {s.why}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+      {!reveal && (
+        <button
+          type="button"
+          className={CONFIRM}
+          disabled={locked || !done}
+          data-testid="incident-confirm"
+          onClick={() => {
+            sfx.click();
+            onSubmit({ kind: "incident", choices: picked });
+          }}
+        >
+          ▶ SUBMIT DIAGNOSIS
+        </button>
       )}
     </div>
   );
