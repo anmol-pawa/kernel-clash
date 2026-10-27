@@ -43,20 +43,20 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What is the bottleneck?",
-        options: ["The CPUs are saturated", "Memory is exhausted and the host is swapping", "Disk I/O: tasks are blocked waiting for storage", "A runaway process is leaking file descriptors"],
-        answer: 2,
+        options: ["The CPUs are saturated", "Disk I/O: tasks are blocked waiting for storage", "Memory is exhausted and the host is swapping", "A runaway process is leaking file descriptors"],
+        answer: 1,
         why: "us+sy is only 5% and idle is about 12%, so the CPUs are not busy. But wa is 83%, vmstat shows b=14 tasks blocked, bi is about 18,000 blocks/s and ps shows 14 postgres processes in D state. Swap is untouched (si/so = 0), so it is not paging.",
       },
       {
         ask: "Which tool do you run next?",
-        options: ["perf top, to find the hot function", "iostat -x 1, to see which device has high await and %util", "free -m, to look for a memory leak", "strace -c on PID 1"],
-        answer: 1,
+        options: ["iostat -x 1, to see which device has high await and %util", "perf top, to find the hot function", "free -m, to look for a memory leak", "strace -c on PID 1"],
+        answer: 0,
         why: "The wait is on storage, so you need the per-device view: await (latency per request), queue size and %util show whether one disk is saturated. perf top and strace look at CPU and system calls, which are idle here.",
       },
       {
         ask: "kill -9 on the 14 stuck postgres processes does nothing. Why?",
-        options: ["postgres traps SIGKILL", "The processes are in uninterruptible sleep (D) and only act on signals when the I/O completes", "Only the parent can kill a child", "They are zombies, which are already dead"],
-        answer: 1,
+        options: ["postgres traps SIGKILL", "They are zombies, which are already dead", "Only the parent can kill a child", "The processes are in uninterruptible sleep (D) and only act on signals when the I/O completes"],
+        answer: 3,
         why: "State D is uninterruptible sleep: the task is inside the kernel waiting for a disk request and cannot be woken by a signal, SIGKILL included, until the I/O finishes. SIGKILL cannot be trapped, and these are not zombies (the zombie count is 0).",
       },
     ],
@@ -92,20 +92,20 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What killed the service?",
-        options: ["A segfault in the indexer", "The kernel OOM killer reclaimed memory after RAM ran out with no swap", "systemd stopped it for a failed health check", "The disk filled up"],
-        answer: 1,
+        options: ["A segfault in the indexer", "systemd stopped it for a failed health check", "The kernel OOM killer reclaimed memory after RAM ran out with no swap", "The disk filled up"],
+        answer: 2,
         why: "dmesg shows 'Out of memory: Killed process 8123 (indexer)' with anon-rss of 15 GB on a 16 GB host. free shows 118 MB free and only 161 MB available (the cache is just 364 MB, so there is nothing cheap to drop) and swap is 0, so the kernel had no other way to get memory back.",
       },
       {
         ask: "What do you check next to find the cause?",
-        options: ["Whether the new indexer is already growing: sample its RSS over time (ps, /proc/PID/status or smem)", "Reboot the host to clear memory", "Raise vm.swappiness", "Run fsck on the data disk"],
-        answer: 0,
+        options: ["Reboot the host to clear memory", "Whether the new indexer is already growing: sample its RSS over time (ps, /proc/PID/status or smem)", "Raise vm.swappiness", "Run fsck on the data disk"],
+        answer: 1,
         why: "The replacement indexer (PID 9040) already has 15 GB RSS only 3011 s (50 min) after starting, so it grows without bound. Sampling its RSS (and a heap profile) shows the rate and confirms a leak. Swappiness is irrelevant with no swap, and a reboot only resets the clock.",
       },
       {
         ask: "Which change makes the failure safe while the leak is being fixed?",
-        options: ["Turn off the OOM killer", "Run the indexer in a cgroup with a memory limit (and restart policy) so only it is killed and the host stays healthy", "Lower the indexer's nice value", "Add more CPU cores"],
-        answer: 1,
+        options: ["Run the indexer in a cgroup with a memory limit (and restart policy) so only it is killed and the host stays healthy", "Turn off the OOM killer", "Lower the indexer's nice value", "Add more CPU cores"],
+        answer: 0,
         why: "A cgroup memory.max limit makes the OOM kill happen inside the group, at a predictable size, instead of the host running out and the kernel choosing a victim. Disabling the OOM killer would let allocations stall the machine, and nice or cores affect CPU, not memory.",
       },
     ],
@@ -138,14 +138,14 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What are the 32,520 Z processes?",
-        options: ["Processes stuck waiting for disk I/O", "Children that have exited but whose parent has not called wait() to collect their exit status", "Threads spinning on a lock", "Processes swapped out to disk"],
-        answer: 1,
+        options: ["Processes stuck waiting for disk I/O", "Processes swapped out to disk", "Threads spinning on a lock", "Children that have exited but whose parent has not called wait() to collect their exit status"],
+        answer: 3,
         why: "State Z with <defunct> is a zombie: the process has exited and only its process-table entry remains until the parent reads the exit status with wait()/waitpid(). All of them share PPID 2210, the runner, which is alive in state Sl (sleeping) and is not reaping.",
       },
       {
         ask: "Why does fork() fail now, with CPU and RAM idle?",
-        options: ["Zombies use all the CPU", "The kernel has run out of PIDs: 32,520 zombies plus 243 live tasks use 32,763 of the 32768 PIDs allowed by pid_max", "Zombies hold 4 GB of memory each", "fork is disabled once the load average passes 10"],
-        answer: 1,
+        options: ["Zombies use all the CPU", "Zombies hold 4 GB of memory each", "The kernel has run out of PIDs: 32,520 zombies plus 243 live tasks use 32,763 of the 32768 PIDs allowed by pid_max", "fork is disabled once the load average passes 10"],
+        answer: 2,
         why: "Each zombie still owns a PID. 32,520 + 243 live tasks is 32,763 of the 32,768 PIDs in use (the last few are reserved or taken by short-lived commands), so no PID is free and fork returns EAGAIN. Zombies hold essentially no memory or CPU, which is why those graphs look fine.",
       },
       {
@@ -198,20 +198,20 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What does the output say about the problem?",
-        options: ["The CPUs are saturated", "The process is blocked, not busy: every worker waits on a futex (a lock or condition) with the CPU 99% idle", "The disk is slow", "The kernel is out of memory"],
-        answer: 1,
+        options: ["The process is blocked, not busy: every worker waits on a futex (a lock or condition) with the CPU 99% idle", "The CPUs are saturated", "The disk is slow", "The kernel is out of memory"],
+        answer: 0,
         why: "Load is 0.12 and idle is 99.3%, so nothing is computing. Every worker thread is in futex_wait_queue, the kernel wait used by locks and condition variables, and wa is 0.1 so it is not disk either. Memory is 9 GB free.",
       },
       {
         ask: "What is the root cause?",
-        options: ["A data race corrupts the queue", "Thread-pool starvation deadlock: each of the 4 workers runs handle(), which submits price() to the same pool and blocks in Future.get() for it, but the sub-task sits in the queue behind them and no worker is free to run it", "The futex syscall is slow", "The load balancer is broken"],
-        answer: 1,
+        options: ["A data race corrupts the queue", "The load balancer is broken", "The futex syscall is slow", "Thread-pool starvation deadlock: each of the 4 workers runs handle(), which submits price() to the same pool and blocks in Future.get() for it, but the sub-task sits in the queue behind them and no worker is free to run it"],
+        answer: 3,
         why: "The dump shows workers inside handle() blocked at Future.get() in price(). With 4 workers all blocked and 37 tasks pending, the awaited sub-tasks can never run. It is a circular wait: workers need queue progress, and queue progress needs a free worker. It only appears under load, when all workers are busy at once.",
       },
       {
         ask: "Which fix removes the deadlock?",
-        options: ["Retry the request in a loop", "Do not block a pool thread waiting for work queued on the same pool: use a separate pool for the sub-tasks, make it asynchronous (composition/callbacks), or run price() inline", "Increase the pool to 5 threads and hope", "Lower the thread priority"],
-        answer: 1,
+        options: ["Retry the request in a loop", "Increase the pool to 5 threads and hope", "Do not block a pool thread waiting for work queued on the same pool: use a separate pool for the sub-tasks, make it asynchronous (composition/callbacks), or run price() inline", "Lower the thread priority"],
+        answer: 2,
         why: "The wait must not depend on a resource (a free worker) held by the waiters. A separate pool or a non-blocking continuation breaks the cycle. A bigger pool only moves the threshold: 5 workers deadlock once 5 requests arrive together.",
       },
     ],
@@ -262,8 +262,8 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
       },
       {
         ask: "What is the root cause and fix?",
-        options: ["Too few threads: add more", "Thread-per-request created about 4,100 threads for 8 cores: run queue length and switching overhead eat the CPU. Bound the concurrency with a pool of roughly one to two times the cores (or an event loop) and queue the rest", "The scheduler quantum is too long: nothing to change", "The kernel needs a reboot"],
-        answer: 1,
+        options: ["Too few threads: add more", "The kernel needs a reboot", "The scheduler quantum is too long: nothing to change", "Thread-per-request created about 4,100 threads for 8 cores: run queue length and switching overhead eat the CPU. Bound the concurrency with a pool of roughly one to two times the cores (or an event loop) and queue the rest"],
+        answer: 3,
         why: "With 4,106 threads and r near 210 there are about 26 runnable threads per core, so every quantum ends in a preemption and a switch, which costs direct time and cold caches and TLBs. A bounded pool matched to the cores does the same work with far fewer switches, and a queue absorbs the spike.",
       },
     ],
@@ -305,8 +305,8 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What is happening?",
-        options: ["The CPUs are saturated", "Thrashing: the working set no longer fits in RAM, so the kernel constantly swaps pages out and back in", "The disk is failing", "A network outage"],
-        answer: 1,
+        options: ["The CPUs are saturated", "The disk is failing", "Thrashing: the working set no longer fits in RAM, so the kernel constantly swaps pages out and back in", "A network outage"],
+        answer: 2,
         why: "Available memory is 61 MB and swap is 8,104 of 8,192 MB used. vmstat shows si and so of about 21,000 and 23,000 KB/s at the same time (pages leave and return in the same second), b=20 blocked tasks and wa near 60%. Only 7% of the CPU is busy, and kswapd0 is active in D state.",
       },
       {
@@ -317,8 +317,8 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
       },
       {
         ask: "Which action fixes it, rather than hiding it?",
-        options: ["Add a larger swap file", "Shrink the working set (process the report in chunks or lower its memory limit), or add RAM; bigger swap only makes the thrashing last longer", "Raise the priority of kswapd0", "Run sync and drop the page cache"],
-        answer: 1,
+        options: ["Shrink the working set (process the report in chunks or lower its memory limit), or add RAM; bigger swap only makes the thrashing last longer", "Add a larger swap file", "Raise the priority of kswapd0", "Run sync and drop the page cache"],
+        answer: 0,
         why: "The demand for resident pages exceeds RAM, and disk is about 100,000 times slower than memory, so more swap does not help. Reduce what the job needs at once, or give the machine more RAM. The page cache is already only 98 MB, so dropping it frees nothing.",
       },
     ],
@@ -361,14 +361,14 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What does the output say about the failure?",
-        options: ["The machine is out of memory", "The process hit its per-process file-descriptor limit: 1024 open of a soft limit of 1024, so accept4() and open() fail with EMFILE", "The system-wide file table is full", "The disk is full"],
-        answer: 1,
+        options: ["The machine is out of memory", "The disk is full", "The system-wide file table is full", "The process hit its per-process file-descriptor limit: 1024 open of a soft limit of 1024, so accept4() and open() fail with EMFILE"],
+        answer: 3,
         why: "The log says \"Too many open files\" (EMFILE) from accept4 and open, and /proc/2290/limits shows a soft limit of 1024 with exactly 1024 entries in /proc/2290/fd. Memory and CPU are quiet, and the failing call is on a descriptor, not on disk space. The hard limit is 1,048,576, so the soft limit is the one being hit.",
       },
       {
         ask: "Why is the descriptor count so high for only 236 live clients?",
-        options: ["Each client needs four descriptors", "A descriptor leak: 773 sockets are open that are not established connections, so the code is not calling close() on some path (an error branch or a finished upstream connection)", "The kernel keeps closed sockets for a minute", "lsof counts every thread separately"],
-        answer: 1,
+        options: ["Each client needs four descriptors", "The kernel keeps closed sockets for a minute", "A descriptor leak: 773 sockets are open that are not established connections, so the code is not calling close() on some path (an error branch or a finished upstream connection)", "lsof counts every thread separately"],
+        answer: 2,
         why: "lsof shows 236 IPv4 sockets, matching the 236 established connections in ss, plus 773 further sock entries that are not live connections (ss counts only 236 established and no orphaned or TIME_WAIT sockets). Those are descriptors the process still holds for connections it no longer uses. 12 + 3 + 236 + 773 = 1,024, exactly the open-file limit.",
       },
       {
@@ -419,20 +419,20 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     steps: [
       {
         ask: "What does the CPU data say?",
-        options: ["The workers are blocked on I/O", "The workers are runnable and burning user-mode CPU (99% us, almost no context switches and no I/O wait), yet making almost no progress", "The kernel is the bottleneck", "The system is swapping"],
-        answer: 1,
+        options: ["The workers are runnable and burning user-mode CPU (99% us, almost no context switches and no I/O wait), yet making almost no progress", "The workers are blocked on I/O", "The kernel is the bottleneck", "The system is swapping"],
+        answer: 0,
         why: "All four threads are in state R at about 99.7% CPU, vmstat shows us 98-99% with sy 1-2, wa 0 and b 0, and only about 420 context switches per second. They are not sleeping or waiting for the disk; they are executing instructions in user space without finishing requests.",
       },
       {
         ask: "What does perf show?",
-        options: ["The time is in cache_lookup, so the cache is slow", "97% of the samples are in spin_lock_acquire: threads are busy-waiting on a spinlock that someone holds", "The time is in the kernel scheduler", "perf shows nothing useful"],
-        answer: 1,
+        options: ["The time is in cache_lookup, so the cache is slow", "perf shows nothing useful", "The time is in the kernel scheduler", "97% of the samples are in spin_lock_acquire: threads are busy-waiting on a spinlock that someone holds"],
+        answer: 3,
         why: "perf attributes 97.4% to spin_lock_acquire against 1.2% for the real work in cache_lookup. A spinlock keeps the thread on the CPU in a loop instead of sleeping, so contention shows up as 100% CPU with no progress. Fully busy CPUs with idle 0 and few switches are the signature.",
       },
       {
         ask: "What is the likely root cause and fix?",
-        options: ["The CPUs are too slow: add cores", "The lock holder is not releasing (it was descheduled or is blocked while holding the spinlock, or an error path skipped the unlock); hold spinlocks only for very short non-blocking sections and use a sleeping mutex (futex) for anything longer", "Use more threads so that someone gets the lock", "Raise the thread priority of the workers"],
-        answer: 1,
+        options: ["The CPUs are too slow: add cores", "Use more threads so that someone gets the lock", "The lock holder is not releasing (it was descheduled or is blocked while holding the spinlock, or an error path skipped the unlock); hold spinlocks only for very short non-blocking sections and use a sleeping mutex (futex) for anything longer", "Raise the thread priority of the workers"],
+        answer: 2,
         why: "With four threads spinning, none are making progress, so the thread that owns the lock is not running its critical section: it blocked or was preempted while holding it, or never unlocked. Spinning wastes the CPU the holder needs. More cores or threads add more spinners, and a mutex lets waiters sleep so the holder can run and the CPU stays free.",
       },
     ],
