@@ -1,6 +1,6 @@
 # Kernel Clash roadmap
 
-The hourly routine works top to bottom: take the first unchecked box. Split big items into sub-boxes when you start them.
+The routine (daily since 2026-10-28) works top to bottom: take the first unchecked box. Split big items into sub-boxes when you start them.
 
 ## 0. Bootstrap (reuse Query Clash's engine)
 
@@ -195,3 +195,64 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
 - [x] 6.11 Review-queue integration: wrong answers from every new kind (bugspot, fill, incident) feed the existing review/spaced-repetition screen and the daily challenge.
 - [x] 6.12 Whole-bank audit extension: every new kind covered in `tests/bankAudit.test.ts` (unique ids, keyed answers valid, no answer position bias, explanations present), plus Playwright desktop + iPhone 14 screenshots of each new widget with no overflow or console errors.
 - [x] 6.13 After 6.1-6.12: a coverage matrix in `docs/COVERAGE.md` mapping typical SDE OS interview topics (processes/threads, scheduling, sync, deadlock, memory, virtual memory, file systems, I/O, IPC, signals, containers/virtualization, performance debugging, concurrency coding) to the lessons, generators and questions that cover them, and fill any hole it shows.
+
+## 7. Correctness and freshness gate (added 2026-10-28; runs are daily now, so each box is one meaningful slice)
+
+- [ ] 7.1 Freshness audit of Linux facts (web-check, stamp "as of October 2026"). Known risk: scheduler questions and lessons describe CFS and `vruntime`, but mainline Linux moved to EEVDF in 6.6. Re-read every scheduler, memory and I/O claim in `content/` against current kernel docs; cover EEVDF (lag, virtual deadline), `sched_ext`, io_uring, cgroups v2 and PSI, eBPF, MGLRU, folios and transparent huge pages. Fix wrong or stale text, keep textbook CFS as "classic" where it is still asked, and add the stamp.
+- [ ] 7.2 Whole-bank audit re-run over every pool added since 6.12 (unique ids, keyed answers valid, explanations present, **answer-position balance**), fixing whatever it flags.
+- [ ] 7.3 Add EEVDF, io_uring and cgroup v2/PSI questions and one lesson each (five questions per topic, simulator-checked where a simulator applies).
+
+## 8. Labs: play with the OS (each lab is a page with a pure, tested engine in `game/sim/` and challenges graded by the engine)
+
+- [ ] 8.1 Scheduler lab (`/lab/sched`): edit a workload, pick the algorithm and quantum, see the Gantt chart and the metrics, compare two algorithms side by side. 8 challenges ("average wait ≤ X", "no starvation", "response time ≤ Y").
+- [ ] 8.2 Address-translation lab (`/lab/vm`): step one virtual address through TLB → two-level page table → page fault → replacement, with editable parameters; generated "trace this access" challenges checked by `game/sim/paging`.
+- [ ] 8.3 Allocator lab: a malloc/free simulator (first/best/worst fit, buddy, slab) with a fragmentation view; challenges ("serve this trace with zero failures").
+- [ ] 8.4 File-system lab:
+  - [ ] 8.4a Inode, FAT and extent-style layouts: walk a path, read a byte offset, count disk reads.
+  - [ ] 8.4b Journaling crash simulator: pick the crash point in a write sequence and predict the state after recovery for ordered, writeback and data journaling.
+- [ ] 8.5 Shell and process lab: a mini shell that shows the process tree and file-descriptor table as `fork`/`exec`/`pipe`/`dup2` run; generated "what does this print" puzzles executed by the simulator.
+- [ ] 8.6 Concurrency lab UI on top of `game/sim/threads.ts`: edit small thread programs in a restricted DSL, explore interleavings, see the shortest failing schedule; 8 authored challenges (find the missing lock, the right condition variable use, the lock order fix).
+- [ ] 8.7 `strace` reading page: interpret seeded traces (`open`/`read`/`mmap`/`futex`/`epoll_wait`/`connect`) to diagnose "why is it slow / hanging / failing"; 10 traces graded by code.
+- [ ] 8.8 `perf`/`top`/`vmstat`/`iostat` reading page: from a set of outputs pick the bottleneck (CPU, memory pressure, disk, lock contention, run-queue length); 10 seeded scenarios, outputs generated from the simulators.
+
+## 9. New gyms
+
+Each gym is three boxes: (a) lessons (5 with pixel diagrams and tested quick checks), ~25 cards and generators checked by simulators; (b) the boss (original 96×96, front/back, idle/attack/hurt/faint/evolve, on `/dev/sprites`) plus the trainer creature; (c) map, gate flow, backdrop and wiring. Fix every hard-coded gym count.
+
+- [ ] 9.1 Gym 10 "Modern Linux internals": io_uring, epoll internals, cgroups v2 and PSI, namespaces, eBPF, EEVDF, page cache and `mmap`, memory reclaim and the OOM killer, huge pages, NUMA.
+  - [ ] 9.1a Lessons, cards and generators.
+  - [ ] 9.1b Boss and trainer art.
+  - [ ] 9.1c Map, gate and wiring.
+- [ ] 9.2 Gym 11 "Memory model and lock-free": acquire/release and the C++/Linux memory model, cache coherence and false sharing, CAS and ABA, RCU, futex, hazard pointers; bugspot and fill snippets for concurrent data structures.
+  - [ ] 9.2a Lessons, cards, generators and 10 code snippets.
+  - [ ] 9.2b Boss and trainer art.
+  - [ ] 9.2c Map, gate and wiring.
+- [ ] 9.3 Gym 12 "Isolation and OS security": seccomp, capabilities, namespaces and container escapes, Spectre/Meltdown at concept level, KASLR, SELinux/AppArmor, secure boot and TPM.
+  - [ ] 9.3a Lessons, cards and generators.
+  - [ ] 9.3b Boss and trainer art.
+  - [ ] 9.3c Map, gate and wiring.
+
+## 10. Interview readiness and post-game
+
+- [ ] 10.1 Interview follow-up chains: questions that escalate like a real interviewer ("what is a mutex?" → "what happens under contention?" → "how does futex avoid the syscall?"), wrong answers get a hint and a gentler next step; 8 chains in batches of 4.
+- [ ] 10.2 Readiness report: per topic readiness from Leitner boxes, mock-loop scorecards and lab completions, a ranked weak-area plan linking to lessons and labs.
+- [ ] 10.3 Stretch (only if a working C++ judge exists in `/home/user/algo-clash/lib/judge` or the Algo Clash repo; otherwise record "blocked, no judge yet" in PROGRESS and move on): port that judge and add 6 real coding rounds in C++ (thread-safe bounded queue, LRU cache with a mutex, ring buffer, simple thread pool, reader-writer lock, semaphore from a mutex and condvar) run against hidden tests. Copy and adapt, never import.
+- [ ] 10.4 The League, unlocked after gym 12: four elite bosses (Scheduler, Memory, Concurrency, Storage) and a champion, each a multi-phase mixed battle (cards → a lab challenge → a code-reading round).
+  - [ ] 10.4a Data, gating, flow and ending scene (pure logic tested).
+  - [ ] 10.4b-e One elite boss per box (original 96×96 art, full animation set).
+  - [ ] 10.4f Champion, credits and a Hall of Fame screen.
+- [ ] 10.5 Interview difficulty toggle for gym rematches: hidden variants only, no hints, a timer; best times saved.
+- [ ] 10.6 Trainer card and achievements, saved and shown in the Kerneldex.
+- [ ] 10.7 Audio: synthesised looping music per gym and an SFX audit (mute persists, silent-mode expectations on iPhone).
+
+## 11. Quality and maintenance
+
+- [ ] 11.1 Commit a Playwright smoke script (`scripts/smoke.mjs`) that visits every route at desktop and iPhone 14 and fails on console errors or horizontal overflow; document it in the README.
+- [ ] 11.2 Save export/import plus migration tests with fixtures of every older save shape.
+- [ ] 11.3 Performance budget: first-load JS per route and battle frame cost on a throttled iPhone profile, recorded in PROGRESS.
+- [ ] 11.4 Refresh `docs/COVERAGE.md` after sections 8-10 and fill any hole it shows.
+- [ ] 11.5 README refresh with new screenshots and a short guide on adding a question kind, a simulator, a gym and a boss.
+
+## When every box above is checked
+
+Run a gap analysis from `docs/COVERAGE.md`, the weakest Leitner topics and the labs' completion stats, then append a new numbered section of 5-8 run-sized boxes, tick nothing in it, and do the first one.
