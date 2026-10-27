@@ -17,7 +17,7 @@ import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/c
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
 import { COPY_UP_CHECK, CPU_MAX_CHECK, MIGRATE_CHECK, NESTED_CHECK } from "@/content/lessons";
-import { SLAB_EXAMPLE, HUGE_EXAMPLE, BUDDY_EXAMPLE, HEAP_EXAMPLE, FALSE_SHARING_EXAMPLE, FUTEX_EXAMPLE, ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
+import { IO_EXAMPLE, SLAB_EXAMPLE, HUGE_EXAMPLE, BUDDY_EXAMPLE, HEAP_EXAMPLE, FALSE_SHARING_EXAMPLE, FUTEX_EXAMPLE, ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -32,7 +32,8 @@ const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "do
 const VIRT_DIAGRAMS = ["trapemul", "nestedpt", "migration"];
 const ATOMIC_DIAGRAMS = ["cas", "ordering", "falseshare", "futex"];
 const ALLOCATOR_DIAGRAMS = ["freelist", "buddy", "slab", "hugepages"];
-const DIAGRAMS = [...ALLOCATOR_DIAGRAMS, ...CONTAINER_DIAGRAMS, ...ATOMIC_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
+const IO_DIAGRAMS = ["iomodels", "epoll"];
+const DIAGRAMS = [...IO_DIAGRAMS, ...ALLOCATOR_DIAGRAMS, ...CONTAINER_DIAGRAMS, ...ATOMIC_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
   it("have unique ids, a known gym, pages with text and well-formed checks", () => {
@@ -771,5 +772,30 @@ describe("allocator lessons (Kernel Summit)", () => {
     expect(q.kind).toBe("numeric");
     expect(grade(q, { kind: "numeric", value: "128" })).toBe(true);
     expect(grade(q, { kind: "numeric", value: "256" })).toBe(false);
+  });
+});
+
+describe("I/O lessons (Kernel Summit)", () => {
+  const ls = lessonsOf("interview").filter((l) => l.id.startsWith("io-"));
+  it("cover the I/O models and select/poll/epoll, each diagram once", () => {
+    expect(ls.map((l) => l.id)).toEqual(["io-models", "io-epoll"]);
+    expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(IO_DIAGRAMS);
+  });
+
+  it("I/O model check: only async I/O avoids blocking in both phases", () => {
+    const q = lessonById("io-models")!.check;
+    expect(q.kind ?? "mcq").toBe("mcq");
+    expect(grade(q, { kind: "mcq", choice: 3 })).toBe(true);
+    expect(grade(q, { kind: "mcq", choice: 2 })).toBe(false);
+    expect(grade(q, { kind: "mcq", choice: 1 })).toBe(false);
+  });
+
+  it("epoll check: poll scans 10000 entries, epoll_wait returns 10", () => {
+    expect(IO_EXAMPLE.poll.callerScan).toBe(10000);
+    expect(IO_EXAMPLE.epoll.callerScan).toBe(10);
+    const q = lessonById("io-epoll")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "1000" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "10" })).toBe(false);
   });
 });

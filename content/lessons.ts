@@ -8,6 +8,7 @@ import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
 import { Buddy, FreeListHeap, slabObjects, tlbReach } from "@/game/sim/allocator";
+import { waitCost } from "@/game/sim/ionet";
 import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
@@ -18,7 +19,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy" | "slab" | "hugepages";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy" | "slab" | "hugepages" | "iomodels" | "epoll";
 
 export interface LessonPage {
   heading: string;
@@ -106,6 +107,7 @@ export const HEAP_CHECK = (() => {
 export const BUDDY_CHECK = new Buddy(256).alloc("A", 21)!.wasted;
 export const SLAB_CHECK = slabObjects(4096, 192);
 export const HUGE_CHECK = tlbReach(64, 2 * 1024 ** 2) / 1024 ** 2;
+export const EPOLL_CHECK = waitCost("poll", 10000, 10).callerScan / waitCost("epoll", 10000, 10).callerScan;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -2002,6 +2004,68 @@ export const LESSONS: Lesson[] = [
       answer: HUGE_CHECK,
       unit: "MB",
       explain: "Reach is entries × page size: 64 × 2 MB = 128 MB, against 64 × 4 KB = 256 KB with small pages.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "io-models",
+    gym: "interview",
+    title: "The five I/O models",
+    pages: [
+      {
+        heading: "Two phases of every read",
+        body: [
+          "A read has two phases: wait for the data to arrive, then copy it from the kernel buffer into your buffer. Stevens' five models differ in which phases block the calling thread.",
+          "Blocking I/O blocks in both. Non-blocking I/O makes `read` return EAGAIN at once when no data is ready, so you must retry in a loop (busy polling), and the copy still blocks. I/O multiplexing (`select`, `poll`, `epoll`) blocks in one call that watches many descriptors, then `read` copies without waiting. Signal-driven I/O gets a SIGIO instead of waiting.",
+        ],
+        diagram: "iomodels",
+      },
+      {
+        heading: "Asynchronous I/O",
+        body: [
+          "Only asynchronous I/O (POSIX `aio_read`, Linux `io_uring`) asks the kernel to do the whole operation, wait and copy, and tells you when it is finished. The thread never blocks in either phase.",
+          "The other four are all synchronous in the POSIX sense, because the copy blocks the caller. `io_uring` shares a submission ring and a completion ring with the kernel, so a batch of requests costs few or no system calls.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-io-models",
+      kind: "mcq",
+      prompt: "Which I/O model does not block the calling thread in either the wait phase or the copy phase?",
+      options: ["Blocking I/O", "Non-blocking I/O with a retry loop", "I/O multiplexing with epoll", "Asynchronous I/O (io_uring)"],
+      answer: 3,
+      explain: "Non-blocking I/O and epoll still block in the copy from kernel to user space (epoll_wait itself blocks waiting). Only asynchronous I/O leaves both phases to the kernel.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "io-epoll",
+    gym: "interview",
+    title: "select, poll and epoll",
+    pages: [
+      {
+        heading: "Watching many descriptors",
+        body: [
+          "`select` takes bitmaps of descriptors, capped at FD_SETSIZE (1024): a descriptor number of 1024 or more cannot be watched. `poll` takes an array and has no fixed cap. Both are rebuilt and copied into the kernel on every call, and the kernel and your code both scan every entry afterwards to find the ready ones: O(n) per call.",
+          "`epoll` keeps the interest list in the kernel (`epoll_ctl` adds a descriptor once). Wakeup callbacks append ready descriptors to a ready list, and `epoll_wait` returns only those. With 10,000 connections of which 10 are ready, poll examines 10,000 entries and epoll returns 10.",
+        ],
+        diagram: "epoll",
+      },
+      {
+        heading: "Level and edge triggered",
+        body: [
+          "Level-triggered epoll (the default) reports a descriptor for as long as it stays readable, like poll. Edge-triggered (`EPOLLET`) reports only when readiness changes, so you must make the socket non-blocking and read until EAGAIN, or you will never be told about the leftover data.",
+          "Epoll does not help with regular files, which are always reported ready: disk reads still block, which is why servers pair an event loop with a thread pool or `io_uring` for file I/O.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-epoll",
+      kind: "numeric",
+      prompt: "A server watches 10,000 connections and 10 are ready. After poll() returns the code scans 10,000 entries. How many times fewer entries does the code scan after epoll_wait()?",
+      answer: EPOLL_CHECK,
+      unit: "times",
+      explain: "poll leaves you scanning all 10,000 entries; epoll_wait returns only the 10 ready ones: 10,000 / 10 = 1000 times fewer.",
       move: MMOVE,
     },
   },

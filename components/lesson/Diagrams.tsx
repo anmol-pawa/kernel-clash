@@ -7,6 +7,7 @@ import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, 
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
 import { Buddy, FreeListHeap, MMAP_THRESHOLD, SlabCache, centralLockAcquisitions, leafTableBytes, pagesToMap, slabLeftover, tlbReach } from "@/game/sim/allocator";
+import { FD_SETSIZE, IO_MODELS, waitCost, type IoModel } from "@/game/sim/ionet";
 import { alternatingWrites, coherenceMisses, runFutex, writeTime } from "@/game/sim/contention";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
@@ -2580,6 +2581,51 @@ function HugePages() {
   );
 }
 
+export const IO_EXAMPLE = {
+  models: ["blocking", "nonblocking", "multiplexing", "signal", "async"] as IoModel[],
+  poll: waitCost("poll", 10000, 10),
+  epoll: waitCost("epoll", 10000, 10),
+};
+
+function IoModels() {
+  const e = IO_EXAMPLE;
+  const names: Record<IoModel, string> = { blocking: "BLOCKING", nonblocking: "NON-BLOCKING", multiplexing: "SELECT/EPOLL", signal: "SIGNAL SIGIO", async: "ASYNC AIO" };
+  return (
+    <>
+      <Night seed={44} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">FIVE I/O MODELS: WHO WAITS?</Text>
+      <Text x={86} y={16} size={3} fill="#cfe4ff" anchor="middle">WAIT FOR DATA</Text>
+      <Text x={142} y={16} size={3} fill="#cfe4ff" anchor="middle">COPY TO USER</Text>
+      {e.models.map((m, i) => (
+        <g key={m}>
+          <Card x={4} y={19 + i * 14} w={52} h={12} ramp={STONE} ink="#f8f4e6" size={3} lines={[names[m]]} />
+          <Card x={60} y={19 + i * 14} w={52} h={12} ramp={IO_MODELS[m].waitBlocks ? RED : GREEN} ink="#f8f4e6" size={3} lines={[IO_MODELS[m].waitBlocks ? "BLOCKED" : "FREE"]} />
+          <Card x={116} y={19 + i * 14} w={52} h={12} ramp={IO_MODELS[m].copyBlocks ? RED : GREEN} ink="#f8f4e6" size={3} lines={[IO_MODELS[m].copyBlocks ? "BLOCKED" : "FREE"]} />
+        </g>
+      ))}
+      <Text x={90} y={95} size={3} fill="#7cf0c8" anchor="middle">NON-BLOCKING: READ RETURNS EAGAIN, YOU RETRY</Text>
+      <Text x={90} y={103} size={3} fill="#cfe4ff" anchor="middle">ONLY ASYNC (IO_URING, AIO) HIDES THE COPY TOO</Text>
+    </>
+  );
+}
+
+function Epoll() {
+  const e = IO_EXAMPLE;
+  return (
+    <>
+      <Night seed={45} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">10000 CONNECTIONS, 10 READY</Text>
+      <Card x={10} y={16} w={76} h={26} ramp={RED} ink="#f8f4e6" size={3.5} lines={["POLL / SELECT", `KERNEL SCANS ${e.poll.examined}`, `YOU SCAN ${e.poll.callerScan}`]} />
+      <Card x={94} y={16} w={76} h={26} ramp={GREEN} ink="#f8f4e6" size={3.5} lines={["EPOLL_WAIT", `RETURNS ${e.epoll.examined}`, `YOU SCAN ${e.epoll.callerScan}`]} />
+      <Text x={90} y={54} size={3.5} fill="#f8f4e6" anchor="middle">EPOLL_CTL ADDS A FD ONCE TO A KERNEL LIST</Text>
+      <Text x={90} y={64} size={3.5} fill="#f8f4e6" anchor="middle">WAKEUP CALLBACKS FILL THE READY LIST</Text>
+      <Text x={90} y={76} size={3.5} fill="#f87a8a" anchor="middle">{`SELECT: FD NUMBERS BELOW ${FD_SETSIZE} ONLY`}</Text>
+      <Text x={90} y={88} size={3} fill="#cfe4ff" anchor="middle">LEVEL TRIGGERED: READY WHILE DATA REMAINS</Text>
+      <Text x={90} y={96} size={3} fill="#cfe4ff" anchor="middle">EDGE TRIGGERED: ONCE PER CHANGE, DRAIN UNTIL EAGAIN</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2640,6 +2686,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   buddy: { title: "The buddy system: halving a 256 KB segment for a 21 KB request", draw: BuddyDiagram },
   slab: { title: "A slab cache: equal slots in slabs, constructed once, filled partial-first", draw: Slab },
   hugepages: { title: "Huge pages: the same 64 TLB entries reach 128 MB instead of 256 KB", draw: HugePages },
+  iomodels: { title: "Five I/O models: which phase blocks the caller", draw: IoModels },
+  epoll: { title: "poll scans every descriptor, epoll_wait returns only the ready ones", draw: Epoll },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 
