@@ -5,7 +5,8 @@ import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
-import { buildInterview, LOOP_SHAPE, type InterviewTopic, type RoundId, type RoundKind } from "@/game/engine/interview";
+import { buildInterview, LOOP_SHAPE, type InterviewTopic, type Tier, type RoundId, type RoundKind } from "@/game/engine/interview";
+import { tierOfId } from "./interviewTiers";
 import { rng } from "@/lib/rng";
 import type { Question } from "@/game/engine/question";
 
@@ -249,11 +250,12 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS];
 
+export const tierOf = (q: Question): Tier => tierOfId(q.id);
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 
 /** The mock interview for `seed`: ten questions across the four topics. */
 export const INTERVIEW_LENGTH = 10;
-export const mockInterview = (seed: number): Question[] => buildInterview(INTERVIEW_QUESTIONS, topicOf, seed, INTERVIEW_LENGTH);
+export const mockInterview = (seed: number): Question[] => buildInterview(INTERVIEW_QUESTIONS, topicOf, seed, INTERVIEW_LENGTH, tierOf);
 
 const idsOf = (qs: readonly Question[]) => new Set(qs.map((q) => q.id));
 const CONCURRENCY_IDS = idsOf([...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS]);
@@ -277,10 +279,10 @@ function designPairs(designs: number, seed: number): Question[] {
 export function buildRound(round: RoundId, seed: number): Question[] {
   const r = rng(seed);
   const pick = (kind: RoundKind, n: number) => (kind === "design" ? designPairs(n / 2, seed) : r.shuffle(ofRound(kind)).slice(0, n));
-  if (round === "fundamentals") return buildInterview(ofRound("fundamentals"), topicOf, seed, INTERVIEW_LENGTH);
+  if (round === "fundamentals") return buildInterview(ofRound("fundamentals"), topicOf, seed, INTERVIEW_LENGTH, tierOf);
   if (round !== "full") return pick(round, ROUND_COUNT[round]);
   return [
-    ...buildInterview(ofRound("fundamentals"), topicOf, seed, LOOP_SHAPE.fundamentals),
+    ...buildInterview(ofRound("fundamentals"), topicOf, seed, LOOP_SHAPE.fundamentals, tierOf),
     ...pick("concurrency", LOOP_SHAPE.concurrency),
     ...pick("incident", LOOP_SHAPE.incident),
     ...pick("design", LOOP_SHAPE.design),

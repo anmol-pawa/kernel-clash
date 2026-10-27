@@ -14,6 +14,11 @@ export const TIME_LIMIT: Partial<Record<QuestionKind, number>> = { mcq: 45, mult
 export const DEFAULT_LIMIT = 60;
 export const limitFor = (q: Question): number => TIME_LIMIT[kindOf(q)] ?? DEFAULT_LIMIT;
 
+/** Screen (easy), onsite (medium) and staff-level follow-up (hard). */
+export const TIERS = ["easy", "medium", "hard"] as const;
+export type Tier = (typeof TIERS)[number];
+export const TIER_LABEL: Record<Tier, string> = { easy: "Screen", medium: "Onsite", hard: "Staff follow-up" };
+
 export const POINTS_RIGHT = 10;
 export const POINTS_SPEED = 5;
 
@@ -22,19 +27,34 @@ export interface Answered {
   topic: InterviewTopic;
   /** which round of the loop asked it (absent = fundamentals) */
   round?: RoundKind;
+  /** difficulty tier (absent = medium) */
+  tier?: Tier;
   correct: boolean;
   /** seconds taken; a question left to time out is `limit` and wrong */
   seconds: number;
   limit: number;
 }
 
+/** Shuffled `items` dealt out one tier at a time, starting from a random tier, so any prefix mixes tiers. */
+function tierMix(items: readonly Question[], tierOf: (q: Question) => Tier, r: ReturnType<typeof rng>): Question[] {
+  const start = r.int(0, TIERS.length - 1);
+  const piles = TIERS.map((_, i) => r.shuffle(items.filter((q) => tierOf(q) === TIERS[(start + i) % TIERS.length])));
+  const out: Question[] = [];
+  for (let i = 0; piles.some((p) => i < p.length); i++) for (const p of piles) if (i < p.length) out.push(p[i]);
+  return out;
+}
+
 /**
  * `count` questions from `pool`, shuffled by `seed`, taking from the topics
- * in turn so a short interview still covers each of them.
+ * in turn so a short interview still covers each of them. With `tierOf`,
+ * each topic also deals its easy, medium and hard questions in turn.
  */
-export function buildInterview(pool: readonly Question[], topicOf: (q: Question) => InterviewTopic, seed: number, count: number): Question[] {
+export function buildInterview(pool: readonly Question[], topicOf: (q: Question) => InterviewTopic, seed: number, count: number, tierOf?: (q: Question) => Tier): Question[] {
   const r = rng(seed);
-  const lanes = INTERVIEW_TOPICS.map((t) => r.shuffle(pool.filter((q) => topicOf(q) === t)));
+  const lanes = INTERVIEW_TOPICS.map((t) => {
+    const mine = pool.filter((q) => topicOf(q) === t);
+    return tierOf ? tierMix(mine, tierOf, r) : r.shuffle(mine);
+  });
   const out: Question[] = [];
   for (let i = 0; out.length < count && lanes.some((l) => i < l.length); i++) {
     for (const l of lanes) if (i < l.length && out.length < count) out.push(l[i]);
@@ -69,6 +89,14 @@ export function verdictFor(correct: number, total: number): Verdict {
   if (f >= 0.7) return "Hire";
   if (f >= 0.5) return "Maybe";
   return "Not yet";
+}
+
+/** Right answers over questions asked, per tier that came up (easiest first). */
+export function tierResults(answers: readonly Answered[]): { tier: Tier; correct: number; total: number }[] {
+  return TIERS.map((tier) => {
+    const mine = answers.filter((a) => (a.tier ?? "medium") === tier);
+    return { tier, correct: mine.filter((a) => a.correct).length, total: mine.length };
+  }).filter((t) => t.total > 0);
 }
 
 export function scorecard(answers: readonly Answered[]): Scorecard {

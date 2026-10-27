@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { AnswerPanel, type Reveal } from "@/components/battle/AnswerPanel";
 import { END_BUTTON } from "@/components/battle/Battle";
 import { GanttChart } from "@/components/lesson/Gantt";
-import { buildRound, roundLength, roundOf, topicOf } from "@/content/interviewTopics";
+import { buildRound, roundLength, roundOf, tierOf, topicOf } from "@/content/interviewTopics";
 import { sfx } from "@/game/audio/synth";
-import { limitFor, loopVerdict, pointsFor, ROUND_IDS, ROUND_INFO, roundResults, scorecard, studyPlan, type Answered, type LoopVerdict, type RoundId, type Verdict } from "@/game/engine/interview";
+import { limitFor, loopVerdict, pointsFor, ROUND_IDS, ROUND_INFO, roundResults, scorecard, studyPlan, tierResults, TIER_LABEL, type Answered, type LoopVerdict, type RoundId, type Verdict } from "@/game/engine/interview";
 import { correctionText, grade, type Question, type Response } from "@/game/engine/question";
 import { recordAnswer, saveInterview, useSave } from "@/lib/save";
 
@@ -74,7 +74,7 @@ function Ask({ q, index, total, onDone }: { q: Question; index: number; total: n
   const next = () => {
     sfx.click();
     const correct = reveal?.correct ?? false;
-    onDone({ id: q.id, topic: topicOf(q), round: roundOf(q), correct, seconds: took, limit }, correct);
+    onDone({ id: q.id, topic: topicOf(q), round: roundOf(q), tier: tierOf(q), correct, seconds: took, limit }, correct);
   };
 
   const pct = (left / limit) * 100;
@@ -155,6 +155,7 @@ function StudyPlan({ answers }: { answers: Answered[] }) {
 function Card({ answers, round, isBest, onAgain }: { answers: Answered[]; round: RoundId; isBest: boolean; onAgain: () => void }) {
   const sc = scorecard(answers);
   const rounds = roundResults(answers);
+  const tiers = tierResults(answers);
   const loop = round === "full" ? loopVerdict(rounds) : null;
   return (
     <div className="flex flex-col gap-3 land:grid land:grid-cols-2 land:items-start" data-testid="scorecard" data-verdict={sc.verdict}>
@@ -185,6 +186,14 @@ function Card({ answers, round, isBest, onAgain }: { answers: Answered[]; round:
           </li>
         ))}
         {sc.weakest && <p className="text-[14px]">Weakest topic: {sc.weakest}. Its gym lessons are the place to start.</p>}
+        {tiers.map((t) => (
+          <div key={t.tier} className="flex justify-between font-pixel text-[9px]" data-testid="tier-row" data-tier={t.tier} data-correct={t.correct} data-total={t.total}>
+            <span>{TIER_LABEL[t.tier].toUpperCase()}</span>
+            <span className="tabular-nums">
+              {t.correct}/{t.total}
+            </span>
+          </div>
+        ))}
         {round === "full" &&
           rounds.map((r) => (
             <div key={r.round} className="flex justify-between font-pixel text-[9px]" data-testid="round-row" data-round={r.round} data-correct={r.correct} data-total={r.total} style={{ color: r.correct / r.total < 0.5 ? "#b8283e" : undefined }}>
