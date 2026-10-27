@@ -167,7 +167,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
   - [x] 6.3a `game/sim/threads.ts`: exhaustive interleaving explorer (mutexes, semaphores, condvars with lost wakeups and optional spurious wakeups) reporting deadlock, failed asserts, misuse and every final value, with shortest counterexamples.
   - [x] 6.3b Every 6.2 fill problem as a model in `tests/fillModels.test.ts`: all option combinations run, only the keyed one is safe.
   - [x] 6.3c Models for the 6.1 bugspot snippets that are concurrency bugs (unlocked counter++, TOCTOU, `if` around `cond_wait`, lock-order inversion, missing unlock, lost signal): buggy version fails, fixed version is safe. Add a starvation / bounded-waiting check (a thread that can never finish under a fair schedule).
-- [ ] 6.4 Lessons for Linux topics that today exist only as questions (five lessons each, with pixel diagrams and tested quick checks):
+- [x] 6.4 Lessons for Linux topics that today exist only as questions (five lessons each, with pixel diagrams and tested quick checks):
   - [x] 6.4a Containers (lessons live in the Kernel Summit gym's lecture hall, `gym: "interview"`): namespaces (pid, net, mnt, uts, user), cgroups (cpu.max, memory.max, OOM kills), union file systems, why containers share a kernel vs VMs.
     - [x] 6.4a-1 `game/sim/containers.ts` (PID namespaces, cpu.max, cpu.weight, memory.max) plus the namespaces and cgroups lessons with diagrams and tested checks.
     - [x] 6.4a-2 Union file systems / overlayfs (layers, copy-up, whiteouts) and containers vs VMs (shared kernel, startup, isolation strength, escapes), with diagrams and tested checks; then a "what `docker run` does" recap lesson (clone with namespaces, cgroup attach, pivot_root, exec).
@@ -178,9 +178,9 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
   - [x] 6.4d Memory allocators: brk vs mmap, free lists, fragmentation, buddy system, slab allocation, thread-local caches (tcmalloc/jemalloc idea), memory leaks vs fragmentation, huge pages.
     - [x] 6.4d-1 `game/sim/allocator.ts` (free-list heap with first/best/worst fit and coalescing, buddy system, brk-vs-mmap threshold) plus the "malloc: brk, mmap and free lists" and "The buddy system" lessons with diagrams and tested checks.
     - [x] 6.4d-2 Slab allocation (object caches, constructors, no internal waste), thread-local caches (tcmalloc/jemalloc idea) and huge pages (TLB reach), with a simulator, diagrams and tested checks.
-  - [ ] 6.4e I/O models and servers:
+  - [x] 6.4e I/O models and servers:
     - [x] 6.4e-1 `game/sim/ionet.ts` (Stevens' five I/O models, select/poll/epoll scan cost and FD_SETSIZE, threaded vs event-loop throughput) plus the "five I/O models" and "select, poll and epoll" lessons with diagrams and tested checks.
-    - [ ] 6.4e-2 Server architectures (thread-per-connection vs event loop vs thread pool, the C10K problem, thread stack memory) and zero-copy (`sendfile`, copies and context switches), with diagrams and tested checks.
+    - [x] 6.4e-2 Server architectures (thread-per-connection vs event loop vs thread pool, the C10K problem, thread stack memory) and zero-copy (`sendfile`, copies and context switches), with diagrams and tested checks.
 - [ ] 6.5 Calculations that interviews like and are not yet generated: context-switch overhead percentage for a quantum, Amdahl's law speedup with a serial fraction, utilization bounds for rate-monotonic scheduling (Liu & Layland), hit-ratio to effective access time for a two-level cache, throughput with N threads and lock contention, thread-pool sizing (CPU-bound N+1 vs I/O-bound N*(1+W/C)), pipe/socket buffer sizing. Seeded generators with textbook-checked tests.
 - [ ] 6.6 Production-debugging scenario kind `incident`: a short story with real-looking tool output (top / vmstat / free / `strace -c` / dmesg OOM line / `ps` showing D or Z states), then 2-3 chained questions ("what is the bottleneck", "what do you run next", "root cause"). Authored scenarios, each answer justified from the printed output.
   - [ ] 6.6a The kind (scenario text + monospaced output panel + chained questions) and tests.

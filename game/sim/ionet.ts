@@ -87,3 +87,29 @@ export function workersToSaturate(load: ServerLoad, cores = 1): number {
 
 /** Memory used by thread-per-connection stacks, in bytes (committed stack per thread). */
 export const threadStackBytes = (connections: number, stackBytes: number) => connections * stackBytes;
+
+export type SendMethod = "readwrite" | "mmapwrite" | "sendfile" | "sendfileSG";
+
+export interface SendCost {
+  /** Data copies in total (DMA and CPU). */
+  copies: number;
+  /** Copies done by the CPU (memcpy), which burn cycles and pollute caches. */
+  cpuCopies: number;
+  /** User/kernel mode switches (two per system call). */
+  modeSwitches: number;
+}
+
+/**
+ * Sending a file from disk to a socket (Linux zero-copy; Love, and the sendfile(2) and
+ * "Zero Copy I" write-up). read+write: disk DMA to the page cache, CPU copy to the user
+ * buffer, CPU copy to the socket buffer, NIC DMA. mmap+write maps the page cache, so the
+ * first CPU copy disappears but there are still two system calls. sendfile makes one
+ * call and the CPU copies page cache to socket buffer. With NIC scatter-gather DMA the
+ * socket buffer only receives descriptors, so no CPU copy is left.
+ */
+export const SEND_COSTS: Record<SendMethod, SendCost> = {
+  readwrite: { copies: 4, cpuCopies: 2, modeSwitches: 4 },
+  mmapwrite: { copies: 3, cpuCopies: 1, modeSwitches: 4 },
+  sendfile: { copies: 3, cpuCopies: 1, modeSwitches: 2 },
+  sendfileSG: { copies: 2, cpuCopies: 0, modeSwitches: 2 },
+};

@@ -7,7 +7,7 @@ import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, 
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
 import { Buddy, FreeListHeap, MMAP_THRESHOLD, SlabCache, centralLockAcquisitions, leafTableBytes, pagesToMap, slabLeftover, tlbReach } from "@/game/sim/allocator";
-import { FD_SETSIZE, IO_MODELS, waitCost, type IoModel } from "@/game/sim/ionet";
+import { FD_SETSIZE, IO_MODELS, SEND_COSTS, eventLoopThroughput, threadStackBytes, threadedThroughput, waitCost, workersToSaturate, type IoModel, type SendMethod } from "@/game/sim/ionet";
 import { alternatingWrites, coherenceMisses, runFutex, writeTime } from "@/game/sim/contention";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
@@ -2626,6 +2626,63 @@ function Epoll() {
   );
 }
 
+export const SERVER_EXAMPLE = (() => {
+  const load = { cpuMs: 1, waitMs: 9 };
+  return {
+    one: threadedThroughput(load, 1),
+    pool: threadedThroughput(load, 10),
+    loop: eventLoopThroughput(load),
+    workers: workersToSaturate(load),
+    stackMB: threadStackBytes(10000, 64 * 1024) / 1024 ** 2,
+  };
+})();
+
+function Servers() {
+  const e = SERVER_EXAMPLE;
+  return (
+    <>
+      <Night seed={46} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">1 CORE, 1 MS CPU + 9 MS I/O WAIT</Text>
+      <Card x={4} y={14} w={54} h={30} ramp={RED} ink="#f8f4e6" size={3.5} lines={["1 THREAD", `${e.one} REQ/S`, "BLOCKS ON WAIT"]} />
+      <Card x={63} y={14} w={54} h={30} ramp={GREEN} ink="#f8f4e6" size={3.5} lines={[`${e.workers} THREADS`, `${e.pool} REQ/S`, "CPU SATURATED"]} />
+      <Card x={122} y={14} w={54} h={30} ramp={TEAL} ink="#f8f4e6" size={3.5} lines={["EVENT LOOP", `${e.loop} REQ/S`, "NEVER BLOCKS"]} />
+      <Text x={90} y={58} size={3.5} fill="#f8f4e6" anchor="middle">{`C10K: 10000 THREADS X 64 KB = ${e.stackMB} MB`}</Text>
+      <Text x={90} y={68} size={3.5} fill="#f8f4e6" anchor="middle">STACKS PLUS SWITCHES AND SCHEDULER LOAD</Text>
+      <Text x={90} y={82} size={3} fill="#7cf0c8" anchor="middle">THREAD POOL: FIXED WORKERS, BOUNDED QUEUE</Text>
+      <Text x={90} y={90} size={3} fill="#cfe4ff" anchor="middle">LOOP + EPOLL FOR SOCKETS, POOL FOR FILE I/O</Text>
+      <Text x={90} y={98} size={3} fill="#f87a8a" anchor="middle">ONE SLOW CALLBACK STALLS EVERY CONNECTION</Text>
+    </>
+  );
+}
+
+function ZeroCopy() {
+  const rows: [SendMethod, string][] = [["readwrite", "READ + WRITE"], ["mmapwrite", "MMAP + WRITE"], ["sendfile", "SENDFILE"], ["sendfileSG", "SENDFILE + SG DMA"]];
+  return (
+    <>
+      <Night seed={47} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">DISK TO SOCKET: WHO COPIES?</Text>
+      <Text x={89} y={17} size={3} fill="#cfe4ff" anchor="middle">COPIES</Text>
+      <Text x={125} y={17} size={3} fill="#cfe4ff" anchor="middle">CPU</Text>
+      <Text x={161} y={17} size={3} fill="#cfe4ff" anchor="middle">SWITCH</Text>
+      {rows.map(([m, name], i) => {
+        const c = SEND_COSTS[m];
+        const y = 20 + i * 14;
+        return (
+          <g key={m}>
+            <Card x={4} y={y} w={66} h={12} ramp={STONE} ink="#f8f4e6" size={3} lines={[name]} />
+            <Card x={74} y={y} w={30} h={12} ramp={GOLD} size={4} lines={[`${c.copies}`]} />
+            <Card x={110} y={y} w={30} h={12} ramp={c.cpuCopies === 0 ? GREEN : RED} ink="#f8f4e6" size={4} lines={[`${c.cpuCopies}`]} />
+            <Card x={146} y={y} w={30} h={12} ramp={BLUE} ink="#f8f4e6" size={4} lines={[`${c.modeSwitches}`]} />
+          </g>
+        );
+      })}
+      <Text x={90} y={86} size={3} fill="#7cf0c8" anchor="middle">DMA COPIES STAY, CPU COPIES CAN GO</Text>
+      <Text x={90} y={94} size={3} fill="#cfe4ff" anchor="middle">SENDFILE: FILE TO SOCKET, ONE SYSTEM CALL</Text>
+      <Text x={90} y={102} size={3} fill="#f87a8a" anchor="middle">NO SENDFILE IF USER CODE EDITS THE DATA</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2688,6 +2745,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   hugepages: { title: "Huge pages: the same 64 TLB entries reach 128 MB instead of 256 KB", draw: HugePages },
   iomodels: { title: "Five I/O models: which phase blocks the caller", draw: IoModels },
   epoll: { title: "poll scans every descriptor, epoll_wait returns only the ready ones", draw: Epoll },
+  servers: { title: "Thread per connection, thread pool and event loop on one core", draw: Servers },
+  zerocopy: { title: "Sending a file: read+write, mmap, sendfile and scatter-gather DMA", draw: ZeroCopy },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 

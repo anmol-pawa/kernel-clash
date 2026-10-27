@@ -8,7 +8,7 @@ import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
 import { Buddy, FreeListHeap, slabObjects, tlbReach } from "@/game/sim/allocator";
-import { waitCost } from "@/game/sim/ionet";
+import { SEND_COSTS, waitCost, workersToSaturate } from "@/game/sim/ionet";
 import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
@@ -19,7 +19,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy" | "slab" | "hugepages" | "iomodels" | "epoll";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy" | "slab" | "hugepages" | "iomodels" | "epoll" | "servers" | "zerocopy";
 
 export interface LessonPage {
   heading: string;
@@ -108,6 +108,8 @@ export const BUDDY_CHECK = new Buddy(256).alloc("A", 21)!.wasted;
 export const SLAB_CHECK = slabObjects(4096, 192);
 export const HUGE_CHECK = tlbReach(64, 2 * 1024 ** 2) / 1024 ** 2;
 export const EPOLL_CHECK = waitCost("poll", 10000, 10).callerScan / waitCost("epoll", 10000, 10).callerScan;
+export const POOL_CHECK = workersToSaturate({ cpuMs: 2, waitMs: 38 });
+export const ZEROCOPY_CHECK = SEND_COSTS.readwrite.modeSwitches - SEND_COSTS.sendfile.modeSwitches;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -2066,6 +2068,68 @@ export const LESSONS: Lesson[] = [
       answer: EPOLL_CHECK,
       unit: "times",
       explain: "poll leaves you scanning all 10,000 entries; epoll_wait returns only the 10 ready ones: 10,000 / 10 = 1000 times fewer.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "io-servers",
+    gym: "interview",
+    title: "Server architectures and C10K",
+    pages: [
+      {
+        heading: "Thread per connection, pool, event loop",
+        body: [
+          "Thread-per-connection is the simplest: each connection gets a thread that blocks in `read`. It breaks down around ten thousand connections (the C10K problem): every thread has a stack (8 MiB of address space by default, commonly 64 KB or more committed), and the scheduler and context switches cost more as threads multiply.",
+          "An event loop runs one thread over `epoll`: when a socket is ready it runs a callback that must never block. A thread pool uses a fixed number of workers pulling from a bounded queue, so memory and load stay capped.",
+        ],
+        diagram: "servers",
+      },
+      {
+        heading: "How many threads do you need?",
+        body: [
+          "A request that uses 1 ms of CPU then waits 9 ms for a database keeps a blocked worker busy only 10% of the time. One worker handles 100 requests per second; the core can do 1000. You need (cpu + wait) / cpu = 10 workers to saturate one core, and N cores need N times as many.",
+          "The event loop reaches 1000 per second on one thread because it spends the wait serving other connections. Its price: one slow callback, a blocking call or a long computation stalls every connection, so heavy work goes to a pool.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-io-servers",
+      kind: "numeric",
+      prompt: "Each request needs 2 ms of CPU and then waits 38 ms on a database. With blocking worker threads on one core, how many workers are needed to saturate the CPU?",
+      answer: POOL_CHECK,
+      unit: "threads",
+      explain: "Each worker is busy on the CPU for 2 ms of every 40 ms, so (2 + 38) / 2 = 20 workers keep the core fully used.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "io-zerocopy",
+    gym: "interview",
+    title: "Zero-copy and sendfile",
+    pages: [
+      {
+        heading: "Four copies for a simple file server",
+        body: [
+          "Serving a file with `read` then `write` copies the data four times: disk to the page cache (DMA), page cache to your buffer (CPU), your buffer to the socket buffer (CPU), socket buffer to the network card (DMA). It also costs two system calls, which is four user/kernel mode switches.",
+          "`mmap` plus `write` maps the page cache into your address space, which removes the first CPU copy but still needs two system calls.",
+        ],
+        diagram: "zerocopy",
+      },
+      {
+        heading: "sendfile",
+        body: [
+          "`sendfile(out_fd, in_fd, ...)` moves the data inside the kernel in a single system call: two mode switches, and the CPU copies from the page cache to the socket buffer. If the network card supports scatter-gather DMA, the socket buffer only receives descriptors pointing at the page cache, and the card gathers the data itself: no CPU copy at all.",
+          "The data never enters user space, so you cannot change it on the way. A server that encrypts in user space cannot use plain `sendfile` (kernel TLS can), and the page cache copy still exists: zero-copy means zero CPU copies, not zero DMA transfers.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-zerocopy",
+      kind: "numeric",
+      prompt: "A file server loop uses read() then write(): 4 user/kernel mode switches per block. Using sendfile() instead, how many fewer mode switches does it take per block?",
+      answer: ZEROCOPY_CHECK,
+      unit: "fewer",
+      explain: "read+write is two system calls (4 mode switches); sendfile is one system call (2 mode switches), so 4 - 2 = 2 fewer.",
       move: MMOVE,
     },
   },

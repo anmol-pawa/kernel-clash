@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FD_SETSIZE, IO_MODELS, eventLoopThroughput, threadStackBytes, threadedThroughput, waitCost, workersToSaturate } from "@/game/sim/ionet";
+import { FD_SETSIZE, IO_MODELS, SEND_COSTS, eventLoopThroughput, threadStackBytes, threadedThroughput, waitCost, workersToSaturate } from "@/game/sim/ionet";
 
 describe("Stevens' five I/O models", () => {
   it("only asynchronous I/O avoids blocking in both phases", () => {
@@ -55,5 +55,21 @@ describe("server architectures", () => {
   it("thread-per-connection stacks add up for C10K", () => {
     expect(threadStackBytes(10000, 8 * 1024 ** 2)).toBe(10000 * 8 * 1024 ** 2);
     expect(threadStackBytes(10000, 64 * 1024) / 1024 ** 2).toBeCloseTo(625);
+  });
+});
+
+describe("zero-copy file sending", () => {
+  it("read+write copies four times, twice on the CPU, with four mode switches", () => {
+    expect(SEND_COSTS.readwrite).toEqual({ copies: 4, cpuCopies: 2, modeSwitches: 4 });
+  });
+
+  it("sendfile halves the system calls and scatter-gather removes the CPU copy", () => {
+    expect(SEND_COSTS.sendfile).toEqual({ copies: 3, cpuCopies: 1, modeSwitches: 2 });
+    expect(SEND_COSTS.sendfileSG).toEqual({ copies: 2, cpuCopies: 0, modeSwitches: 2 });
+    expect(SEND_COSTS.mmapwrite.modeSwitches).toBe(SEND_COSTS.readwrite.modeSwitches);
+  });
+
+  it("every method has fewer CPU copies than total copies (the DMA copies stay)", () => {
+    for (const c of Object.values(SEND_COSTS)) expect(c.cpuCopies).toBeLessThan(c.copies);
   });
 });
