@@ -7,6 +7,7 @@ import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk
 import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
+import { Buddy, FreeListHeap } from "@/game/sim/allocator";
 import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
@@ -17,7 +18,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex" | "freelist" | "buddy";
 
 export interface LessonPage {
   heading: string;
@@ -95,6 +96,14 @@ export const FUTEX_CHECK = (() => {
   ]);
   return r.waits + r.wakes;
 })();
+export const HEAP_CHECK = (() => {
+  const h = new FreeListHeap(100);
+  for (const id of ["A", "B", "C"]) h.malloc(id, 30);
+  h.free("A");
+  h.free("C");
+  return h.largestHole;
+})();
+export const BUDDY_CHECK = new Buddy(256).alloc("A", 21)!.wasted;
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1868,6 +1877,68 @@ export const LESSONS: Lesson[] = [
       unit: "calls",
       explain: "A's lock was a user-space CAS. B's lock set the word to 2 and made one FUTEX_WAIT call, and A's unlock saw 2 and made one FUTEX_WAKE call: 2 system calls.",
       move: CMOVE,
+    },
+  },
+  {
+    id: "alloc-freelist",
+    gym: "interview",
+    title: "malloc: brk, mmap and free lists",
+    pages: [
+      {
+        heading: "Where malloc gets memory",
+        body: [
+          "malloc is a library, not a system call. It asks the kernel for big ranges and carves them up itself. Small requests come from the heap, which grows with `brk`/`sbrk` (moving the program break); requests of at least 128 KiB (glibc's `M_MMAP_THRESHOLD`) get their own anonymous `mmap`, and `free` returns that range to the kernel with `munmap` at once.",
+          "The heap itself is kept as chunks with a size header. Freed chunks go on a free list; the next malloc searches it (first fit, best fit) and splits a hole if it is bigger than needed. A freed chunk next to another free chunk is coalesced so holes grow back.",
+        ],
+        diagram: "freelist",
+      },
+      {
+        heading: "Fragmentation is not a leak",
+        body: [
+          "A leak is memory the program lost track of. Fragmentation is memory the allocator still tracks but cannot use: plenty of free bytes in total, scattered in holes too small for the next request. Both make the process's resident size grow, but only fragmentation shows up when every pointer is freed correctly.",
+          "Mitigations: segregate by size class (so a hole fits the next request of its class), coalesce eagerly, `mmap` huge blocks so they never pin the heap, and give long-lived and short-lived objects separate arenas.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-freelist",
+      kind: "numeric",
+      prompt: "A 100-byte heap holds three 30-byte blocks A, B, C and 10 bytes free at the end. A and C are freed (B stays), and neighbouring holes coalesce. What is the largest request that can now succeed, in bytes?",
+      answer: HEAP_CHECK,
+      unit: "bytes",
+      explain: "A leaves a 30-byte hole at the start. C's 30 bytes merge with the 10 free at the end into a 40-byte hole. Total free is 70, but B splits it, so the largest single request that fits is 40.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "alloc-buddy",
+    gym: "interview",
+    title: "The buddy system",
+    pages: [
+      {
+        heading: "Halve until it fits",
+        body: [
+          "The buddy allocator (used by the Linux page allocator) manages memory in power-of-two blocks. A request is rounded up to the next power of two. If no free block of that size exists, a larger free block is split in half again and again; each half is the other's buddy.",
+          "A 21 KB request in a 256 KB segment becomes 32 KB: 256 splits into 128+128, one 128 into 64+64, one 64 into 32+32. The 32 KB block is granted, and 128, 64 and 32 KB blocks stay free.",
+        ],
+        diagram: "buddy",
+      },
+      {
+        heading: "Cheap coalescing, costly rounding",
+        body: [
+          "A block's buddy is found with one XOR: for a block at address `a` of size `s`, the buddy is at `a ^ s`. When a block is freed and its buddy is free too, they merge into a block of size `2s`, and the check repeats upward. Merging is fast and needs no search, which is why kernels like it for pages.",
+          "The price is internal fragmentation: the 21 KB request wastes 11 KB inside its block, up to nearly half in the worst case. Adjacent free blocks that are not buddies never merge. Linux serves small kernel objects from slab caches carved from buddy pages to avoid that waste.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-buddy",
+      kind: "numeric",
+      prompt: "A buddy allocator manages 256 KB. A process requests 21 KB. How many KB of the granted block are wasted (internal fragmentation)?",
+      answer: BUDDY_CHECK,
+      unit: "KB",
+      explain: "21 KB rounds up to the next power of two, 32 KB, so 32 − 21 = 11 KB inside the block is unused.",
+      move: MMOVE,
     },
   },
 ];

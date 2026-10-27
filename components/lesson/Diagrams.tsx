@@ -6,6 +6,7 @@ import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCu
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
+import { Buddy, FreeListHeap, MMAP_THRESHOLD } from "@/game/sim/allocator";
 import { alternatingWrites, coherenceMisses, runFutex, writeTime } from "@/game/sim/contention";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
@@ -2461,6 +2462,71 @@ function Futex() {
   );
 }
 
+export const HEAP_EXAMPLE = (() => {
+  const h = new FreeListHeap(100);
+  for (const id of ["A", "B", "C"]) h.malloc(id, 30);
+  const before = h.chunks.map((c) => ({ ...c }));
+  h.free("A");
+  h.free("C");
+  return { before, after: h.chunks.map((c) => ({ ...c })), free: h.freeBytes, largest: h.largestHole, fits50: h.malloc("D", 50) !== null };
+})();
+export const BUDDY_EXAMPLE = (() => {
+  const b = new Buddy(256);
+  const grant = b.alloc("A", 21)!;
+  return { grant, free: b.freeBlocks() };
+})();
+
+function FreeList() {
+  const e = HEAP_EXAMPLE;
+  const strip = (y: number, chunks: { size: number; id: string | null }[]) =>
+    chunks.map((c, i) => {
+      const x = 10 + chunks.slice(0, i).reduce((a, k) => a + k.size, 0) * 1.6;
+      return <Card key={i} x={x} y={y} w={c.size * 1.6 - 1} h={14} ramp={c.id ? BLUE : RED} ink="#f8f4e6" size={3.5} lines={[c.id ? `${c.id} ${c.size}` : c.size < 20 ? `${c.size}` : `FREE ${c.size}`]} />;
+    });
+  return (
+    <>
+      <Night seed={40} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">FREE LIST: SPLIT AND COALESCE</Text>
+      <Text x={10} y={20} size={3.5} fill="#cfe4ff">THREE 30-BYTE BLOCKS IN A 100-BYTE HEAP</Text>
+      {strip(23, e.before)}
+      <Text x={10} y={45} size={3.5} fill="#cfe4ff">FREE A AND C: THE END HOLE MERGES WITH C</Text>
+      {strip(48, e.after)}
+      <Text x={90} y={72} size={3.5} fill="#f8f4e6" anchor="middle">{`${e.free} FREE, LARGEST HOLE ${e.largest}`}</Text>
+      <Text x={90} y={79} size={3.5} fill="#f87a8a" anchor="middle">{e.fits50 ? "50 FITS" : "MALLOC(50) FAILS: EXTERNAL FRAGMENTATION"}</Text>
+      <Card x={10} y={86} w={76} h={14} ramp={GREEN} ink="#f8f4e6" size={3} lines={[`UNDER ${MMAP_THRESHOLD / 1024}K: BRK HEAP`]} />
+      <Card x={94} y={86} w={76} h={14} ramp={PURPLE} ink="#f8f4e6" size={3} lines={[`${MMAP_THRESHOLD / 1024}K UP: OWN MMAP`]} />
+    </>
+  );
+}
+
+function BuddyDiagram() {
+  const g = BUDDY_EXAMPLE.grant;
+  const k = 160 / 256;
+  const rows: { size: number; used?: boolean }[][] = [
+    [{ size: 256 }],
+    [{ size: 128 }, { size: 128 }],
+    [{ size: 64 }, { size: 64 }, { size: 128 }],
+    [{ size: 32, used: true }, { size: 32 }, { size: 64 }, { size: 128 }],
+  ];
+  return (
+    <>
+      <Night seed={41} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">BUDDY SYSTEM: 21 KB IN A 256 KB SEGMENT</Text>
+      {rows.map((row, r) =>
+        row.map((c, i) => {
+          const x = 10 + row.slice(0, i).reduce((a, q) => a + q.size, 0) * k;
+          const last = r === rows.length - 1;
+          return <Card key={`${r}-${i}`} x={x} y={13 + r * 13} w={c.size * k - 1} h={11} ramp={c.used ? GOLD : last ? GREEN : STONE} ink={c.used ? undefined : "#f8f4e6"} size={3.5} lines={[`${c.size}K`]} />;
+        }),
+      )}
+      <Text x={10} y={72} size={3.5} fill="#cfe4ff">SPLIT 256, 128, 64: THREE HALVINGS</Text>
+      <Text x={90} y={82} size={3.5} fill="#ffe27a" anchor="middle">{`GRANT ${g.block}K FOR 21K: ${g.wasted}K WASTED INSIDE`}</Text>
+      <Text x={90} y={91} size={3} fill="#7cf0c8" anchor="middle">BUDDY OF BLOCK AT A, SIZE S, IS AT A XOR S</Text>
+      <Text x={90} y={99} size={3} fill="#7cf0c8" anchor="middle">FREE BOTH HALVES AND THEY MERGE UPWARD</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2517,6 +2583,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   ordering: { title: "Store buffering: x86-TSO allows the 0,0 result that sequential consistency and a fence forbid", draw: Ordering },
   falseshare: { title: "False sharing: two counters in one cache line bounce between cores, padding removes the misses", draw: FalseShare },
   futex: { title: "A futex mutex: lock and unlock in user space, system calls only to wait and wake", draw: Futex },
+  freelist: { title: "A free-list heap: split on malloc, coalesce on free, and the fragmentation that remains", draw: FreeList },
+  buddy: { title: "The buddy system: halving a 256 KB segment for a 21 KB request", draw: BuddyDiagram },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 
