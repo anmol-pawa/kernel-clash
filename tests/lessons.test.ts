@@ -17,7 +17,7 @@ import { BELADY_CURVES, DEMAND_EXAMPLE, REPLACE_EXAMPLE, WSS_EXAMPLE } from "@/c
 import { ALLOC_CHECK, INODE_CHECK, LOOK_CHECK, RAID_CHECK } from "@/content/lessons";
 import { ALLOC_ROWS, DISK_BARS, INODE_EXAMPLE, RAID_EXAMPLE } from "@/components/lesson/Diagrams";
 import { COPY_UP_CHECK, CPU_MAX_CHECK, MIGRATE_CHECK, NESTED_CHECK } from "@/content/lessons";
-import { ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
+import { FALSE_SHARING_EXAMPLE, FUTEX_EXAMPLE, ABA_EXAMPLE, SB_EXAMPLE, CGROUP_EXAMPLE, DOCKER_RUN_STEPS, MIGRATION_EXAMPLE, NESTED_WALK, TRAP_EXAMPLE, NAMESPACE_EXAMPLE, OVERLAY_EXAMPLE } from "@/components/lesson/Diagrams";
 import { DEFAULT_SAVE, parseSave } from "@/lib/save";
 
 const BASICS_DIAGRAMS = ["modes", "syscall", "interrupt", "kernels", "boot"];
@@ -30,7 +30,7 @@ const VIRTUAL_DIAGRAMS = ["demand", "replace", "belady", "thrash", "wss"];
 const STORAGE_DIAGRAMS = ["alloc", "inode", "journal", "raid", "disk"];
 const CONTAINER_DIAGRAMS = ["namespaces", "cgroups", "overlay", "vmcompare", "dockerrun"];
 const VIRT_DIAGRAMS = ["trapemul", "nestedpt", "migration"];
-const ATOMIC_DIAGRAMS = ["cas", "ordering"];
+const ATOMIC_DIAGRAMS = ["cas", "ordering", "falseshare", "futex"];
 const DIAGRAMS = [...CONTAINER_DIAGRAMS, ...ATOMIC_DIAGRAMS, ...VIRT_DIAGRAMS, ...BASICS_DIAGRAMS, ...PROCESS_DIAGRAMS, ...SCHEDULING_DIAGRAMS, ...SYNC_DIAGRAMS, ...DEADLOCK_DIAGRAMS, ...MEMORY_DIAGRAMS, ...VIRTUAL_DIAGRAMS, ...STORAGE_DIAGRAMS];
 
 describe("lessons", () => {
@@ -682,8 +682,8 @@ describe("virtualization lessons (Kernel Summit)", () => {
 
 describe("atomics lessons (Kernel Summit)", () => {
   const ls = lessonsOf("interview").filter((l) => l.id.startsWith("atomics-"));
-  it("cover CAS/ABA and memory ordering, each diagram once", () => {
-    expect(ls.map((l) => l.id)).toEqual(["atomics-cas", "atomics-order"]);
+  it("cover CAS/ABA, ordering, false sharing and futexes, each diagram once", () => {
+    expect(ls.map((l) => l.id)).toEqual(["atomics-cas", "atomics-order", "atomics-false-sharing", "atomics-futex"]);
     expect(ls.flatMap((l) => l.pages.flatMap((p) => (p.diagram ? [p.diagram] : [])))).toEqual(ATOMIC_DIAGRAMS);
   });
 
@@ -706,5 +706,22 @@ describe("atomics lessons (Kernel Summit)", () => {
     expect(q.kind).toBe("numeric");
     expect(grade(q, { kind: "numeric", value: "4" })).toBe(true);
     expect(grade(q, { kind: "numeric", value: "3" })).toBe(false);
+  });
+
+  it("false sharing check: 1000 misses shared, 2 padded", () => {
+    expect(FALSE_SHARING_EXAMPLE.shared).toBe(1000);
+    expect(FALSE_SHARING_EXAMPLE.padded).toBe(2);
+    const q = lessonById("atomics-false-sharing")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "1000" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "2" })).toBe(false);
+  });
+
+  it("futex check: one wait plus one wake", () => {
+    expect(FUTEX_EXAMPLE.fastLocks).toBe(1);
+    const q = lessonById("atomics-futex")!.check;
+    expect(q.kind).toBe("numeric");
+    expect(grade(q, { kind: "numeric", value: "2" })).toBe(true);
+    expect(grade(q, { kind: "numeric", value: "0" })).toBe(false);
   });
 });

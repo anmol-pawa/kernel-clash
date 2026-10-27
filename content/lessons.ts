@@ -7,6 +7,7 @@ import { DISK_EXAMPLE, blockReads, inodeMaxBlocks, raidUsableDisks, scheduleDisk
 import { Overlay, cpuMax, type Layer } from "@/game/sim/containers";
 import { nestedWalkRefs, preCopy } from "@/game/sim/virt";
 import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
+import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -16,7 +17,7 @@ import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/si
  * Facts follow Silberschatz, Operating System Concepts (10th ed.), ch. 1–7;
  * every quick check is tested in tests/lessons.test.ts.
  */
-export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering";
+export type DiagramId = "modes" | "syscall" | "interrupt" | "kernels" | "boot" | "pstates" | "context" | "fork" | "threads" | "ipc" | "fcfs" | "sjf" | "priority" | "rr" | "mlfq" | "race" | "peterson" | "semaphore" | "monitor" | "philosophers" | "rag" | "banker" | "fit" | "frag" | "paging" | "ptable" | "tlb" | "segments" | "demand" | "replace" | "belady" | "thrash" | "wss" | "alloc" | "inode" | "journal" | "raid" | "disk" | "namespaces" | "cgroups" | "overlay" | "vmcompare" | "dockerrun" | "trapemul" | "nestedpt" | "migration" | "cas" | "ordering" | "falseshare" | "futex";
 
 export interface LessonPage {
   heading: string;
@@ -85,6 +86,15 @@ export const COPY_UP_CHECK = (() => {
 export const NESTED_CHECK = nestedWalkRefs(4, 4);
 export const TSO_OUTCOMES = outcomes(STORE_BUFFERING, "tso", ["x", "y"]).length;
 export const MIGRATE_CHECK = Math.round(preCopy(8192, 250, 1000, 64).downtimeSec * 1000);
+export const FALSE_SHARING_CHECK = coherenceMisses(alternatingWrites(0, 8, 500));
+export const FUTEX_CHECK = (() => {
+  const r = runFutex([
+    { t: "A", op: "lock" },
+    { t: "B", op: "lock" },
+    { t: "A", op: "unlock" },
+  ]);
+  return r.waits + r.wakes;
+})();
 const MMOVE = { name: "Recall", type: "memory", power: 30 } as const;
 
 /** The memory quick checks' answers, computed by the simulators. */
@@ -1795,6 +1805,68 @@ export const LESSONS: Lesson[] = [
       answer: TSO_OUTCOMES,
       unit: "outcomes",
       explain: "Sequential consistency gives (0,1), (1,0) and (1,1). Store buffers add (0,0), where each load runs before the other thread's store is visible: 4 results.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "atomics-false-sharing",
+    gym: "interview",
+    title: "False sharing and cache lines",
+    pages: [
+      {
+        heading: "Coherence works on whole lines",
+        body: [
+          "Caches move memory in lines, 64 bytes on x86 and most ARM cores. To write, a core needs the line in Modified state, which invalidates every other core's copy. If two cores keep writing to the same line, it bounces between them and every write misses, even though each core touches its own variable.",
+          "That is false sharing: two independent counters 8 bytes apart in one line, one per thread, run many times slower than one thread doing both. No lock is involved and the results are correct, which is why it hides in profiles as plain slowness.",
+        ],
+        diagram: "falseshare",
+      },
+      {
+        heading: "Pad, align, split",
+        body: [
+          "Put each hot per-thread variable on its own line: `alignas(64)` in C++, `__attribute__((aligned(64)))` in C, or padding fields (Java's `@Contended`). The Linux kernel does this for per-CPU data with `____cacheline_aligned`.",
+          "Better still, keep per-thread state in thread-local or per-CPU storage and combine it rarely. Padding costs memory, so use it only for variables that are written often by different threads. Read-only sharing is free: lines stay in Shared state in every cache.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-false-sharing",
+      kind: "numeric",
+      prompt: "Two cores take turns incrementing their own counters, 500 writes each, and the counters are 8 bytes apart in one 64-byte line. How many of the 1000 writes miss in the writing core's cache?",
+      answer: FALSE_SHARING_CHECK,
+      unit: "misses",
+      explain: "The line moves to the other core after every write, so each write finds the line Modified elsewhere: all 1000 miss. With each counter padded to its own line, only the 2 cold misses remain.",
+      move: CMOVE,
+    },
+  },
+  {
+    id: "atomics-futex",
+    gym: "interview",
+    title: "Spinlock, mutex and futex",
+    pages: [
+      {
+        heading: "Spin or sleep",
+        body: [
+          "A spinlock loops on an atomic test-and-set until the lock frees. It costs no system call and no context switch, but the waiter burns a whole core, and if the holder is preempted the spinner wastes its slice. Use it for very short critical sections, often in the kernel with interrupts disabled.",
+          "A mutex puts the waiter to sleep. Sleeping and waking cost two context switches and a scheduler pass, a few microseconds, so sleeping wins only when the lock is held longer than that. Many libraries spin briefly first, then sleep (an adaptive mutex).",
+        ],
+      },
+      {
+        heading: "The futex fast path",
+        body: [
+          "Linux builds pthread mutexes on the futex system call. The lock is one integer in user memory: 0 unlocked, 1 locked, 2 locked with sleepers. Locking is a CAS from 0 to 1 and unlocking is an atomic exchange, both in user space with no system call when nobody waits.",
+          "Only contention enters the kernel: a waiter sets the word to 2 and calls `futex(FUTEX_WAIT)`, which sleeps only if the word still holds that value (so a wake-up cannot be lost); an unlock that sees 2 calls `futex(FUTEX_WAKE)`.",
+        ],
+        diagram: "futex",
+      },
+    ],
+    check: {
+      id: "lesson-futex",
+      kind: "numeric",
+      prompt: "Thread A holds a futex mutex. Thread B locks it and sleeps, then A unlocks and B takes the lock. How many futex system calls were made in total?",
+      answer: FUTEX_CHECK,
+      unit: "calls",
+      explain: "A's lock was a user-space CAS. B's lock set the word to 2 and made one FUTEX_WAIT call, and A's unlock saw 2 and made one FUTEX_WAKE call: 2 system calls.",
       move: CMOVE,
     },
   },

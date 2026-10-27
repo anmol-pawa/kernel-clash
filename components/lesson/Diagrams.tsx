@@ -6,6 +6,7 @@ import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, demandPagingEat, faultCount, faultCu
 import { DISK_EXAMPLE, inodeMaxBlocks, raidGuaranteedFailures, raidUsableDisks, scheduleDisk, type DiskPolicy, type RaidLevel } from "@/game/sim/storage";
 import { HW_ASSISTED_X86, OLD_X86, nestedWalkRefs, preCopy, runGuest, type Outcome } from "@/game/sim/virt";
 import { STORE_BUFFERING, abaScenario, outcomes } from "@/game/sim/atomics";
+import { alternatingWrites, coherenceMisses, runFutex, writeTime } from "@/game/sim/contention";
 import { Overlay, PidNamespaces, WHITEOUT, cpuMax, memoryMax, type Layer } from "@/game/sim/containers";
 import { instrText, runSchedule, runSemaphore } from "@/game/sim/sync";
 import { fcfs, mlfq, priority, roundRobin, sjf, srtf, type Job, type Schedule } from "@/game/sim/scheduling";
@@ -2390,6 +2391,76 @@ function Ordering() {
   );
 }
 
+export const FALSE_SHARING_EXAMPLE = (() => {
+  const shared = coherenceMisses(alternatingWrites(0, 8, 500));
+  const padded = coherenceMisses(alternatingWrites(0, 64, 500));
+  return { shared, padded, sharedNs: writeTime(shared, 1000, 1, 60), paddedNs: writeTime(padded, 1000, 1, 60) };
+})();
+export const FUTEX_EXAMPLE = runFutex([
+  { t: "A", op: "lock" },
+  { t: "B", op: "lock" },
+  { t: "A", op: "unlock" },
+]);
+
+function FalseShare() {
+  const f = FALSE_SHARING_EXAMPLE;
+  const lineBox = (x: number, y: number, cells: string[], ramp: Ramp) => (
+    <g>
+      <Block x={x} y={y} w={72} h={13} ramp={STONE} />
+      {cells.map((c, i) => (
+        <Card key={i} x={x + 3 + i * 17} y={y + 3} w={15} h={7} ramp={ramp} ink="#f8f4e6" size={3} lines={[c]} />
+      ))}
+    </g>
+  );
+  return (
+    <>
+      <Night seed={38} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">FALSE SHARING: ONE 64-BYTE LINE, TWO CORES</Text>
+      <Card x={8} y={14} w={30} h={10} ramp={BLUE} ink="#f8f4e6" size={3.5} lines={["CORE 0"]} />
+      <Card x={142} y={14} w={30} h={10} ramp={PURPLE} ink="#f8f4e6" size={3.5} lines={["CORE 1"]} />
+      <Arrow x1={40} y1={19} x2={70} y2={19} />
+      <Arrow x1={140} y1={19} x2={110} y2={19} color="#f87a8a" />
+      <Text x={90} y={17} size={3} fill="#cfe4ff" anchor="middle">LINE MOVES</Text>
+      <Text x={90} y={26} size={3} fill="#cfe4ff" anchor="middle">EVERY WRITE</Text>
+      <Text x={3} y={36} size={3.5} fill="#cfe4ff">SAME LINE: CTR0 AT 0, CTR1 AT 8</Text>
+      {lineBox(54, 38, ["C0", "C1", "..", ".."], RED)}
+      <Text x={90} y={58} size={3.5} fill="#f87a8a" anchor="middle">{`${f.shared} MISSES, ${f.sharedNs / 1000} US`}</Text>
+      <Text x={3} y={67} size={3.5} fill="#cfe4ff">PADDED: CTR1 AT 64</Text>
+      {lineBox(16, 70, ["C0", "..", "..", ".."], GREEN)}
+      {lineBox(92, 70, ["C1", "..", "..", ".."], GREEN)}
+      <Text x={90} y={90} size={3.5} fill="#7cf0c8" anchor="middle">{`${f.padded} MISSES, ${(f.paddedNs / 1000).toFixed(1)} US`}</Text>
+      <Text x={90} y={100} size={3} fill="#7cf0c8" anchor="middle">1000 WRITES, HIT 1 NS, MISS 60 NS: 54X SLOWER</Text>
+    </>
+  );
+}
+
+function Futex() {
+  const f = FUTEX_EXAMPLE;
+  const steps = [
+    { who: "A LOCK", note: "CAS 0>1", sys: false },
+    { who: "B LOCK", note: "WORD=2, WAIT", sys: true },
+    { who: "A UNLOCK", note: "SAW 2, WAKE", sys: true },
+  ];
+  return (
+    <>
+      <Night seed={39} />
+      <Text x={90} y={8} size={4} fill="#ffe27a" anchor="middle">FUTEX: KERNEL ONLY ON CONTENTION</Text>
+      {steps.map((s, i) => (
+        <g key={s.who}>
+          <Card x={4} y={15 + i * 17} w={40} h={12} ramp={BLUE} ink="#f8f4e6" size={3.5} lines={[s.who]} />
+          <Card x={48} y={15 + i * 17} w={50} h={12} ramp={STONE} ink="#f8f4e6" size={3} lines={[s.note]} />
+          <Card x={102} y={15 + i * 17} w={22} h={12} ramp={GOLD} lines={[`W=${f.states[i]}`]} size={3.5} />
+          <Card x={128} y={15 + i * 17} w={48} h={12} ramp={s.sys ? RED : GREEN} ink="#f8f4e6" size={3} lines={[s.sys ? "SYSCALL" : "USER SPACE"]} />
+        </g>
+      ))}
+      <Text x={90} y={72} size={3.5} fill="#f8f4e6" anchor="middle">{`${f.waits} WAIT + ${f.wakes} WAKE = ${f.waits + f.wakes} SYSTEM CALLS`}</Text>
+      <Text x={90} y={82} size={3} fill="#cfe4ff" anchor="middle">W = WORD: 0 FREE, 1 LOCKED, 2 SLEEPERS</Text>
+      <Text x={90} y={94} size={3} fill="#7cf0c8" anchor="middle">SPINLOCK: BURNS A CORE, NO SYSCALL. SHORT HOLDS ONLY</Text>
+      <Text x={90} y={102} size={3} fill="#7cf0c8" anchor="middle">SLEEP + WAKE COSTS MICROSECONDS: LONG HOLDS</Text>
+    </>
+  );
+}
+
 const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   modes: {
     title: "User mode and kernel mode, separated by the mode bit",
@@ -2444,6 +2515,8 @@ const DIAGRAMS: Record<DiagramId, { title: string; draw: () => ReactNode }> = {
   migration: { title: "Pre-copy live migration: shrinking rounds of dirty pages, then a short pause", draw: Migration },
   cas: { title: "ABA on a lock-free stack: the stale CAS succeeds without a version tag and fails with one", draw: Cas },
   ordering: { title: "Store buffering: x86-TSO allows the 0,0 result that sequential consistency and a fence forbid", draw: Ordering },
+  falseshare: { title: "False sharing: two counters in one cache line bounce between cores, padding removes the misses", draw: FalseShare },
+  futex: { title: "A futex mutex: lock and unlock in user space, system calls only to wait and wake", draw: Futex },
   dockerrun: { title: "The six steps of docker run: overlayfs, clone, cgroup, pivot_root, drop privileges, execve", draw: DockerRun },
 };
 
