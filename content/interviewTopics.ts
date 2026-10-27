@@ -2,6 +2,7 @@ import { GYM_QUESTIONS } from "./gymQuestions";
 import { BUGSPOT_QUESTIONS } from "./bugspotQuestions";
 import { FILL_QUESTIONS } from "./fillQuestions";
 import { INCIDENT_QUESTIONS } from "./incidentQuestions";
+import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, type InterviewTopic } from "@/game/engine/interview";
 import type { Question } from "@/game/engine/question";
@@ -216,9 +217,21 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "inc-swap-thrash": "Memory",
   "inc-emfile": "I/O and Linux",
   "inc-spinlock": "Scheduling and sync",
+  "tk-which-swap": "I/O and Linux",
+  "tk-which-disk": "I/O and Linux",
+  "tk-which-syscalls": "I/O and Linux",
+  "tk-which-hotfn": "I/O and Linux",
+  "tk-fd-leak": "I/O and Linux",
+  "tk-proc-files": "Processes",
+  "tk-signals": "Processes",
+  "tk-nice-share": "Scheduling and sync",
+  "tk-taskset": "Scheduling and sync",
+  "tk-ulimit": "I/O and Linux",
+  "tk-free-avail": "Memory",
+  "tk-triage": "I/O and Linux",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS];
 
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
 
