@@ -125,4 +125,37 @@ describe("incident (production debugging)", () => {
     }
     expect(num(/([\d.]+)g D\s/.exec(text)) / (total / 1024)).toBeGreaterThan(0.85); // the culprit's RES
   });
+
+  it("the EMFILE scenario's descriptor counts add up to the soft limit", () => {
+    const text = outputOf("inc-emfile");
+    const soft = num(/Max open files\s+(\d+)\s+(\d+)/.exec(text), 1);
+    const hard = num(/Max open files\s+(\d+)\s+(\d+)/.exec(text), 2);
+    const open = num(/^(\d{3,})$/m.exec(text));
+    expect(open).toBe(soft);
+    expect(soft).toBeLessThan(hard); // the soft limit is the one being hit
+    const types = [...text.matchAll(/^\s+(\d+) (REG|CHR|IPv4|sock)$/gm)].map((m) => Number(m[1]));
+    expect(types.reduce((a, b) => a + b, 0)).toBe(open); // lsof rows = /proc/<pid>/fd entries
+    const estab = num(/estab (\d+)/.exec(text));
+    expect(num(/^\s+(\d+) IPv4$/m.exec(text))).toBe(estab);
+    expect(num(/^\s+(\d+) sock$/m.exec(text))).toBeGreaterThan(estab * 2); // leaked, not live
+  });
+
+  it("the spin-lock scenario shows runnable threads burning user CPU in a spin function", () => {
+    const text = outputOf("inc-spinlock");
+    const cores = 4;
+    const cpus = [...text.matchAll(/ R\s+(\d+\.\d)\s+worker/g)].map((m) => Number(m[1]));
+    expect(cpus.length).toBe(cores);
+    for (const c of cpus) expect(c).toBeGreaterThan(99);
+    const rows = [...text.matchAll(/^\s*(\d+)\s+(\d+)(?:\s+\d+){7}\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+0$/gm)];
+    expect(rows.length).toBe(3);
+    for (const r of rows) {
+      const [run, blocked, cs, us, sy, id, wa] = [1, 2, 3, 4, 5, 6, 7].map((i) => Number(r[i]));
+      expect(us + sy + id + wa).toBe(100);
+      expect(run).toBeGreaterThanOrEqual(cores);
+      expect(blocked + wa).toBe(0);
+      expect(us).toBeGreaterThan(95);
+      expect(cs).toBeLessThan(1000); // spinning, not switching
+    }
+    expect(num(/([\d.]+)%\s+libcache\.so\s+\[\.\] spin_lock_acquire/.exec(text))).toBeGreaterThan(90);
+  });
 });

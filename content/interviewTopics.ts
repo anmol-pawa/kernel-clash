@@ -214,6 +214,8 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "inc-pool-deadlock": "Scheduling and sync",
   "inc-ctx-storm": "Scheduling and sync",
   "inc-swap-thrash": "Memory",
+  "inc-emfile": "I/O and Linux",
+  "inc-spinlock": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS];

@@ -325,4 +325,118 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     explain: "Simultaneous heavy swap-in and swap-out, near-zero available memory, many tasks blocked and high wa mean thrashing. The cure is to make the working set fit in RAM, not to enlarge the swap.",
     move: mv("Triage", "memory", 30),
   },
+  {
+    id: "inc-emfile",
+    kind: "incident",
+    prompt: "Page at 09:40: a web proxy that ran fine for weeks starts refusing new connections. Existing clients are fine, CPU and memory are quiet, and the error log has a line you have not seen before.",
+    outputs: [
+      {
+        cmd: "tail -3 /var/log/proxy.log",
+        text: [
+          "09:38:51 accept4: Too many open files",
+          "09:38:51 accept4: Too many open files",
+          "09:38:52 open(/etc/proxy/tls.pem): Too many open files",
+        ].join("\n"),
+      },
+      {
+        cmd: "grep 'open files' /proc/2290/limits; ls /proc/2290/fd | wc -l",
+        text: [
+          "Max open files            1024                 1048576              files",
+          "1024",
+        ].join("\n"),
+      },
+      {
+        cmd: "lsof -p 2290 | awk '{print $5}' | sort | uniq -c; ss -s | head -2",
+        text: [
+          "      1 TYPE",
+          "     12 REG",
+          "      3 CHR",
+          "    236 IPv4",
+          "    773 sock",
+          "Total: 1031",
+          "TCP:   1004 (estab 236, closed 0, orphaned 0, timewait 0)",
+        ].join("\n"),
+      },
+    ],
+    steps: [
+      {
+        ask: "What does the output say about the failure?",
+        options: ["The machine is out of memory", "The process hit its per-process file-descriptor limit: 1024 open of a soft limit of 1024, so accept4() and open() fail with EMFILE", "The system-wide file table is full", "The disk is full"],
+        answer: 1,
+        why: "The log says \"Too many open files\" (EMFILE) from accept4 and open, and /proc/2290/limits shows a soft limit of 1024 with exactly 1024 entries in /proc/2290/fd. Memory and CPU are quiet, and the failing call is on a descriptor, not on disk space. The hard limit is 1,048,576, so the soft limit is the one being hit.",
+      },
+      {
+        ask: "Why is the descriptor count so high for only 236 live clients?",
+        options: ["Each client needs four descriptors", "A descriptor leak: 773 sockets are open that are not established connections, so the code is not calling close() on some path (an error branch or a finished upstream connection)", "The kernel keeps closed sockets for a minute", "lsof counts every thread separately"],
+        answer: 1,
+        why: "lsof shows 236 IPv4 sockets, matching the 236 established connections in ss, plus 773 further sock entries that are not live connections (ss counts only 236 established and no orphaned or TIME_WAIT sockets). Those are descriptors the process still holds for connections it no longer uses. 12 + 3 + 236 + 773 = 1,024, exactly the open-file limit.",
+      },
+      {
+        ask: "What is the right fix?",
+        options: ["Only raise the limit with ulimit -n 1048576 and move on", "Find and fix the missing close() (for example close in a finally/defer on every path) and monitor the fd count; raising the limit may be a stopgap, but a leak will fill any limit", "Restart the proxy every night and keep the limit", "Disable TLS so there are fewer files"],
+        answer: 1,
+        why: "A bigger limit only delays the failure, because descriptors keep leaking at the same rate. Closing the descriptor on every path, preferably with RAII/defer/try-with-resources, removes the cause. Alerting on /proc/<pid>/fd count against the limit catches a regression early.",
+      },
+    ],
+    explain: "EMFILE with a descriptor count equal to the soft limit means the per-process limit is reached. Sockets that outnumber live connections point to a missing close(), so fix the leak rather than only raising ulimit.",
+    move: mv("Triage", "io", 30),
+  },
+  {
+    id: "inc-spinlock",
+    kind: "incident",
+    prompt: "Page at 14:15: a 4-core worker has been at 100% CPU for ten minutes, but request throughput fell to a trickle. The load is not from traffic, which is down. You look at which threads are burning CPU.",
+    outputs: [
+      {
+        cmd: "top -H -bn1 -p 5180 | head -12 | tail -5",
+        text: [
+          "  PID USER  S  %CPU  COMMAND",
+          " 5192 svc   R  99.9  worker-2",
+          " 5193 svc   R  99.7  worker-3",
+          " 5194 svc   R  99.8  worker-4",
+          " 5191 svc   R  99.6  worker-1",
+        ].join("\n"),
+      },
+      {
+        cmd: "vmstat 1 3",
+        text: [
+          "procs ------memory------ --swap-- ---io--- -system- ------cpu-----",
+          " r  b   swpd   free   si   so    bi    bo   in   cs us sy id wa st",
+          " 4  0      0 9120344    0    0     0     2  310  420 99  1  0  0  0",
+          " 4  0      0 9120344    0    0     0     0  305  415 99  1  0  0  0",
+          " 4  0      0 9120344    0    0     0     0  308  418 98  2  0  0  0",
+        ].join("\n"),
+      },
+      {
+        cmd: "perf top -p 5180 -d 1 --stdio | head -4",
+        text: [
+          "Overhead  Shared Object  Symbol",
+          "  97.40%  libcache.so    [.] spin_lock_acquire",
+          "   1.20%  libcache.so    [.] cache_lookup",
+          "   0.80%  [kernel]       [k] native_queued_spin_lock_slowpath",
+        ].join("\n"),
+      },
+    ],
+    steps: [
+      {
+        ask: "What does the CPU data say?",
+        options: ["The workers are blocked on I/O", "The workers are runnable and burning user-mode CPU (99% us, almost no context switches and no I/O wait), yet making almost no progress", "The kernel is the bottleneck", "The system is swapping"],
+        answer: 1,
+        why: "All four threads are in state R at about 99.7% CPU, vmstat shows us 98-99% with sy 1-2, wa 0 and b 0, and only about 420 context switches per second. They are not sleeping or waiting for the disk; they are executing instructions in user space without finishing requests.",
+      },
+      {
+        ask: "What does perf show?",
+        options: ["The time is in cache_lookup, so the cache is slow", "97% of the samples are in spin_lock_acquire: threads are busy-waiting on a spinlock that someone holds", "The time is in the kernel scheduler", "perf shows nothing useful"],
+        answer: 1,
+        why: "perf attributes 97.4% to spin_lock_acquire against 1.2% for the real work in cache_lookup. A spinlock keeps the thread on the CPU in a loop instead of sleeping, so contention shows up as 100% CPU with no progress. Fully busy CPUs with idle 0 and few switches are the signature.",
+      },
+      {
+        ask: "What is the likely root cause and fix?",
+        options: ["The CPUs are too slow: add cores", "The lock holder is not releasing (it was descheduled or is blocked while holding the spinlock, or an error path skipped the unlock); hold spinlocks only for very short non-blocking sections and use a sleeping mutex (futex) for anything longer", "Use more threads so that someone gets the lock", "Raise the thread priority of the workers"],
+        answer: 1,
+        why: "With four threads spinning, none are making progress, so the thread that owns the lock is not running its critical section: it blocked or was preempted while holding it, or never unlocked. Spinning wastes the CPU the holder needs. More cores or threads add more spinners, and a mutex lets waiters sleep so the holder can run and the CPU stays free.",
+      },
+    ],
+    explain: "100% user CPU, a few context switches, no I/O wait and a profile dominated by a spin-lock function mean threads are busy-waiting on a lock that is not being released. Spin only for brief, non-blocking sections; otherwise use a sleeping lock.",
+    move: mv("Triage", "sync", 30),
+  },
 ];
