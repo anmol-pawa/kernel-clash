@@ -209,6 +209,9 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "fill-barrier": "Scheduling and sync",
   "fill-once": "Scheduling and sync",
   "inc-io-wait": "I/O and Linux",
+  "inc-oom": "Memory",
+  "inc-zombies": "Processes",
+  "inc-pool-deadlock": "Scheduling and sync",
 };
 
 export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS];

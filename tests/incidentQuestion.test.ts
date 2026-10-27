@@ -48,4 +48,42 @@ describe("incident (production debugging)", () => {
     expect(text).toMatch(/0 zombie/);
     expect(text).toMatch(/14 D /);
   });
+
+  const outputOf = (id: string) => INCIDENT_QUESTIONS.find((q) => q.id === id)!.outputs.map((o) => o.text).join("\n");
+  const num = (m: RegExpExecArray | null, i = 1) => Number(m![i]);
+
+  it("the OOM scenario's numbers back its keyed answers", () => {
+    const text = outputOf("inc-oom");
+    const mem = /Mem:\s+(\d+)\s+(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+(\d+)/.exec(text);
+    const [total, used, free, cache, avail] = [1, 2, 3, 4, 5].map((i) => num(mem, i));
+    expect(used + free + cache).toBe(total); // free's columns add up
+    expect(avail).toBeLessThan(total * 0.02); // nothing reclaimable
+    expect(text).toMatch(/Swap:\s+0\s+0\s+0/); // no swap to fall back on
+    const rssKb = num(/anon-rss:(\d+)kB/.exec(text));
+    expect(rssKb / 1024 / 1024).toBeGreaterThan(total / 1024 - 2); // the victim held nearly all RAM
+    expect(num(/\s(\d+)\s+3011 indexer/.exec(text)) / 1024 / 1024).toBeGreaterThan(14); // the new process already grew again
+  });
+
+  it("the zombie scenario's PIDs really are exhausted", () => {
+    const text = outputOf("inc-zombies");
+    const counts = [...text.matchAll(/^\s+(\d+) ([RSZ])$/gm)].map((m) => [m[2], Number(m[1])] as const);
+    const live = counts.filter(([s]) => s !== "Z").reduce((a, [, n]) => a + n, 0);
+    const zombies = counts.find(([s]) => s === "Z")![1];
+    const pidMax = num(/^(\d{5})$/m.exec(text));
+    expect(live + zombies).toBeLessThanOrEqual(pidMax);
+    expect(pidMax - (live + zombies)).toBeLessThan(10);
+    expect(text).toContain("<defunct>");
+    expect(text).toMatch(/\b2210 Sl\b/); // the parent is alive but not reaping
+    expect(text).toMatch(/\d+\s+2210 Z/); // every zombie names it as parent
+  });
+
+  it("the pool deadlock scenario shows idle CPU, blocked workers and a full pool", () => {
+    const text = outputOf("inc-pool-deadlock");
+    expect(num(/(\d+\.\d) id/.exec(text))).toBeGreaterThan(95);
+    const waiting = (text.match(/pool-1-worker-\d+$/gm) ?? []).length;
+    const poolSize = num(/pool size (\d+)/.exec(text));
+    expect(waiting).toBe(poolSize); // every worker is blocked
+    expect(text).toMatch(/all \d+ busy/);
+    expect(text).toContain("Future.get");
+  });
 });
