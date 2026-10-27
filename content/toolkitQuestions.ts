@@ -73,11 +73,11 @@ export const TOOLKIT_QUESTIONS: Question[] = [
   {
     id: "tk-nice-share",
     kind: "numeric",
-    prompt: "Two CPU-bound processes share one core under CFS, one at nice 0 (weight 1024) and one at nice 5 (weight 335). What percentage of the CPU does the nice 0 process get?",
+    prompt: "Two CPU-bound processes share one core under Linux's fair scheduler (CFS, and EEVDF since 6.6 use the same weights), one at nice 0 (weight 1024) and one at nice 5 (weight 335). What percentage of the CPU does the nice 0 process get?",
     answer: shareOfNice0,
     tolerance: 0.2,
     unit: "%",
-    explain: "CFS gives each runnable task a share proportional to its weight: 1024 / (1024 + 335) = 75.4%. Each nice step changes the weight by about 1.25x, so five steps give roughly a 3:1 ratio. Nice only matters while tasks compete for the CPU.",
+    explain: "The fair scheduler gives each runnable task a share proportional to its weight: 1024 / (1024 + 335) = 75.4%. Each nice step changes the weight by about 1.25x, so five steps give roughly a 3:1 ratio. Nice only matters while tasks compete for the CPU.",
     move: mv("Weighted Slice", "scheduler", 36),
   },
   {

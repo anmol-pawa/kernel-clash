@@ -1505,7 +1505,7 @@ export const LESSONS: Lesson[] = [
         heading: "Circular and look variants",
         body: [
           "C-SCAN sweeps one way only: at the end it jumps straight back to cylinder 0 and sweeps again, which gives more uniform waiting times (382 cylinders counting the return jump). LOOK and C-LOOK are the practical versions, turning at the last request instead of the disk edge: LOOK moves 299 and C-LOOK 322 on this queue.",
-          "Seek time matters less on SSDs, which have no moving head, and Linux's I/O schedulers (deadline, BFQ, none for NVMe) are built around fairness and latency instead. Disk scheduling is still a classic interview computation: draw the head's path and add up the gaps.",
+          "Seek time matters less on SSDs, which have no moving head, and Linux's I/O schedulers (mq-deadline, BFQ, Kyber, and none for fast NVMe) are built around fairness and latency instead. Disk scheduling is still a classic interview computation: draw the head's path and add up the gaps.",
         ],
       },
     ],

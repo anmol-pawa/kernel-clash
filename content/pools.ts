@@ -355,10 +355,10 @@ export const SCHEDULING_EXTRA: Question[] = [
   },
   {
     id: "sched-cfs",
-    prompt: "Linux's Completely Fair Scheduler (CFS) runs which task next?",
+    prompt: "Classic Linux CFS (kernel 2.6.23 to 6.5) runs which task next?",
     options: ["The one with the highest static priority", "The one with the smallest virtual runtime", "The one that arrived first", "The one with the shortest next CPU burst"],
     answer: 1,
-    explain: "CFS keeps runnable tasks in a red-black tree ordered by virtual runtime (CPU time scaled by the nice value) and always picks the leftmost, the task that has had the least.",
+    explain: "CFS keeps runnable tasks in a red-black tree ordered by virtual runtime (CPU time scaled by the nice value) and always picks the leftmost, the task that has had the least. Since Linux 6.6 the fair class uses EEVDF instead, which keeps the same weights but picks by virtual deadline among eligible tasks.",
     move: sched("Fair Share", 34),
   },
   {

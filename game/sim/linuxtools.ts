@@ -1,6 +1,6 @@
 /**
  * Facts behind the Linux toolkit questions: signal numbers (x86-64 `kill -l`),
- * CFS nice weights (the kernel's `sched_prio_to_weight` table), `taskset`
+ * nice weights (shared by CFS and EEVDF; the kernel's `sched_prio_to_weight` table), `taskset`
  * affinity masks, `ulimit -n` semantics and which tool answers which question.
  */
 
@@ -40,7 +40,7 @@ export const niceWeight = (nice: number): number => {
   return NICE_WEIGHTS[nice + 20];
 };
 
-/** CPU share (0..1) of each always-runnable task sharing one core under CFS. */
+/** CPU share (0..1) of each always-runnable task sharing one core under CFS or EEVDF (same weights). */
 export const cfsShares = (nices: readonly number[]): number[] => {
   const weights = nices.map(niceWeight);
   const total = weights.reduce((a, b) => a + b, 0);

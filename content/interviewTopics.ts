@@ -194,6 +194,7 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ivx-epoll-edge": "I/O and Linux",
   "ivx-nice": "Scheduling and sync",
   "ivx-cfs-vruntime": "Scheduling and sync",
+  "ivx-eevdf-pick": "Scheduling and sync",
   "ivx-rt-class": "Scheduling and sync",
   "ivx-affinity": "Scheduling and sync",
   "ivx-load-avg": "Scheduling and sync",

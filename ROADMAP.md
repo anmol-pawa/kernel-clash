@@ -198,7 +198,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
 
 ## 7. Correctness and freshness gate (added 2026-10-28; runs are daily now, so each box is one meaningful slice)
 
-- [ ] 7.1 Freshness audit of Linux facts (web-check, stamp "as of October 2026"). Known risk: scheduler questions and lessons describe CFS and `vruntime`, but mainline Linux moved to EEVDF in 6.6. Re-read every scheduler, memory and I/O claim in `content/` against current kernel docs; cover EEVDF (lag, virtual deadline), `sched_ext`, io_uring, cgroups v2 and PSI, eBPF, MGLRU, folios and transparent huge pages. Fix wrong or stale text, keep textbook CFS as "classic" where it is still asked, and add the stamp.
+- [ ] 7.1 (partly done: 7.1a scheduler/EEVDF and I/O scheduler names fixed, see docs/FRESHNESS.md; remaining 7.1b: `sched_ext`, PSI, eBPF, MGLRU, folios, THP wording) Freshness audit of Linux facts (web-check, stamp "as of October 2026"). Known risk: scheduler questions and lessons describe CFS and `vruntime`, but mainline Linux moved to EEVDF in 6.6. Re-read every scheduler, memory and I/O claim in `content/` against current kernel docs; cover EEVDF (lag, virtual deadline), `sched_ext`, io_uring, cgroups v2 and PSI, eBPF, MGLRU, folios and transparent huge pages. Fix wrong or stale text, keep textbook CFS as "classic" where it is still asked, and add the stamp.
 - [ ] 7.2 Whole-bank audit re-run over every pool added since 6.12 (unique ids, keyed answers valid, explanations present, **answer-position balance**), fixing whatever it flags.
 - [ ] 7.3 Add EEVDF, io_uring and cgroup v2/PSI questions and one lesson each (five questions per topic, simulator-checked where a simulator applies).
 
