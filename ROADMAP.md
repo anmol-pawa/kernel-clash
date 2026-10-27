@@ -186,7 +186,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
   - [x] 6.6a The kind (scenario text + monospaced output panel + chained questions) and tests.
   - [ ] 6.6b Eight scenarios (high load with idle CPU is `inc-io-wait` in `content/incidentQuestions.ts`):
     - [x] 6.6b-1 Runaway memory and the OOM killer (`inc-oom`), zombie pile-up (`inc-zombies`), thread-pool deadlock under load (`inc-pool-deadlock`).
-    - [ ] 6.6b-2 Context-switch storm from too many threads, swap thrashing.
+    - [x] 6.6b-2 Context-switch storm from too many threads, swap thrashing.
     - [ ] 6.6b-3 fd exhaustion (EMFILE), a 100% CPU spin lock.
 - [ ] 6.7 Linux command and file-system toolkit gym section: quiz and simulate `ps`, `top`, `vmstat`, `iostat`, `lsof`, `strace`, `ltrace`, `perf`, `/proc/<pid>/{status,maps,fd}`, `kill -l`, `ulimit`, `nice`, `taskset`, `free`; "which tool answers this question" matching questions.
 - [ ] 6.8 Design-style questions ("how would you build...") as ordered/multi questions with a reference outline: a thread-safe LRU cache, a rate limiter, a thread pool with a bounded queue, a user-space scheduler, a simple malloc, a shell with pipes (fork/exec/dup2), a file-descriptor-based chat server. Each has an ordered "design steps" question plus a "what breaks without X" follow-up.

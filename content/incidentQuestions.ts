@@ -218,4 +218,111 @@ export const INCIDENT_QUESTIONS: IncidentQ[] = [
     explain: "Idle CPU with every thread in futex wait and a growing queue means threads are blocked on each other. Nested blocking submits to a bounded pool create a hold-and-wait cycle. Break it by never waiting for a queued sub-task from inside the same pool.",
     move: mv("Triage", "sync", 30),
   },
+  {
+    id: "inc-ctx-storm",
+    kind: "incident",
+    prompt: "Page at 16:05: after a traffic spike the gateway's latency tripled, and the 8-core host is pegged, yet throughput barely moved. The service spawns one thread per request. You check the host.",
+    outputs: [
+      {
+        cmd: "vmstat 1 3",
+        text: [
+          "procs ------memory------ --swap-- ---io--- -system- ------cpu-----",
+          "  r  b   swpd   free   si   so    bi    bo     in     cs us sy id wa st",
+          "212  0      0 6120344    0    0     4    22  98210 186400 31 64  5  0  0",
+          "206  0      0 6118120    0    0     0    18  97650 184900 32 63  5  0  0",
+          "215  0      0 6117002    0    0     2    30  99020 188100 30 65  5  0  0",
+        ].join("\n"),
+      },
+      {
+        cmd: "nproc; ps -eLf | wc -l",
+        text: ["8", "4106"].join("\n"),
+      },
+      {
+        cmd: "pidstat -w -t -p 7331 1 1 | head -5",
+        text: [
+          "  TID   cswch/s nvcswch/s Command",
+          " 7331      0.00      0.00 gateway",
+          " 7502     14.00    310.00 |__gateway",
+          " 7503     11.00    298.00 |__gateway",
+        ].join("\n"),
+      },
+    ],
+    steps: [
+      {
+        ask: "What is the bottleneck?",
+        options: ["Disk I/O", "The CPUs are saturated, but mostly in the kernel: 64% sy with about 186,000 context switches per second", "Memory is exhausted", "The network card is dropping packets"],
+        answer: 1,
+        why: "Idle is 5% and wa is 0, so the CPUs are fully busy, yet sy (64%) dwarfs us (31%): most of the time goes to the kernel, not to the application. The run queue r is about 210 on 8 cores, and cs is about 186,000/s. Swap and I/O columns are zero and 6 GB is free.",
+      },
+      {
+        ask: "Which counter shows why so many switches happen?",
+        options: ["The per-thread voluntary and involuntary counts from pidstat -w: nvcswch/s is far higher than cswch/s", "free -m", "df -h", "ulimit -n"],
+        answer: 0,
+        why: "A voluntary switch (cswch) is a thread blocking; an involuntary one (nvcswch) is the scheduler preempting a thread that was still runnable. Each gateway thread has about 300 involuntary and about 12 voluntary switches per second: the threads are runnable and fighting for 8 cores, not waiting on I/O.",
+      },
+      {
+        ask: "What is the root cause and fix?",
+        options: ["Too few threads: add more", "Thread-per-request created about 4,100 threads for 8 cores: run queue length and switching overhead eat the CPU. Bound the concurrency with a pool of roughly one to two times the cores (or an event loop) and queue the rest", "The scheduler quantum is too long: nothing to change", "The kernel needs a reboot"],
+        answer: 1,
+        why: "With 4,106 threads and r near 210 there are about 26 runnable threads per core, so every quantum ends in a preemption and a switch, which costs direct time and cold caches and TLBs. A bounded pool matched to the cores does the same work with far fewer switches, and a queue absorbs the spike.",
+      },
+    ],
+    explain: "High sy, a run queue far above the core count and a huge cs rate with mostly involuntary switches mean too many runnable threads. Bound concurrency near the number of cores instead of spawning a thread per request.",
+    move: mv("Triage", "scheduler", 30),
+  },
+  {
+    id: "inc-swap-thrash",
+    kind: "incident",
+    prompt: "Page at 11:20: the analytics box is crawling. Shell commands take seconds to start and the batch job's progress has almost stopped. Nobody deployed anything, but a new report started an hour ago.",
+    outputs: [
+      {
+        cmd: "free -m",
+        text: [
+          "              total   used   free  shared  buff/cache  available",
+          "Mem:          16384  16190     96       2          98         61",
+          "Swap:          8192   8104     88",
+        ].join("\n"),
+      },
+      {
+        cmd: "vmstat 1 3",
+        text: [
+          "procs ------memory------ --swap-- ---io--- -system- ------cpu-----",
+          " r  b   swpd   free   si   so    bi    bo   in   cs us sy id wa st",
+          " 2 19 8300544  98304 21440 23610 21800 24100 1450 2900  4  6 31 59  0",
+          " 1 21 8301120  97800 22100 22980 22400 23500 1432 2870  3  7 30 60  0",
+          " 3 20 8300960  98112 20980 24220 21100 24800 1465 2940  4  6 29 61  0",
+        ].join("\n"),
+      },
+      {
+        cmd: "top -bn1 -o %MEM | head -10 | tail -3",
+        text: [
+          "  PID USER  RES   S %CPU %MEM COMMAND",
+          " 6611 etl   14.6g D  3.0 91.2 report-gen",
+          "   54 root     0   D  5.9  0.0 kswapd0",
+        ].join("\n"),
+      },
+    ],
+    steps: [
+      {
+        ask: "What is happening?",
+        options: ["The CPUs are saturated", "Thrashing: the working set no longer fits in RAM, so the kernel constantly swaps pages out and back in", "The disk is failing", "A network outage"],
+        answer: 1,
+        why: "Available memory is 61 MB and swap is 8,104 of 8,192 MB used. vmstat shows si and so of about 21,000 and 23,000 KB/s at the same time (pages leave and return in the same second), b=20 blocked tasks and wa near 60%. Only 7% of the CPU is busy, and kswapd0 is active in D state.",
+      },
+      {
+        ask: "Which process is the culprit?",
+        options: ["kswapd0, because it is the busiest kernel thread", "report-gen: it has 14.6 GB resident, 91% of memory, so its working set pushes everything else out", "systemd", "The shell, because it is slow to start"],
+        answer: 1,
+        why: "kswapd0 is only the reclaim thread doing the paging, a symptom. The memory is held by report-gen at 14.6 GB RES (91.2% of RAM). Because it keeps touching its pages, they are swapped back in constantly, and the shell is slow because its own pages were evicted too.",
+      },
+      {
+        ask: "Which action fixes it, rather than hiding it?",
+        options: ["Add a larger swap file", "Shrink the working set (process the report in chunks or lower its memory limit), or add RAM; bigger swap only makes the thrashing last longer", "Raise the priority of kswapd0", "Run sync and drop the page cache"],
+        answer: 1,
+        why: "The demand for resident pages exceeds RAM, and disk is about 100,000 times slower than memory, so more swap does not help. Reduce what the job needs at once, or give the machine more RAM. The page cache is already only 98 MB, so dropping it frees nothing.",
+      },
+    ],
+    explain: "Simultaneous heavy swap-in and swap-out, near-zero available memory, many tasks blocked and high wa mean thrashing. The cure is to make the working set fit in RAM, not to enlarge the swap.",
+    move: mv("Triage", "memory", 30),
+  },
 ];

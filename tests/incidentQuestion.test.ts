@@ -86,4 +86,43 @@ describe("incident (production debugging)", () => {
     expect(text).toMatch(/all \d+ busy/);
     expect(text).toContain("Future.get");
   });
+
+  it("the context-switch storm shows kernel-heavy CPU, an oversubscribed run queue and preemption", () => {
+    const text = outputOf("inc-ctx-storm");
+    const rows = [...text.matchAll(/^\s*(\d+)\s+0\s+\d+\s+\d+\s+0\s+0\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+0$/gm)];
+    expect(rows.length).toBe(3);
+    const cores = num(/^(\d+)$/m.exec(text));
+    for (const r of rows) {
+      const [run, cs, us, sy, id, wa] = [1, 2, 3, 4, 5, 6].map((i) => Number(r[i]));
+      expect(us + sy + id + wa).toBe(100);
+      expect(sy).toBeGreaterThan(us);
+      expect(run / cores).toBeGreaterThan(20);
+      expect(cs).toBeGreaterThan(100000);
+    }
+    expect(num(/^(\d{4})$/m.exec(text)) / cores).toBeGreaterThan(100); // threads per core
+    const [, vol, invol] = /(\d+\.\d+)\s+(\d+\.\d+) \|__gateway/.exec(text)!.map(Number);
+    expect(invol).toBeGreaterThan(vol * 10); // preempted while runnable, not blocking
+  });
+
+  it("the swap-thrash scenario swaps both ways with memory and swap exhausted", () => {
+    const text = outputOf("inc-swap-thrash");
+    const mem = /Mem:\s+(\d+)\s+(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+(\d+)/.exec(text);
+    const [total, used, free, cache, avail] = [1, 2, 3, 4, 5].map((i) => num(mem, i));
+    expect(used + free + cache).toBe(total);
+    expect(avail).toBeLessThan(total * 0.01);
+    const sw = /Swap:\s+(\d+)\s+(\d+)\s+(\d+)/.exec(text);
+    expect(num(sw, 2) + num(sw, 3)).toBe(num(sw, 1));
+    expect(num(sw, 2) / num(sw, 1)).toBeGreaterThan(0.95);
+    const rows = [...text.matchAll(/^\s*(\d+)\s+(\d+)\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+0$/gm)];
+    expect(rows.length).toBe(3);
+    for (const r of rows) {
+      const [blocked, si, so, us, sy, id, wa] = [2, 3, 4, 5, 6, 7, 8].map((i) => Number(r[i]));
+      expect(us + sy + id + wa).toBe(100);
+      expect(si).toBeGreaterThan(10000); // pages come back in...
+      expect(so).toBeGreaterThan(10000); // ...as others go out
+      expect(blocked).toBeGreaterThan(10);
+      expect(wa).toBeGreaterThan(us + sy);
+    }
+    expect(num(/([\d.]+)g D\s/.exec(text)) / (total / 1024)).toBeGreaterThan(0.85); // the culprit's RES
+  });
 });
