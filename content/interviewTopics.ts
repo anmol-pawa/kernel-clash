@@ -5,6 +5,7 @@ import { INCIDENT_QUESTIONS } from "./incidentQuestions";
 import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
 import { CONTAINER_QUESTIONS } from "./containerQuestions";
+import { MODERN_LINUX_QUESTIONS } from "./modernLinuxQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, LOOP_SHAPE, type InterviewTopic, type Tier, type RoundId, type RoundKind } from "@/game/engine/interview";
 import { tierOfId } from "./interviewTiers";
@@ -258,9 +259,15 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ct-nested-walk": "Memory",
   "ct-precopy": "I/O and Linux",
   "ct-numa-first-touch": "Memory",
+  "ml-sched-ext": "Scheduling and sync",
+  "ml-psi-meaning": "Memory",
+  "ml-ebpf-verifier": "I/O and Linux",
+  "ml-mglru": "Memory",
+  "ml-folio": "Memory",
+  "ml-thp-madvise": "Memory",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS, ...MODERN_LINUX_QUESTIONS];
 
 export const tierOf = (q: Question): Tier => tierOfId(q.id);
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
