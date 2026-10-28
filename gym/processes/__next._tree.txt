@@ -1,0 +1,8 @@
+:HL["/kernel-clash/_next/static/chunks/3f-ywu276nsmx.css","style"]
+:HL["/kernel-clash/_next/static/chunks/0j5di4_ix7blg.css","style"]
+:HL["/kernel-clash/_next/static/media/01d67e7cc17e7674-s.p.0m75r3fswdwux.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/kernel-clash/_next/static/media/de161955856a921d-s.p.0fxeqrss3ag9h.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+3:[["children",{"s":"__PAGE__","h":160}]]
+2:[["children",{"s":{"n":"id","t":"d","k":"processes","s":[]},"h":65632,"c":"$Q3"}]]
+1:[["children",{"s":"gym","h":131168,"c":"$Q2"}]]
+0:{"b":"k0KMXT3JNamTaWFN7oK-2","t":{"t":{"s":"","h":131152,"c":"$Q1"}}}

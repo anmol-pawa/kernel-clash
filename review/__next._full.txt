@@ -1,0 +1,37 @@
+1:"$Sreact.fragment"
+2:"/kernel-clash/_next/static/chunks/12bx-zf-16k0l.js"
+3:I[39756,["$2"],"default"]
+4:I[37457,["$2"],"default"]
+5:"/kernel-clash/_next/static/chunks/2n5qeheznvl4u.js"
+6:I[22016,["$2","$5"],""]
+7:I[64576,["$2"],"PwaRegister"]
+b:"/kernel-clash/_next/static/chunks/029cdx7wvkvrx.js"
+c:"/kernel-clash/_next/static/chunks/1f7l-5ecmf5nz.js"
+d:"/kernel-clash/_next/static/chunks/2u4bybjx5r-c7.js"
+e:"/kernel-clash/_next/static/chunks/2hwradtnrthni.js"
+f:"/kernel-clash/_next/static/chunks/1w5dw5gbikixd.js"
+10:"/kernel-clash/_next/static/chunks/2if2-nioh6eox.js"
+11:"/kernel-clash/_next/static/chunks/2uey473siyiyz.js"
+12:"/kernel-clash/_next/static/chunks/0v-k_60nxi5pu.js"
+13:"/kernel-clash/_next/static/chunks/26g9md4zc67b1.js"
+14:I[39740,["$2","$b","$c","$d","$e","$f","$10","$11","$12","$13"],"ReviewBox"]
+15:I[97367,["$2"],"OutletBoundary"]
+16:"$Sreact.suspense"
+18:"ViewportBoundary"
+19:I[97367,["$2"],"$18"]
+1b:"MetadataBoundary"
+1c:I[97367,["$2"],"$1b"]
+1e:I[68027,["$2"],"default",1]
+:HL["/kernel-clash/_next/static/chunks/3f-ywu276nsmx.css","style"]
+:HL["/kernel-clash/_next/static/chunks/0j5di4_ix7blg.css","style"]
+:HL["/kernel-clash/_next/static/media/01d67e7cc17e7674-s.p.0m75r3fswdwux.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/kernel-clash/_next/static/media/de161955856a921d-s.p.0fxeqrss3ag9h.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+9:X
+a:[["children",{"s":"__PAGE__","h":512,"d":{"r":["$","$1","c",{"children":[["$","$L14",null,{}],[["$","script","script-0",{"src":"/kernel-clash/_next/static/chunks/029cdx7wvkvrx.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/kernel-clash/_next/static/chunks/1f7l-5ecmf5nz.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"/kernel-clash/_next/static/chunks/2u4bybjx5r-c7.js","async":true,"nonce":"$undefined"}],["$","script","script-3",{"src":"/kernel-clash/_next/static/chunks/2hwradtnrthni.js","async":true,"nonce":"$undefined"}],["$","script","script-4",{"src":"/kernel-clash/_next/static/chunks/1w5dw5gbikixd.js","async":true,"nonce":"$undefined"}],["$","script","script-5",{"src":"/kernel-clash/_next/static/chunks/2if2-nioh6eox.js","async":true,"nonce":"$undefined"}],["$","script","script-6",{"src":"/kernel-clash/_next/static/chunks/2uey473siyiyz.js","async":true,"nonce":"$undefined"}],["$","script","script-7",{"src":"/kernel-clash/_next/static/chunks/0v-k_60nxi5pu.js","async":true,"nonce":"$undefined"}],["$","script","script-8",{"src":"/kernel-clash/_next/static/chunks/26g9md4zc67b1.js","async":true,"nonce":"$undefined"}]],["$","$L15",null,{"children":["$","$16",null,{"name":"Next.MetadataOutlet","children":"$@17"}]}]]}],"p":false,"v":null}}]]
+8:[["children",{"s":"review","h":512,"d":{"r":["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":false,"v":"$9"},"c":"$Qa"}]]
+0:{"P":null,"c":["","review",""],"q":"","i":false,"t":{"t":{"s":"","h":528,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/kernel-clash/_next/static/chunks/3f-ywu276nsmx.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"/kernel-clash/_next/static/chunks/0j5di4_ix7blg.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/kernel-clash/_next/static/chunks/12bx-zf-16k0l.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","className":"IOoDmG_variable _8BqzYW_variable h-full","children":["$","body",null,{"className":"min-h-full","children":[["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","main",null,{"className":"flex min-h-dvh flex-col items-center justify-center gap-6 px-4 text-center","children":[["$","div",null,{"className":"font-pixel text-2xl text-[#ff5c8a] pixel-shadow","children":"SEGFAULT"}],["$","p",null,{"className":"gb-box max-w-sm p-4 font-pixel text-[11px] leading-6","children":"Page not mapped: this address has no valid page-table entry."}],["$","$L6",null,{"href":"/","className":"font-pixel text-xs text-white underline","children":"Back to title"}]]}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}],["$","$L7",null,{}]]}]}]]}],"p":false,"v":null},"c":"$Q8"},"h":{"r":["$","$1","h",{"children":[null,["$","$L19",null,{"children":"$L1a"}],["$","$L1c",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$16",null,{"name":"Next.Metadata","children":"$L1d"}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":false,"v":null}},"m":"$undefined","G":["$1e",[["$","link","0",{"rel":"stylesheet","href":"/kernel-clash/_next/static/chunks/3f-ywu276nsmx.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"/kernel-clash/_next/static/chunks/0j5di4_ix7blg.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]]],"S":true,"r":"$undefined","s":"$undefined","a":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"k0KMXT3JNamTaWFN7oK-2"}
+9:C
+1a:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, viewport-fit=cover"}],["$","meta","2",{"name":"theme-color","content":"#100e24"}]]
+1f:I[27201,["$2"],"IconMark"]
+17:null
+1d:[["$","title","0",{"children":"Leitner Box — Kernel Clash"}],["$","meta","1",{"name":"description","content":"A creature-battler that teaches operating systems from system calls to interview level. Answer right to land your moves."}],["$","link","2",{"rel":"manifest","href":"/kernel-clash/manifest.webmanifest","crossOrigin":"$undefined"}],["$","meta","3",{"name":"mobile-web-app-capable","content":"yes"}],["$","meta","4",{"name":"apple-mobile-web-app-title","content":"Kernel Clash"}],["$","meta","5",{"name":"apple-mobile-web-app-status-bar-style","content":"black-translucent"}],["$","link","6",{"rel":"icon","href":"/kernel-clash/icon.png?icon.0dd67hm8_lr30.png","sizes":"64x64","type":"image/png"}],["$","link","7",{"rel":"apple-touch-icon","href":"/kernel-clash/apple-icon.png?apple-icon.2t0i90vky5_px.png","sizes":"192x192","type":"image/png"}],["$","$L1f","8",{}]]
