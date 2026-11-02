@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { POOLS } from "@/content/pools";
-import { answerText, questionProblems, type BugSpotQ, type Question } from "@/game/engine/question";
+import { answerText, questionProblems, type BugSpotQ, type McqQ, type Question } from "@/game/engine/question";
 
 describe("whole question bank audit", () => {
   const generators = Object.values(POOLS).flatMap((p) => p.generators);
@@ -56,6 +56,24 @@ describe("whole question bank audit", () => {
       expect(Math.max(...counts.values()) / all.length, kind).toBeLessThanOrEqual(0.6);
     });
   }
+
+  it("no gym pool parks its multiple-choice answers in one slot, and no option list repeats a choice", () => {
+    for (const [gym, pool] of Object.entries(POOLS)) {
+      const mcq = pool.authored.filter((q): q is McqQ => q.kind === undefined || q.kind === "mcq");
+      const counts = [0, 0, 0, 0];
+      for (const q of mcq) {
+        counts[q.answer]++;
+        const norm = q.options.map((o) => o.trim().toLowerCase());
+        expect(new Set(norm).size, q.id).toBe(norm.length);
+      }
+      expect(Math.max(...counts) / mcq.length, `${gym} ${counts.join(",")}`).toBeLessThanOrEqual(0.45);
+    }
+  });
+
+  it("no two authored questions share a prompt", () => {
+    const prompts = authored.map((q) => q.prompt.trim().toLowerCase());
+    expect(prompts.filter((p, i) => prompts.indexOf(p) !== i)).toEqual([]);
+  });
 
   it("bug-spot questions key different lines and never every line", () => {
     const spots = authored.filter((q): q is BugSpotQ => q.kind === "bugspot");

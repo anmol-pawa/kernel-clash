@@ -18,6 +18,8 @@ import { BELADY_EXAMPLE, REFERENCE_EXAMPLE, faultCount, maxFaultRate, workingSet
 
 const pool = POOLS.interview;
 const find = (id: string) => INTERVIEW_EXTRA.find((q) => q.id === id)!;
+/** The text of the option the question keys as correct (its slot is shuffled for balance). */
+const keyed = (q: McqQ) => q.options[q.answer];
 
 /** Processes alive after n unconditional fork() calls, simulated rather than 2**n. */
 function forkCount(n: number): number {
@@ -178,13 +180,9 @@ describe("interview pool", () => {
     expect(inodeMaxBlocks(4096, 4, 12, 2) * 4096).toBeGreaterThan(4 * 2 ** 30);
     expect((find("ivx-indexed-reads") as NumericQ).answer).toBe(blockReads("indexed", 500));
     expect(blockReads("linked", 500)).toBe(501);
-    for (const id of ["ivx-shared-offset", "ivx-unlink-open", "ivx-write-durable"]) {
-      const q = find(id) as McqQ;
-      expect(q.answer).toBe(1);
-    }
-    expect((find("ivx-shared-offset") as McqQ).options[1]).toMatch(/byte 10/);
-    expect((find("ivx-unlink-open") as McqQ).options[1]).toMatch(/last open descriptor/);
-    expect((find("ivx-write-durable") as McqQ).options[1]).toMatch(/fsync/);
+    expect(keyed(find("ivx-shared-offset") as McqQ)).toMatch(/byte 10/);
+    expect(keyed(find("ivx-unlink-open") as McqQ)).toMatch(/last open descriptor/);
+    expect(keyed(find("ivx-write-durable") as McqQ)).toMatch(/fsync/);
   });
 
   it("checks the round-robin, SRTF and scheduling-concept answers against the simulators", () => {
@@ -194,8 +192,8 @@ describe("interview pool", () => {
     expect((find("ivx-srtf-wait") as NumericQ).answer).toBe(srtf(jobs).avgWaiting);
     const big = roundRobin(jobs, 1000);
     expect(big.waiting).toEqual(fcfs(jobs).waiting);
-    expect((find("ivx-rr-quantum") as McqQ).options[0]).toBe("It behaves like FCFS");
-    expect((find("ivx-convoy") as McqQ).options[0]).toMatch(/behind one long/);
+    expect(keyed(find("ivx-rr-quantum") as McqQ)).toBe("It behaves like FCFS");
+    expect(keyed(find("ivx-convoy") as McqQ)).toMatch(/behind one long/);
     expect((find("ivx-aging") as McqQ).options[1]).toMatch(/aging/);
   });
 
@@ -207,9 +205,9 @@ describe("interview pool", () => {
     expect(INSTRUCTIONS.find((i) => i.text === "Add two registers")!.privileged).toBe(false);
     expect(EVENTS.find((e) => /divides by zero/.test(e.text))!.interrupt).toBe(false);
     expect(EVENTS.find((e) => /disk read/.test(e.text))!.interrupt).toBe(true);
-    expect((find("ivx-trap-vs-int") as McqQ).options[0]).toMatch(/trap is synchronous/);
-    expect((find("ivx-syscall-trap") as McqQ).options[0]).toMatch(/fixed, checked entry points/);
-    expect((find("ivx-microkernel") as McqQ).options[0]).toMatch(/Better isolation/);
+    expect(keyed(find("ivx-trap-vs-int") as McqQ)).toMatch(/trap is synchronous/);
+    expect(keyed(find("ivx-syscall-trap") as McqQ)).toMatch(/fixed, checked entry points/);
+    expect(keyed(find("ivx-microkernel") as McqQ)).toMatch(/Better isolation/);
     const boot = find("ivx-boot-order") as OrderQ;
     expect(boot.steps).toEqual([...BOOT_CHAINS.BIOS]);
   });
@@ -217,7 +215,7 @@ describe("interview pool", () => {
   it("answers the semaphore, lost-update and flag-protocol questions as the simulators do", () => {
     const sem = runSemaphore(2, [{ op: "wait", who: "A" }, { op: "wait", who: "B" }, { op: "wait", who: "C" }]);
     expect(sem).toMatchObject({ value: -1, blocked: ["C"] });
-    expect((find("ivx-sem-count") as McqQ).options[0]).toBe("Value -1; C is blocked");
+    expect(keyed(find("ivx-sem-count") as McqQ)).toBe("Value -1; C is blocked");
     expect(runSemaphore(2, [{ op: "wait", who: "A" }, { op: "wait", who: "B" }, { op: "wait", who: "C" }, { op: "signal", who: "A" }]).woken).toEqual(["C"]);
 
     const threads = [{ name: "T1", code: increment("counter", "r1") }, { name: "T2", code: increment("counter", "r2") }];
@@ -227,9 +225,9 @@ describe("interview pool", () => {
 
     expect(explore(FLAG_THEN_CHECK)).toMatchObject({ mutualExclusion: true, stuck: true });
     expect(explore(CHECK_THEN_FLAG).mutualExclusion).toBe(false);
-    expect((find("ivx-flag-first") as McqQ).options[0]).toMatch(/wait for each other forever/);
-    expect((find("ivx-spinlock") as McqQ).options[0]).toMatch(/multiprocessor/);
-    expect((find("ivx-cv-while") as McqQ).options[0]).toMatch(/spurious/);
+    expect(keyed(find("ivx-flag-first") as McqQ)).toMatch(/wait for each other forever/);
+    expect(keyed(find("ivx-spinlock") as McqQ)).toMatch(/multiprocessor/);
+    expect(keyed(find("ivx-cv-while") as McqQ)).toMatch(/spurious/);
   });
 
   it("answers the thread, copy-on-write and IPC-choice questions", () => {
@@ -260,8 +258,8 @@ describe("interview pool", () => {
       expect(q.options).toHaveLength(4);
       expect(new Set(q.options).size).toBe(4);
     }
-    expect((find("ivx-page-size") as McqQ).options[0]).toMatch(/smaller page table.*more internal fragmentation/);
-    expect((find("ivx-tlb-switch") as McqQ).options[0]).toMatch(/flushed/);
+    expect(keyed(find("ivx-page-size") as McqQ)).toMatch(/smaller page table.*more internal fragmentation/);
+    expect(keyed(find("ivx-tlb-switch") as McqQ)).toMatch(/flushed/);
   });
 
   it("answers the Banker-request, detection, minimum-resource and lock-ring questions with the deadlock simulator", () => {
@@ -287,8 +285,8 @@ describe("interview pool", () => {
       expect(q.options).toHaveLength(4);
       expect(new Set(q.options).size).toBe(4);
     }
-    expect((find("ivx-lock-ring") as McqQ).answer).toBe(1);
-    expect((find("ivx-philosophers") as McqQ).options[0]).toMatch(/right fork first/);
+    expect(keyed(find("ivx-lock-ring") as McqQ)).toMatch(/wait in a ring/);
+    expect(keyed(find("ivx-philosophers") as McqQ)).toMatch(/right fork first/);
   });
 
   it("answers the turnaround, response, SJF, burst-prediction and overhead questions with the scheduling simulators", () => {
@@ -298,7 +296,7 @@ describe("interview pool", () => {
     expect((find("ivx-rr-response") as NumericQ).answer).toBeCloseTo(roundRobin(jobs, 4).avgResponse, 2);
     const order = [[0, 8], [1, 4], [2, 9], [3, 5]].map(([arrival, burst], i) => ({ name: `P${i + 1}`, arrival, burst }));
     expect(sjf(order).avgWaiting).toBeLessThanOrEqual(fcfs(order).avgWaiting);
-    expect((find("ivx-sjf-optimal") as McqQ).options[0]).toMatch(/minimum average waiting/);
+    expect(keyed(find("ivx-sjf-optimal") as McqQ)).toMatch(/minimum average waiting/);
     let tau = 10;
     const taus = [tau];
     for (const t of [6, 4, 6, 4, 13]) taus.push((tau = 0.5 * t + 0.5 * tau));
@@ -315,7 +313,7 @@ describe("interview pool", () => {
     expect((find("ivx-pt-size") as NumericQ).answer).toBe(pageTableBytes(32, 4096, 4) / 2 ** 20);
     expect((find("ivx-eat-98") as NumericQ).answer).toBeCloseTo(effectiveAccessTime(0.98, 10, 100), 6);
     expect(pagesFor(1, 4096).internalFragmentation).toBeLessThan(4096);
-    expect((find("ivx-frag-kinds") as McqQ).options[0]).toMatch(/Paging has no external fragmentation/);
+    expect(keyed(find("ivx-frag-kinds") as McqQ)).toMatch(/Paging has no external fragmentation/);
   });
 
   it("answers the disk-scheduling questions with the disk simulator", () => {
@@ -325,8 +323,8 @@ describe("interview pool", () => {
     expect((find("ivx-cscan-disk") as NumericQ).answer).toBe(run("cscan").movement);
     expect(run("sstf").movement).toBeLessThan(run("fcfs").movement);
     expect(run("scan").movement).toBeLessThan(run("cscan").movement);
-    expect((find("ivx-sstf-starve") as McqQ).options[0]).toMatch(/starve/);
-    expect((find("ivx-cscan-why") as McqQ).options[0]).toMatch(/uniform wait/);
+    expect(keyed(find("ivx-sstf-starve") as McqQ)).toMatch(/starve/);
+    expect(keyed(find("ivx-cscan-why") as McqQ)).toMatch(/uniform wait/);
   });
 
   it("answers the RAID and file-allocation questions with the storage simulator", () => {
@@ -334,9 +332,9 @@ describe("interview pool", () => {
     expect((find("ivx-raid6-cap") as NumericQ).answer).toBe(raidUsableDisks(6, 8) * 1);
     expect(blockReads("contiguous", 9)).toBe(1);
     expect(blockReads("linked", 9)).toBe(10);
-    expect((find("ivx-raid5-write") as McqQ).options[0]).toMatch(/four I\/Os/);
-    expect((find("ivx-inode-name") as McqQ).options[0]).toMatch(/directory entry/);
-    expect((find("ivx-contig-alloc") as McqQ).options[0]).toMatch(/External fragmentation/);
+    expect(keyed(find("ivx-raid5-write") as McqQ)).toMatch(/four I\/Os/);
+    expect(keyed(find("ivx-inode-name") as McqQ)).toMatch(/directory entry/);
+    expect(keyed(find("ivx-contig-alloc") as McqQ)).toMatch(/External fragmentation/);
   });
 
   it("answers the Linux questions: lowest descriptor, link count, epoll, SIGKILL and pipes", () => {
@@ -345,9 +343,9 @@ describe("interview pool", () => {
     while (openFds.has(fd)) fd++;
     expect((find("ivx-lowest-fd") as NumericQ).answer).toBe(fd);
     expect((find("ivx-hardlink-count") as NumericQ).answer).toBe(1 + 2 - 1);
-    expect((find("ivx-epoll-scale") as McqQ).options[0]).toMatch(/ready descriptors/);
-    expect((find("ivx-sigkill") as McqQ).options[0]).toMatch(/cannot be caught/);
-    expect((find("ivx-pipe-full") as McqQ).options[0]).toMatch(/blocks/);
+    expect(keyed(find("ivx-epoll-scale") as McqQ)).toMatch(/ready descriptors/);
+    expect(keyed(find("ivx-sigkill") as McqQ)).toMatch(/cannot be caught/);
+    expect(keyed(find("ivx-pipe-full") as McqQ)).toMatch(/blocks/);
   });
 
   it("answers the thread and synchronization questions", () => {
@@ -355,10 +353,10 @@ describe("interview pool", () => {
     let k = 0;
     while (2 * (k + 1) <= 5) k++;
     expect((find("ivx-dining-count") as NumericQ).answer).toBe(k);
-    expect((find("ivx-thread-stack") as McqQ).options[0]).toMatch(/own stack/);
-    expect((find("ivx-atomic-cas") as McqQ).options[0]).toMatch(/Lock-free/);
-    expect((find("ivx-priority-inversion") as McqQ).options[0]).toMatch(/priority inheritance/);
-    expect((find("ivx-notify-lost") as McqQ).options[0]).toMatch(/lost wakeup/);
+    expect(keyed(find("ivx-thread-stack") as McqQ)).toMatch(/own stack/);
+    expect(keyed(find("ivx-atomic-cas") as McqQ)).toMatch(/Lock-free/);
+    expect(keyed(find("ivx-priority-inversion") as McqQ)).toMatch(/priority inheritance/);
+    expect(keyed(find("ivx-notify-lost") as McqQ)).toMatch(/lost wakeup/);
   });
 
   it("answers the paging and address questions", () => {
@@ -366,104 +364,104 @@ describe("interview pool", () => {
     expect((find("ivx-fifo-four") as NumericQ).answer).toBe(faultCount(REFERENCE_EXAMPLE, 4, "fifo"));
     expect((find("ivx-vpn") as NumericQ).answer).toBe(0x3a7f >> 12);
     expect(Math.floor(14975 / 4096)).toBe(0x3a7f >> 12);
-    expect((find("ivx-inverted-pt") as McqQ).options[0]).toMatch(/one entry per physical frame/);
-    expect((find("ivx-pure-demand") as McqQ).options[0]).toMatch(/None/);
+    expect(keyed(find("ivx-inverted-pt") as McqQ)).toMatch(/one entry per physical frame/);
+    expect(keyed(find("ivx-pure-demand") as McqQ)).toMatch(/None/);
   });
 
   it("answers the OS-basics questions: mode switch, interrupts, modules, PID 1 and privilege", () => {
-    expect((find("ivx-mode-switch") as McqQ).options[0]).toMatch(/trap instruction switches the CPU to kernel mode/);
-    expect((find("ivx-trap-vs-irq") as McqQ).options[0]).toMatch(/network card/);
-    expect((find("ivx-lkm") as McqQ).options[0]).toMatch(/without rebooting/);
-    expect((find("ivx-pid1") as McqQ).options[0]).toMatch(/ancestor of all other user processes/);
-    expect((find("ivx-dual-mode") as McqQ).options[0]).toMatch(/take over the machine/);
+    expect(keyed(find("ivx-mode-switch") as McqQ)).toMatch(/trap instruction switches the CPU to kernel mode/);
+    expect(keyed(find("ivx-trap-vs-irq") as McqQ)).toMatch(/network card/);
+    expect(keyed(find("ivx-lkm") as McqQ)).toMatch(/without rebooting/);
+    expect(keyed(find("ivx-pid1") as McqQ)).toMatch(/ancestor of all other user processes/);
+    expect(keyed(find("ivx-dual-mode") as McqQ)).toMatch(/take over the machine/);
   });
 
   it("answers the page-cache questions: write-back, read-ahead, fsync, miss penalty and O_DIRECT", () => {
-    expect((find("ivx-page-cache") as McqQ).options[0]).toMatch(/dirty page/);
-    expect((find("ivx-readahead") as McqQ).options[0]).toMatch(/prefetches the next blocks/);
-    expect((find("ivx-dirty-flush") as McqQ).options[0]).toMatch(/stable storage/);
+    expect(keyed(find("ivx-page-cache") as McqQ)).toMatch(/dirty page/);
+    expect(keyed(find("ivx-readahead") as McqQ)).toMatch(/prefetches the next blocks/);
+    expect(keyed(find("ivx-dirty-flush") as McqQ)).toMatch(/stable storage/);
     expect((find("ivx-eat-disk") as NumericQ).answer).toBeCloseTo(0.99 * 100 + 0.01 * 10_000_000, 6);
-    expect((find("ivx-buffered-vs-direct") as McqQ).options[0]).toMatch(/own buffer pool/);
+    expect(keyed(find("ivx-buffered-vs-direct") as McqQ)).toMatch(/own buffer pool/);
   });
 
   it("answers the virtualization questions: containers vs VMs, namespaces, cgroups, hypervisor types and nested paging", () => {
-    expect((find("ivx-container-vs-vm") as McqQ).options[0]).toMatch(/share the host kernel/);
-    expect((find("ivx-namespaces") as McqQ).options[0]).toMatch(/PIDs, mounts/);
-    expect((find("ivx-cgroups") as McqQ).options[0]).toMatch(/cgroups/);
-    expect((find("ivx-type1-hypervisor") as McqQ).options[0]).toMatch(/directly on the hardware/);
-    expect((find("ivx-shadow-paging") as McqQ).options[0]).toMatch(/guest physical addresses/);
+    expect(keyed(find("ivx-container-vs-vm") as McqQ)).toMatch(/share the host kernel/);
+    expect(keyed(find("ivx-namespaces") as McqQ)).toMatch(/PIDs, mounts/);
+    expect(keyed(find("ivx-cgroups") as McqQ)).toMatch(/cgroups/);
+    expect(keyed(find("ivx-type1-hypervisor") as McqQ)).toMatch(/directly on the hardware/);
+    expect(keyed(find("ivx-shadow-paging") as McqQ)).toMatch(/guest physical addresses/);
   });
 
   it("answers the protection questions: mode bit, NX, ASLR, least privilege and ACLs vs capabilities", () => {
-    expect((find("ivx-protection-rings") as McqQ).options[0]).toMatch(/user and kernel modes/);
-    expect((find("ivx-nx-bit") as McqQ).options[0]).toMatch(/stack or heap/);
-    expect((find("ivx-aslr") as McqQ).options[0]).toMatch(/cannot predict/);
-    expect((find("ivx-least-privilege") as McqQ).options[0]).toMatch(/drop to an unprivileged/);
-    expect((find("ivx-acl-vs-capability") as McqQ).options[0]).toMatch(/stored with each object/);
+    expect(keyed(find("ivx-protection-rings") as McqQ)).toMatch(/user and kernel modes/);
+    expect(keyed(find("ivx-nx-bit") as McqQ)).toMatch(/stack or heap/);
+    expect(keyed(find("ivx-aslr") as McqQ)).toMatch(/cannot predict/);
+    expect(keyed(find("ivx-least-privilege") as McqQ)).toMatch(/drop to an unprivileged/);
+    expect(keyed(find("ivx-acl-vs-capability") as McqQ)).toMatch(/stored with each object/);
   });
 
   it("answers the boot and process-lifecycle questions: bootloader, initramfs, fork bombs, orphans and exec", () => {
-    expect((find("ivx-boot-bios") as McqQ).options[0]).toMatch(/Load the kernel image/);
-    expect((find("ivx-initramfs") as McqQ).options[0]).toMatch(/real root file system/);
-    expect((find("ivx-fork-bomb") as McqQ).options[0]).toMatch(/RLIMIT_NPROC/);
-    expect((find("ivx-orphan") as McqQ).options[0]).toMatch(/adopted by init/);
-    expect((find("ivx-exec-fork") as McqQ).options[0]).toMatch(/same PID/);
+    expect(keyed(find("ivx-boot-bios") as McqQ)).toMatch(/Load the kernel image/);
+    expect(keyed(find("ivx-initramfs") as McqQ)).toMatch(/real root file system/);
+    expect(keyed(find("ivx-fork-bomb") as McqQ)).toMatch(/RLIMIT_NPROC/);
+    expect(keyed(find("ivx-orphan") as McqQ)).toMatch(/adopted by init/);
+    expect(keyed(find("ivx-exec-fork") as McqQ)).toMatch(/same PID/);
   });
 
   it("answers the signal questions: SIGSTOP/SIGCONT, SIGCHLD, SIGPIPE, async-signal safety and SIGSEGV", () => {
-    expect((find("ivx-sigstop-cont") as McqQ).options[0]).toMatch(/SIGCONT resumes/);
-    expect((find("ivx-sigchld") as McqQ).options[0]).toMatch(/Zombie entries/);
-    expect((find("ivx-sigpipe") as McqQ).options[0]).toMatch(/EPIPE/);
-    expect((find("ivx-signal-safe") as McqQ).options[0]).toMatch(/re-entering/);
-    expect((find("ivx-sigsegv") as McqQ).options[0]).toMatch(/no valid mapping/);
+    expect(keyed(find("ivx-sigstop-cont") as McqQ)).toMatch(/SIGCONT resumes/);
+    expect(keyed(find("ivx-sigchld") as McqQ)).toMatch(/Zombie entries/);
+    expect(keyed(find("ivx-sigpipe") as McqQ)).toMatch(/EPIPE/);
+    expect(keyed(find("ivx-signal-safe") as McqQ)).toMatch(/re-entering/);
+    expect(keyed(find("ivx-sigsegv") as McqQ)).toMatch(/no valid mapping/);
   });
 
   it("answers the I/O questions: polling vs interrupts, top/bottom halves, block vs character devices, MMIO and non-blocking vs async", () => {
-    expect((find("ivx-polling-irq") as McqQ).options[0]).toMatch(/very frequent/);
-    expect((find("ivx-top-bottom-half") as McqQ).options[0]).toMatch(/defers longer work/);
-    expect((find("ivx-block-char") as McqQ).options[0]).toMatch(/fixed-size blocks/);
-    expect((find("ivx-mmio") as McqQ).options[0]).toMatch(/load and store/);
-    expect((find("ivx-blocking-async") as McqQ).options[0]).toMatch(/would block/);
+    expect(keyed(find("ivx-polling-irq") as McqQ)).toMatch(/very frequent/);
+    expect(keyed(find("ivx-top-bottom-half") as McqQ)).toMatch(/defers longer work/);
+    expect(keyed(find("ivx-block-char") as McqQ)).toMatch(/fixed-size blocks/);
+    expect(keyed(find("ivx-mmio") as McqQ)).toMatch(/load and store/);
+    expect(keyed(find("ivx-blocking-async") as McqQ)).toMatch(/would block/);
   });
 
   it("answers the cache questions: AMAT, tag bits, locality, false sharing and write policies", () => {
     expect((find("ivx-amat") as NumericQ).answer).toBeCloseTo(1 + (1 - 0.95) * 100, 6);
     expect((find("ivx-cache-tag") as NumericQ).answer).toBe(32 - Math.log2(64) - Math.log2(256));
-    expect((find("ivx-locality") as McqQ).options[0]).toMatch(/Scanning an array/);
-    expect((find("ivx-false-sharing") as McqQ).options[0]).toMatch(/same cache line/);
-    expect((find("ivx-write-policy") as McqQ).options[0]).toMatch(/marks the line dirty/);
+    expect(keyed(find("ivx-locality") as McqQ)).toMatch(/Scanning an array/);
+    expect(keyed(find("ivx-false-sharing") as McqQ)).toMatch(/same cache line/);
+    expect(keyed(find("ivx-write-policy") as McqQ)).toMatch(/marks the line dirty/);
   });
 
   it("answers the concurrency-bug questions: data race, livelock, ABA, reordering and writer starvation", () => {
-    expect((find("ivx-data-race") as McqQ).options[0]).toMatch(/unsynchronized concurrent access/);
-    expect((find("ivx-livelock") as McqQ).options[0]).toMatch(/no progress/);
-    expect((find("ivx-aba") as McqQ).options[0]).toMatch(/changed to B and back/);
-    expect((find("ivx-reorder") as McqQ).options[0]).toMatch(/reorder or delay/);
-    expect((find("ivx-writer-starve") as McqQ).options[0]).toMatch(/starve a waiting writer/);
+    expect(keyed(find("ivx-data-race") as McqQ)).toMatch(/unsynchronized concurrent access/);
+    expect(keyed(find("ivx-livelock") as McqQ)).toMatch(/no progress/);
+    expect(keyed(find("ivx-aba") as McqQ)).toMatch(/changed to B and back/);
+    expect(keyed(find("ivx-reorder") as McqQ)).toMatch(/reorder or delay/);
+    expect(keyed(find("ivx-writer-starve") as McqQ)).toMatch(/starve a waiting writer/);
   });
 
   it("answers the file-system consistency questions: fsck, ordered journaling, copy-on-write, inode exhaustion and atomic rename", () => {
-    expect((find("ivx-fsck-scan") as McqQ).options[0]).toMatch(/scan all metadata/);
-    expect((find("ivx-journal-meta") as McqQ).options[0]).toMatch(/stale or garbage data/);
-    expect((find("ivx-cow-fs") as McqQ).options[0]).toMatch(/never overwrites live blocks/);
-    expect((find("ivx-inode-exhaust") as McqQ).options[0]).toMatch(/run out of inodes/);
-    expect((find("ivx-atomic-rename") as McqQ).options[0]).toMatch(/fsync it, then rename/);
+    expect(keyed(find("ivx-fsck-scan") as McqQ)).toMatch(/scan all metadata/);
+    expect(keyed(find("ivx-journal-meta") as McqQ)).toMatch(/stale or garbage data/);
+    expect(keyed(find("ivx-cow-fs") as McqQ)).toMatch(/never overwrites live blocks/);
+    expect(keyed(find("ivx-inode-exhaust") as McqQ)).toMatch(/run out of inodes/);
+    expect(keyed(find("ivx-atomic-rename") as McqQ)).toMatch(/fsync it, then rename/);
   });
 
   it("answers the kernel-networking questions: sendfile, listen backlog, send-buffer back-pressure, SO_REUSEADDR and edge-triggered epoll", () => {
-    expect((find("ivx-sendfile") as McqQ).options[0]).toMatch(/without copying it through a user-space buffer/);
-    expect((find("ivx-listen-backlog") as McqQ).options[0]).toMatch(/queue for accept\(\)/);
-    expect((find("ivx-send-block") as McqQ).options[0]).toMatch(/send buffer is full/);
-    expect((find("ivx-reuseaddr") as McqQ).options[0]).toMatch(/SO_REUSEADDR/);
-    expect((find("ivx-epoll-edge") as McqQ).options[0]).toMatch(/until read\(\) returns EAGAIN/);
+    expect(keyed(find("ivx-sendfile") as McqQ)).toMatch(/without copying it through a user-space buffer/);
+    expect(keyed(find("ivx-listen-backlog") as McqQ)).toMatch(/queue for accept\(\)/);
+    expect(keyed(find("ivx-send-block") as McqQ)).toMatch(/send buffer is full/);
+    expect(keyed(find("ivx-reuseaddr") as McqQ)).toMatch(/SO_REUSEADDR/);
+    expect(keyed(find("ivx-epoll-edge") as McqQ)).toMatch(/until read\(\) returns EAGAIN/);
   });
 
   it("answers the scheduler-tuning questions: nice values, CFS vruntime, SCHED_FIFO starvation, CPU affinity and load average", () => {
-    expect((find("ivx-nice") as McqQ).options[0]).toMatch(/lowers the process's scheduling priority/);
-    expect((find("ivx-cfs-vruntime") as McqQ).options[0]).toMatch(/smallest virtual runtime/);
-    expect((find("ivx-rt-class") as McqQ).options[0]).toMatch(/runs until it blocks or yields/);
-    expect((find("ivx-affinity") as McqQ).options[0]).toMatch(/warm in that core's caches/);
-    expect((find("ivx-load-avg") as McqQ).options[0]).toMatch(/running or waiting to run/);
+    expect(keyed(find("ivx-nice") as McqQ)).toMatch(/lowers the process's scheduling priority/);
+    expect(keyed(find("ivx-cfs-vruntime") as McqQ)).toMatch(/smallest virtual runtime/);
+    expect(keyed(find("ivx-rt-class") as McqQ)).toMatch(/runs until it blocks or yields/);
+    expect(keyed(find("ivx-affinity") as McqQ)).toMatch(/warm in that core's caches/);
+    expect(keyed(find("ivx-load-avg") as McqQ)).toMatch(/running or waiting to run/);
   });
 
   it("puts the page-fault steps in the right order and keeps every step distinct", () => {
