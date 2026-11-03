@@ -10,6 +10,7 @@ import { STORE_BUFFERING, outcomes } from "@/game/sim/atomics";
 import { Buddy, FreeListHeap, slabObjects, tlbReach } from "@/game/sim/allocator";
 import { SEND_COSTS, waitCost, workersToSaturate } from "@/game/sim/ionet";
 import { alternatingWrites, coherenceMisses, runFutex } from "@/game/sim/contention";
+import { NICE_0_WEIGHT, avgVruntime, psi, submitSyscalls } from "@/game/sim/modern";
 import { finalValues, increment, runSemaphore, type SyncThread } from "@/game/sim/sync";
 
 /**
@@ -2130,6 +2131,95 @@ export const LESSONS: Lesson[] = [
       answer: ZEROCOPY_CHECK,
       unit: "fewer",
       explain: "read+write is two system calls (4 mode switches); sendfile is one system call (2 mode switches), so 4 - 2 = 2 fewer.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "modern-eevdf",
+    gym: "interview",
+    title: "EEVDF, the Linux fair scheduler",
+    pages: [
+      {
+        heading: "From CFS to EEVDF (as of October 2026)",
+        body: [
+          "Linux's fair scheduler was CFS (a red-black tree ordered by `vruntime`) until kernel 6.5. Since 6.6 it is EEVDF, Earliest Eligible Virtual Deadline First. Classic CFS is still what many textbooks and older interview questions describe, so know both.",
+          "Every task has a weight (from its nice value) and a `vruntime` that grows slower for heavier tasks. The scheduler tracks the weighted average V of all vruntimes.",
+        ],
+      },
+      {
+        heading: "Lag, eligibility and deadlines",
+        body: [
+          "A task's lag is V minus its vruntime: the service it is owed. Lag zero or above means eligible; negative means it already ran ahead of its share and must wait. Lags across the runnable tasks sum to zero.",
+          "Each task also has a virtual deadline: its vruntime plus its slice scaled by weight. EEVDF runs the eligible task with the earliest deadline. A shorter requested slice (settable with `sched_setattr`, 6.12 and later) gives earlier deadlines and better latency without changing the long-run share.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-eevdf",
+      kind: "numeric",
+      prompt: "Equal-weight tasks have vruntime 100, 118 and 100. What is the average virtual time V?",
+      answer: avgVruntime([100, 118, 100].map((vruntime, i) => ({ name: String(i), weight: NICE_0_WEIGHT, vruntime, sliceMs: 3 }))),
+      unit: "vruntime",
+      explain: "(100 + 118 + 100) / 3 = 106. Tasks below V are eligible; the one at 118 is ahead of its share.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "modern-iouring",
+    gym: "interview",
+    title: "io_uring",
+    pages: [
+      {
+        heading: "Two shared rings",
+        body: [
+          "io_uring (Linux 5.1) gives an application a submission queue (SQ) and a completion queue (CQ), both ring buffers in memory shared with the kernel. The app writes request entries, then one `io_uring_enter` submits a whole batch. Results appear in the CQ, tagged with the app's `user_data`, possibly out of order.",
+          "`io_uring_setup` rounds the SQ size up to a power of two, and the CQ defaults to twice the SQ.",
+        ],
+      },
+      {
+        heading: "Completion, not readiness",
+        body: [
+          "`epoll` says a descriptor is ready and you still call `read`. io_uring does the operation and reports it finished, which also makes file I/O asynchronous. With `SQPOLL`, a kernel thread polls the SQ so submission needs no syscall while it is awake, paid for with a busy core.",
+          "The cost is a large and fast-moving kernel interface; many container runtimes and sandboxes restrict it by default, so check what your platform allows.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-iouring",
+      kind: "numeric",
+      prompt: "128 reads are submitted with io_uring in batches of 16 per io_uring_enter. How many submission syscalls?",
+      answer: submitSyscalls(128, "io_uring", 16),
+      unit: "calls",
+      explain: "128 / 16 = 8 calls, instead of 128 read() calls.",
+      move: MMOVE,
+    },
+  },
+  {
+    id: "modern-cgroup-psi",
+    gym: "interview",
+    title: "cgroup v2 and PSI",
+    pages: [
+      {
+        heading: "One tree, soft and hard limits",
+        body: [
+          "cgroup v2 has a single hierarchy; each process sits in one cgroup, and a cgroup that hands controllers to its children holds no processes itself (the root is exempt).",
+          "`cpu.weight` is a proportional share that only matters under contention; `cpu.max` is a hard cap. `memory.high` throttles and forces reclaim; `memory.max` is the hard limit that can trigger the cgroup's OOM handling.",
+        ],
+      },
+      {
+        heading: "Pressure stall information",
+        body: [
+          "PSI (Linux 4.20) reports lost time per resource in `/proc/pressure/` and per cgroup. `some` is the share of time at least one task was stalled; `full` is the share of time every non-idle task was stalled, so the CPU did no useful work. It shows trouble before free-memory graphs do, and tools such as oomd use it to act early.",
+        ],
+      },
+    ],
+    check: {
+      id: "lesson-psi",
+      kind: "numeric",
+      prompt: "Four samples of (non-idle, stalled) tasks: (2,0) (2,1) (2,2) (2,0). What is `some` in percent?",
+      answer: psi([[2, 0], [2, 1], [2, 2], [2, 0]].map(([nonidle, stalled]) => ({ nonidle, stalled }))).some,
+      unit: "%",
+      explain: "Two of four samples had at least one stalled task, so 50%. Only the third had every task stalled, so `full` is 25%.",
       move: MMOVE,
     },
   },

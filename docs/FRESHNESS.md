@@ -14,4 +14,5 @@ Linux-specific claims in `content/` are checked against current kernel documenta
 | MGLRU | Added | Mainline since 6.1; generations instead of active/inactive only (`ml-mglru`). Textbook LRU/clock kept as the concept. |
 | Folios | Added | Introduced in 5.16; contiguous page groups as one unit (`ml-folio`). |
 | Transparent huge pages | Added | `always`/`madvise`/`never`, compaction stalls; lesson text already mentions the latency cost (`ml-thp-madvise`). |
-| Not yet covered | Open | Multi-size THP (6.8+) and a dedicated io_uring/cgroup v2/PSI lesson are in 7.3. |
+| EEVDF, io_uring, cgroup v2, PSI | Added (7.3) | Lessons `modern-eevdf`, `modern-iouring`, `modern-cgroup-psi` and 15 `mt-*` questions backed by `game/sim/modern.ts`. Custom slices via `sched_attr.sched_runtime` (6.12+, a suggestion clamped by the kernel); io_uring SQ rounded to a power of two, CQ defaults to 2x. Checked against LWN, heise and liburing docs, October 2026. |
+| Not yet covered | Open | Multi-size THP (6.8+). |

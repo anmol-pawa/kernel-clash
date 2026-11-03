@@ -6,6 +6,7 @@ import { TOOLKIT_QUESTIONS } from "./toolkitQuestions";
 import { DESIGN_QUESTIONS } from "./designQuestions";
 import { CONTAINER_QUESTIONS } from "./containerQuestions";
 import { MODERN_LINUX_QUESTIONS } from "./modernLinuxQuestions";
+import { MODERN_TOPIC_QUESTIONS } from "./modernTopicQuestions";
 import { INTERVIEW_EXTRA } from "./interviewQuestions";
 import { buildInterview, LOOP_SHAPE, type InterviewTopic, type Tier, type RoundId, type RoundKind } from "@/game/engine/interview";
 import { tierOfId } from "./interviewTiers";
@@ -265,9 +266,24 @@ export const TOPIC_OF: Readonly<Record<string, InterviewTopic>> = {
   "ml-mglru": "Memory",
   "ml-folio": "Memory",
   "ml-thp-madvise": "Memory",
+  "mt-eevdf-avg": "Scheduling and sync",
+  "mt-eevdf-pick": "Scheduling and sync",
+  "mt-eevdf-lag": "Scheduling and sync",
+  "mt-eevdf-latency": "Scheduling and sync",
+  "mt-eevdf-deadline": "Scheduling and sync",
+  "mt-uring-calls": "I/O and Linux",
+  "mt-uring-rings": "I/O and Linux",
+  "mt-uring-size": "I/O and Linux",
+  "mt-uring-sqpoll": "I/O and Linux",
+  "mt-uring-vs-epoll": "I/O and Linux",
+  "mt-psi-some": "Memory",
+  "mt-psi-full": "Memory",
+  "mt-cg-noint": "Processes",
+  "mt-cg-high-max": "Memory",
+  "mt-cg-weight": "Scheduling and sync",
 };
 
-export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS, ...MODERN_LINUX_QUESTIONS];
+export const INTERVIEW_QUESTIONS: Question[] = [...GYM_QUESTIONS.interview, ...INTERVIEW_EXTRA, ...BUGSPOT_QUESTIONS, ...FILL_QUESTIONS, ...INCIDENT_QUESTIONS, ...TOOLKIT_QUESTIONS, ...DESIGN_QUESTIONS, ...CONTAINER_QUESTIONS, ...MODERN_LINUX_QUESTIONS, ...MODERN_TOPIC_QUESTIONS];
 
 export const tierOf = (q: Question): Tier => tierOfId(q.id);
 export const topicOf = (q: Question): InterviewTopic => TOPIC_OF[q.id];
