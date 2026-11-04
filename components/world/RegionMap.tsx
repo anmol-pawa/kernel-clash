@@ -68,6 +68,16 @@ function ReviewLink({ save }: { save: SaveData }) {
   );
 }
 
+/** Opens the scheduler lab. */
+function LabLink() {
+  return (
+    <Link href="/lab/sched" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="lab-link">
+      <span>▶ SCHEDULER LAB</span>
+      <span className="text-[#5a5078]">8 Q</span>
+    </Link>
+  );
+}
+
 /** Opens the timed mock interview, with the best score so far. */
 function InterviewLink({ save }: { save: SaveData }) {
   const best = save.interviewBest;
@@ -181,11 +191,12 @@ export function RegionMap() {
 
         {save.starter && <PartnerCard save={save} />}
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
           <DexLink save={save} />
           <ReviewLink save={save} />
           <InterviewLink save={save} />
           <DailyLink save={save} />
+          <LabLink />
         </div>
 
         {/* the map */}

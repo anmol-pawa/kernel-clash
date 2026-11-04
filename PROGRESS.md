@@ -986,3 +986,10 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Verified: lint, typecheck, `npm test` (1008 tests), `build:pages` (291 files precached; second run hit the Next advisory network flake). Loaded `/learn/interview` on the static export with Playwright at desktop and iPhone 14: 23 lessons listed, no horizontal overflow; the only console error was a 404 for the service-worker script from my ad-hoc static server path mapping, not the app. CI/deploy confirmation: not polled, no `gh` access in this session.
 - Known gap: the new lessons have no diagrams; multi-size THP (6.8+) still uncovered.
 - Next: 8.1, scheduler lab (`/lab/sched`).
+
+## 2026-11-04: 8.1 Scheduler lab (run 148)
+- Main had two failing tests locally (`tests/coverage.test.ts`: the 7.3 run listed a lesson id and a wildcard in the COVERAGE.md example column). Fixed the doc to name real question ids (`mt-eevdf-avg`, `mt-eevdf-pick`).
+- Added `game/sim/schedLab.ts` (pure engine over `scheduling.ts`: eight algorithms incl. aging priority and MLFQ, metrics with context switches, workload sanitiser, eight graded challenges) and `/lab/sched` (`components/world/SchedLab.tsx`): editable workload (up to 6 jobs), Gantt chart, per-job and average metrics, side-by-side A/B comparison, challenge mode with stars kept in localStorage. Map gets a "Scheduler lab" link. Challenges: break the convoy, shortest wait (7 ms), snappy UI, no starvation (aging), priority textbook (8.2), pick the quantum (5.67), cheap switching, preemption pays (6.5). `tests/schedLab.test.ts` checks textbook values, solvability of every challenge and that wrong configurations fail.
+- Verified: lint, typecheck, `npm test` (1029 tests), `build:pages` (293 files; retried after the Next advisory flake). Playwright at desktop and iPhone 14: FCFS 8.75 vs SRTF 6.5 shown, challenge 6 graded and cleared, no console errors, no horizontal overflow, screenshots checked. CI/deploy not polled (no `gh`, Actions quota period just ended).
+- Known gap: lab progress is in localStorage, not the main save; no pixel-art treatment of the lab beyond the existing console UI.
+- Next: 8.2 address-translation lab.
