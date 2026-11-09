@@ -78,6 +78,16 @@ function LabLink() {
   );
 }
 
+/** Opens the address-translation lab. */
+function VmLabLink() {
+  return (
+    <Link href="/lab/vm" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="vm-lab-link">
+      <span>▶ ADDRESS LAB</span>
+      <span className="text-[#5a5078]">TRACE</span>
+    </Link>
+  );
+}
+
 /** Opens the timed mock interview, with the best score so far. */
 function InterviewLink({ save }: { save: SaveData }) {
   const best = save.interviewBest;
@@ -197,6 +207,7 @@ export function RegionMap() {
           <InterviewLink save={save} />
           <DailyLink save={save} />
           <LabLink />
+          <VmLabLink />
         </div>
 
         {/* the map */}
