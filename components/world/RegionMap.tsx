@@ -68,13 +68,17 @@ function ReviewLink({ save }: { save: SaveData }) {
   );
 }
 
-/** Opens the scheduler lab. */
+/** Opens the OS labs. */
 function LabLink() {
   return (
-    <Link href="/lab/sched" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="lab-link">
-      <span>▶ SCHEDULER LAB</span>
-      <span className="text-[#5a5078]">8 Q</span>
-    </Link>
+    <div className="grid grid-cols-2 gap-2">
+      <Link href="/lab/sched" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="lab-link">
+        <span>▶ SCHEDULER LAB</span>
+      </Link>
+      <Link href="/lab/vm" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="vm-lab-link">
+        <span>▶ ADDRESS LAB</span>
+      </Link>
+    </div>
   );
 }
 

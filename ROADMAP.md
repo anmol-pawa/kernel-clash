@@ -205,7 +205,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
 ## 8. Labs: play with the OS (each lab is a page with a pure, tested engine in `game/sim/` and challenges graded by the engine)
 
 - [x] 8.1 Scheduler lab (`/lab/sched`): edit a workload, pick the algorithm and quantum, see the Gantt chart and the metrics, compare two algorithms side by side. 8 challenges ("average wait ≤ X", "no starvation", "response time ≤ Y").
-- [ ] 8.2 Address-translation lab (`/lab/vm`): step one virtual address through TLB → two-level page table → page fault → replacement, with editable parameters; generated "trace this access" challenges checked by `game/sim/paging`.
+- [x] 8.2 Address-translation lab (`/lab/vm`): step one virtual address through TLB → two-level page table → page fault → replacement, with editable parameters; generated "trace this access" challenges checked by `game/sim/paging`.
 - [ ] 8.3 Allocator lab: a malloc/free simulator (first/best/worst fit, buddy, slab) with a fragmentation view; challenges ("serve this trace with zero failures").
 - [ ] 8.4 File-system lab:
   - [ ] 8.4a Inode, FAT and extent-style layouts: walk a path, read a byte offset, count disk reads.
