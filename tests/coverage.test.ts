@@ -22,7 +22,8 @@ describe("coverage matrix", () => {
     expect(ticks.length).toBeGreaterThan(100);
     for (const t of ticks) {
       if (t.includes("<")) continue;
-      if (t.startsWith("game/") || t.startsWith("tests/") || t.startsWith("content/")) expect(existsSync(t), t).toBe(true);
+      if (t.startsWith("/lab/")) expect(existsSync(`app${t}/page.tsx`), t).toBe(true);
+      else if (t.startsWith("game/") || t.startsWith("tests/") || t.startsWith("content/")) expect(existsSync(t), t).toBe(true);
       else if (t.startsWith("gen-")) expect(generatorIds.has(t), t).toBe(true);
       else if (/^(basics|processes|scheduling|sync|deadlocks|memory|virtual|storage|containers|virt|atomics|alloc|io)-/.test(t)) expect(lessonIds.has(t), t).toBe(true);
       else expect(everyQuestionId.has(t), t).toBe(true);

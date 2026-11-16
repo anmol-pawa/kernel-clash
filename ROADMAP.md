@@ -208,7 +208,7 @@ Audit (2026-10-25): the textbook core is well covered (40 lessons, 8 gyms, ~180 
 - [x] 8.2 Address-translation lab (`/lab/vm`): step one virtual address through TLB → two-level page table → page fault → replacement, with editable parameters; generated "trace this access" challenges checked by `game/sim/paging`.
 - [x] 8.3 Allocator lab: a malloc/free simulator (first/best/worst fit, buddy, slab) with a fragmentation view; challenges ("serve this trace with zero failures").
 - [ ] 8.4 File-system lab:
-  - [ ] 8.4a Inode, FAT and extent-style layouts: walk a path, read a byte offset, count disk reads.
+  - [x] 8.4a Inode, FAT and extent-style layouts: walk a path, read a byte offset, count disk reads.
   - [ ] 8.4b Journaling crash simulator: pick the crash point in a write sequence and predict the state after recovery for ordered, writeback and data journaling.
 - [ ] 8.5 Shell and process lab: a mini shell that shows the process tree and file-descriptor table as `fork`/`exec`/`pipe`/`dup2` run; generated "what does this print" puzzles executed by the simulator.
 - [ ] 8.6 Concurrency lab UI on top of `game/sim/threads.ts`: edit small thread programs in a restricted DSL, explore interleavings, see the shortest failing schedule; 8 authored challenges (find the missing lock, the right condition variable use, the lock order fix).

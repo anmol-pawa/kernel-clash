@@ -81,6 +81,9 @@ function LabLink() {
       <Link href="/lab/alloc" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="alloc-lab-link">
         <span>▶ ALLOCATOR LAB</span>
       </Link>
+      <Link href="/lab/fs" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="fs-lab-link">
+        <span>▶ FILE-SYSTEM LAB</span>
+      </Link>
     </div>
   );
 }
