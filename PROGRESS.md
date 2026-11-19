@@ -1012,3 +1012,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Verified: lint, typecheck, `npm test` (1074), `build:pages` (314 files). Playwright on the static export at desktop and iPhone 14: sandbox and quiz flows work, screenshot checked, no console errors, no horizontal overflow. CI/deploy not polled (no `gh` access in this session).
 - Known gap: model is cold-cache, one-block directories; no graded star challenges yet; the map link was not visually checked.
 - Next: 8.4b journaling crash simulator.
+
+## 2026-11-19: 8.4b Journaling crash simulator (run 152)
+- Main was green locally. Added `game/sim/journalLab.ts` (pure engine: one file append = D, I, B writes; four modes: no journal, writeback, ordered, data journaling; crash after any step, mount-time recovery replays a committed transaction or discards an uncommitted one, outcome classified as old / new / stale-data / leak / inconsistent; write-amplification counts 3/8/8/9; seeded "crash here, what do you find?" problems) and `/lab/journal` (`components/world/JournalLab.tsx`): crash-it explorer showing disk and journal before and after recovery, and a predict mode. Map link added; COVERAGE.md updated. `tests/journalLab.test.ts` (11 tests): ordered and data are safe at every crash point, writeback can replay a commit whose data never landed, no-journal needs fsck, recovery idempotent.
+- Verified: lint, typecheck, `npm test` (1085), `build:pages` (321 files; retried after the Next advisory flake). Playwright on the static export at desktop and iPhone 14: explore and predict flows work, screenshots checked, no console errors, no horizontal overflow. Pushed to the session branch `claude/peaceful-bohr-ir9lmr`, not main (session branch rule); CI/deploy not polled (no `gh` access).
+- Known gap: writeback model fixes data after the commit (worst legal order); no star challenges; map link not visually checked.
+- Next: 8.5 shell and process lab.
