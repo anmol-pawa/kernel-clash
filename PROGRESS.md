@@ -1018,3 +1018,9 @@ Each hourly routine run appends an entry: date (IST), task, what changed, how it
 - Verified: lint, typecheck, `npm test` (1088), `build:pages` (321 files; retried after the Next advisory flake). Playwright on the static export at desktop and iPhone 14: sandbox, predict and challenge flows work, screenshots checked, no console errors, no horizontal overflow. CI/deploy not polled (no `gh` access in this session).
 - Known gap: the model assumes atomic commit records, barriers between steps and one append (no rename/truncate); the map link was not checked visually.
 - Next: 8.5 shell and process lab.
+
+## 2026-11-21: 8.4b Journaling crash simulator, landed (run 152)
+- Hygiene: four stale branches (`claude/peaceful-bohr-{1u0ki7,blb42s,ir9lmr,yo2am5}`) each held a separate, unlanded 8.4b implementation from earlier daily runs. Merged the most complete one (`yo2am5`, 3 modes plus no-journal, sandbox/predict/challenges, 97-line test file) into main with `--no-ff`; the other three are the same task, so they were tagged `archive/<name>` and removed (see below).
+- Verified: lint, typecheck, `npm test` (1088 tests), `build:pages` (321 files precached; retried after the Next advisory network flake). Playwright on the static export at `/lab/journal` at desktop and iPhone 14: layout readable, crash-point list and recovery state render, no console errors, no horizontal overflow. CI/deploy confirmation skipped (check Actions quota status).
+- Known gap: the map link was not checked visually; the lab models one append with atomic commit records.
+- Next: 8.5 shell and process lab.
