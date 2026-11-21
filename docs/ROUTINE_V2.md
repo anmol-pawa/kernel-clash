@@ -10,7 +10,7 @@ Read by the scheduled builder routine every run. The repo's CLAUDE.md Run protoc
 
 ## 1. Start of run (hygiene)
 1. Attach repos, `npm ci` (and Python deps if a requirements file exists), take the routine lock or stop.
-2. `git fetch --prune`; list `git branch -r --no-merged origin/main`. For each leftover branch: merge finished work into main; if its task ID or files already exist on main, tag `archive/<name>` and delete the branch. Never discard commits.
+2. `git fetch --prune`; list unmerged remote branches OLDEST COMMIT FIRST (`git for-each-ref --sort=committerdate --format='%(refname:short) %(committerdate:iso)' refs/remotes/origin`, then `git branch -r --no-merged origin/main`); handle them strictly in that order so earlier work lands before later work and conflicts stay small. For each leftover branch: merge finished work into main; if its task ID or files already exist on main, tag `archive/<name>` and delete the branch. Never discard commits.
 3. If main is red locally (lint, typecheck, tests, build), fixing it comes first. If Actions cannot start (billing or quota error), say so in the summary and rely on local verification.
 
 ## 2. Choose the box (coverage-driven expansion)
@@ -41,3 +41,7 @@ Read by the scheduled builder routine every run. The repo's CLAUDE.md Run protoc
 
 ## 6. End of run
 Summary: box done, commit SHA, verification commands and what the screenshots showed, coverage-gap findings, NEEDS OWNER APPROVAL items, next box.
+
+## Standing branch policy
+
+Stale branches are also merged automatically, oldest first, by the `branch-janitor` scheduled task (twice daily). Do not leave work on side branches: land it on the default branch in the same run. Branches younger than 3 hours are left alone by the janitor, so a run in progress is never disturbed.
