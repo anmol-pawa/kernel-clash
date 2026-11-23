@@ -90,6 +90,9 @@ function LabLink() {
       <Link href="/lab/shell" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="shell-lab-link">
         <span>▶ SHELL LAB</span>
       </Link>
+      <Link href="/lab/conc" onClick={() => sfx.click()} className="gb-box flex min-h-11 items-center justify-between gap-2 px-3 font-pixel text-[9px]" data-testid="conc-lab-link">
+        <span>▶ THREAD LAB</span>
+      </Link>
     </div>
   );
 }
